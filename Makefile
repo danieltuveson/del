@@ -1,9 +1,9 @@
-FLAGS = -g -Weverything -Wno-padded -Wno-poison-system-directories
-objects = main.o
+CFLAGS = -g -Wall -Wextra -Wno-padded -Wno-poison-system-directories -Wno-void-pointer-to-enum-cast -Wno-int-to-void-pointer-cast
+objects = main.o bytecode.o parser.o printers.o vm.o
 
-bytecode : $(objects)
-	cc $(FLAGS) -o bytecode $(objects)
+lang : $(objects)
+	cc $(CFLAGS) -o lang $(objects)
 
 clean :
-	rm bytecode $(objects)
+	rm lang $(objects)
 
