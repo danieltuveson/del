@@ -1,13 +1,13 @@
 #include "common.h"
-#include "bytecode.h"
+#include "compiler.h"
 
 #define compile_binary_op(instructions, expr1, expr2, offset, op) \
     do { \
-        offset = compile(instructions, expr1, offset++); \
-        offset = compile(instructions, expr2, offset++); \
+        offset = compile_expression(instructions, expr1, offset++); \
+        offset = compile_expression(instructions, expr2, offset++); \
         instructions[offset++] = (void *) op; } while (0)
 
-int compile(void **instructions, struct Expr *expr, int offset)
+static int compile_expression(void **instructions, struct Expr *expr, int offset)
 {
     struct Expr *expr1, *expr2;
     switch (expr->type) {
@@ -41,7 +41,7 @@ int compile(void **instructions, struct Expr *expr, int offset)
                 case DEFINE:
                     instructions[offset++] = (void *) PUSH;
                     instructions[offset++] = (void *) expr1->symbol;
-                    offset = compile(instructions, expr2, offset++);
+                    offset = compile_expression(instructions, expr2, offset++);
                     instructions[offset++] = (void *) DEF;
                     break;
                 default:
@@ -50,6 +50,22 @@ int compile(void **instructions, struct Expr *expr, int offset)
             }
             break;
     }
+    return offset;
+}
+
+int compile(void **instructions, struct Exprs *exprs, int offset)
+{
+    struct Expr *expr;
+    do {
+        expr = exprs->expr;
+        offset = compile_expression(instructions, expr, offset);
+        // Discard top level expression from the stack since it's not part of a subexpression
+        if (expr->type == EXPRESSION) {
+            instructions[offset++] = (void *) POP;
+        }
+        instructions[offset] = (void *) RET;
+        exprs = exprs->next;
+    } while (exprs != NULL);
     return offset;
 }
 

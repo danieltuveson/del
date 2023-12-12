@@ -1,5 +1,5 @@
-#ifndef BYTECODE_H
-#define BYTECODE_H
+#ifndef COMPILER_H
+#define COMPILER_H
 
 #include "parser.h"
 
@@ -17,11 +17,12 @@ enum Code {
     GT,
     JE,
     JMP,
+    POP,
     RET,
     DEF,
     LOAD
 };
 
-int compile(void **instructions, struct Expr *expr, int offset);
+int compile(void **instructions, struct Exprs *exprs, int offset);
 
 #endif

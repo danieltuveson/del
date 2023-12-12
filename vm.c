@@ -1,5 +1,5 @@
 #include "common.h"
-#include "bytecode.h"
+#include "compiler.h"
 #include "vm.h"
 #include "printers.h"
 
@@ -87,8 +87,10 @@ long vm_execute(void **instructions)
                 break;
             case JMP:
                 break;
-            case RET:
+            case POP:
                 ret = (long) pop(&stack);
+                break;
+            case RET:
                 goto exit_loop;
             default:
                 printf("unknown instruction encountered");

@@ -40,11 +40,13 @@ struct BinaryExpr {
     struct Expr *expr2;
 };
 
-struct Parser {
+struct Exprs {
     struct Expr *expr;
-    char *error;
+    struct Exprs *next;
 };
 
-int parse(struct Parser *parser, char *input);
+int parse(struct Exprs *exprs, char *error, char *input);
+void *init_allocator(size_t input_string_size);
+void *alloc(size_t size);
 
 #endif

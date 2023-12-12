@@ -1,6 +1,7 @@
 #include "common.h"
 #include "printers.h"
 
+
 void print_expr(struct Expr *expr, int depth)
 {
     switch (expr->type) {
@@ -55,6 +56,7 @@ void print_expr(struct Expr *expr, int depth)
             putchar(' ');
             print_expr(expr->binexpr->expr2, depth);
             putchar(')');
+            putchar(' ');
             break;
     }
 }
@@ -91,6 +93,9 @@ void print_instructions(void **instructions, int length)
             case DEF:
                 printf("DEF\n");
                 break;
+            case POP:
+                printf("POP\n");
+                break;
             case LOAD:
                 i++;
                 printf("LOAD %s\n", (char *) instructions[i]);
@@ -98,6 +103,14 @@ void print_instructions(void **instructions, int length)
             default:
                 printf("***non-printable instruction***\n");
         }
+    }
+}
+
+void print_exprs(struct Exprs *exprs)
+{
+    while (exprs != NULL) {
+        print_expr(exprs->expr, 0);
+        exprs = exprs->next;
     }
 }
 
@@ -119,3 +132,4 @@ void print_heap(struct Heap *heap)
     }
     printf("]\n");
 }
+
