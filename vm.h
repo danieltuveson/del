@@ -12,7 +12,7 @@ struct Heap {
     struct Heap *next;
 };
 
-long vm_execute(void **instructions);
+long vm_execute(struct Heap *heap, void **instructions);
 
 
 #endif

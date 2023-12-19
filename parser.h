@@ -31,7 +31,8 @@ enum BinaryOp {
     GREATER,
     LEQUAL,
     GEQUAL,
-    DEFINE
+    DEFINE,
+    WHILE
 };
 
 struct BinaryExpr {

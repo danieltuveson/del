@@ -3,7 +3,7 @@
 
 #include "parser.h"
 
-#define STACK_SIZE  10
+#define STACK_SIZE  100
 
 enum Code {
     PUSH,
@@ -16,6 +16,7 @@ enum Code {
     LT,
     GT,
     JE,
+    JNE,
     JMP,
     POP,
     RET,

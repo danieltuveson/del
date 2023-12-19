@@ -21,8 +21,7 @@ void print_expr(struct Expr *expr, int depth)
                     putchar('-');
                     break;
                 case MULTIPLICATION:
-                    putchar('*');
-                    break;
+                    putchar('*'); break;
                 case DIVISION:
                     putchar('/');
                     break;
@@ -46,6 +45,9 @@ void print_expr(struct Expr *expr, int depth)
                     break;
                 case DEFINE:
                     printf("$");
+                    break;
+                case WHILE:
+                    printf("@");
                     break;
                 default:
                     printf("***symbol not implemented***");
@@ -87,6 +89,9 @@ void print_instructions(void **instructions, int length)
             case JMP:
                 printf("JMP\n");
                 break;
+            case JNE:
+                printf("JNE\n");
+                break;
             case RET:
                 printf("RET\n");
                 break;
@@ -95,6 +100,18 @@ void print_instructions(void **instructions, int length)
                 break;
             case POP:
                 printf("POP\n");
+                break;
+            case EQ:
+                printf("EQ\n");
+                break;
+            case NEQ:
+                printf("NEQ\n");
+                break;
+            case LT:
+                printf("LT\n");
+                break;
+            case GT:
+                printf("GT\n");
                 break;
             case LOAD:
                 i++;

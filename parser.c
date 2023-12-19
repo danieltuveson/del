@@ -97,6 +97,17 @@ static int parse_binexpr(char *error, struct BinaryExpr *binexpr, char **input_p
         case '$':
             op = DEFINE;
             break;
+        case '@':
+            op = WHILE;
+            break;
+        // case '!=':
+        //     NOT_EQUAL,
+        case '<':
+            op = LESS;
+            break;
+        case '>':
+            op = GREATER;
+            break;
         default:
             snprintf(error, ERR_MSG_LEN, "expected operator but got %c", *input);
             return 0;
@@ -166,3 +177,4 @@ int parse(struct Exprs *exprs, char *error, char *input)
     int status = parse_helper(exprs, error, input);
     return status;
 }
+

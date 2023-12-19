@@ -16,33 +16,34 @@ static inline void push(struct Stack *stack, void *value)
         v2 = (long) pop(stack_ptr); \
         push(stack_ptr, (void *) (v2 op v1)); } while (0)
 
-static int lookup(struct Heap *heap, char *lookup_val, long *val)
+static struct Heap *lookup(struct Heap *heap, char *lookup_val, long *val)
 {
     while (heap->name != NULL) {
         if (strcmp(heap->name, lookup_val) == 0) {
             *val = heap->value;
-            return 1;
+            return heap;
         }
         heap = heap->next;
     }
-    return 0;
+    return NULL;
 }
 
-long vm_execute(void **instructions)
+long vm_execute(struct Heap *heap, void **instructions)
 {
     struct Stack stack = {0, {0}};
-    struct Heap heap = { NULL, 0, NULL };
-    struct Heap *heap_val = &heap;
-    int i = 0;
+    struct Heap *heap_val = heap;
+    struct Heap *heap_scratch = NULL;
+    long ip = 0;
     long ret = 0;
     long val1, val2;
     char *symbol;
+    int i = 0;
     while (1) {
         print_stack(&stack);
-        switch ((enum Code) instructions[i]) {
+        switch ((enum Code) instructions[ip]) {
             case PUSH:
-                i++;
-                push(&stack, instructions[i]);
+                ip++;
+                push(&stack, instructions[ip]);
                 break;
             case ADD:
                 eval_binary_op(&stack, val1, val2, +);
@@ -59,33 +60,59 @@ long vm_execute(void **instructions)
             case EQ:
                 eval_binary_op(&stack, val1, val2, ==);
                 break;
+            case NEQ:
+                eval_binary_op(&stack, val1, val2, !=);
+                break;
+            case LT:
+                eval_binary_op(&stack, val1, val2, <);
+                break;
+            case GT:
+                eval_binary_op(&stack, val1, val2, >);
+                break;
             case DEF:
-                heap_val->value = (long) pop(&stack);
-                heap_val->name = (char *) pop(&stack);
-                heap_val->next = malloc(sizeof(struct Heap));
-                push(&stack, (void *) heap_val->value);
-                heap_val->next->name = NULL;
-                heap_val->next->value = 0;
-                heap_val->next->next = NULL;
-                heap_val = heap_val->next;
+                val1 = (long) pop(&stack);
+                symbol = (char *) pop(&stack);
+                heap_scratch = lookup(heap, symbol, &val2);
+                if (heap_scratch) {
+                    heap_scratch->value = val1; // update existing value
+                } else {
+                    heap_val->value = val1;
+                    heap_val->name = symbol;
+                    heap_val->next = malloc(sizeof(struct Heap));
+                    push(&stack, (void *) heap_val->value);
+                    heap_val->next->name = NULL;
+                    heap_val->next->value = 0;
+                    heap_val->next->next = NULL;
+                    heap_val = heap_val->next;
+                }
                 break;
             case LOAD:
-                i++;
-                symbol = (char *) instructions[i];
-                if (lookup(&heap, symbol, &val1)) {
+        print_heap(heap);
+                ip++;
+                symbol = (char *) instructions[ip];
+                if (lookup(heap, symbol, &val1)) {
                     push(&stack, (void *) val1);
                 } else {
                     printf("variable '%s' is undefined\n", symbol);
                     goto exit_loop;
                 }
                 break;
-            // EQCMP,
-            // NEQCMP,
-            // LCMP,
-            // GCMP,
             case JE:
                 break;
+            case JNE:
+                val1 = (long) pop(&stack);
+                if (!val1) {
+                    ip = (long) pop(&stack);
+                    printf("jne'ing to %li!\n", ip);
+                    ip--; // reverse the effects of the ip++ below
+                } {
+                    pop(&stack);
+                }
+                break;
             case JMP:
+                ip = (long) pop(&stack);
+                printf("jumping to %li!\n", ip);
+                ip--; // reverse the effects of the ip++ below
                 break;
             case POP:
                 ret = (long) pop(&stack);
@@ -93,14 +120,21 @@ long vm_execute(void **instructions)
             case RET:
                 goto exit_loop;
             default:
-                printf("unknown instruction encountered");
+                printf("unknown instruction encountered: '%p'", instructions[ip]);
                 break;
         }
+        ip++;
         i++;
+        if (i > 100) {
+            printf("infinite loop detected, ending execution\n");
+            break;
+        }
     }
 exit_loop:
-    print_stack(&stack);
-    print_heap(&heap);
+    // print_stack(&stack);
     return ret;
 }
 
+#undef top
+#undef pop
+#undef eval_binary_op
