@@ -88,7 +88,7 @@ int compile(void **instructions, struct Exprs *exprs, int offset)
         expr = exprs->expr;
         offset = compile_expression(instructions, expr, offset);
         // Discard top level expression from the stack since it's not part of a subexpression
-        if (expr->type == EXPRESSION) {
+        if (expr->type == EXPRESSION && expr->binexpr->op != WHILE) {
             load(POP);
         }
         instructions[offset] = (void *) RET;
