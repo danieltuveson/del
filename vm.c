@@ -39,7 +39,7 @@ long vm_execute(struct Heap *heap, void **instructions)
     char *symbol;
     int i = 0;
     while (1) {
-        print_stack(&stack);
+        // print_stack(&stack);
         switch ((enum Code) instructions[ip]) {
             case PUSH:
                 ip++;
@@ -87,7 +87,7 @@ long vm_execute(struct Heap *heap, void **instructions)
                 }
                 break;
             case LOAD:
-        print_heap(heap);
+        // print_heap(heap);
                 ip++;
                 symbol = (char *) instructions[ip];
                 if (lookup(heap, symbol, &val1)) {
@@ -103,7 +103,7 @@ long vm_execute(struct Heap *heap, void **instructions)
                 val1 = (long) pop(&stack);
                 if (!val1) {
                     ip = (long) pop(&stack);
-                    printf("jne'ing to %li!\n", ip);
+                    //printf("jne'ing to %li!\n", ip);
                     ip--; // reverse the effects of the ip++ below
                 } {
                     pop(&stack);
@@ -111,7 +111,7 @@ long vm_execute(struct Heap *heap, void **instructions)
                 break;
             case JMP:
                 ip = (long) pop(&stack);
-                printf("jumping to %li!\n", ip);
+                //printf("jumping to %li!\n", ip);
                 ip--; // reverse the effects of the ip++ below
                 break;
             case POP:
@@ -125,10 +125,10 @@ long vm_execute(struct Heap *heap, void **instructions)
         }
         ip++;
         i++;
-        if (i > 100) {
-            printf("infinite loop detected, ending execution\n");
-            break;
-        }
+        // if (i > 100) {
+        //     printf("infinite loop detected, ending execution\n");
+        //     break;
+        // }
     }
 exit_loop:
     // print_stack(&stack);

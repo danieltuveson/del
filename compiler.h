@@ -3,8 +3,6 @@
 
 #include "parser.h"
 
-#define STACK_SIZE  100
-
 enum Code {
     PUSH,
     ADD,

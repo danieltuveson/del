@@ -1,6 +1,8 @@
 #ifndef VM_H
 #define VM_H
 
+#define STACK_SIZE  1000
+
 struct Stack {
     int offset;
     void *values[STACK_SIZE];

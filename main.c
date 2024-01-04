@@ -14,11 +14,10 @@ int read(char *input)
 {
     memory = init_allocator(strlen(input)); 
     if (memory == NULL) {
-        free(memory);
         goto err_no_mem; }
     char *error = calloc(sizeof(char), ERR_MSG_LEN); // probably enough characters
     if (error == NULL) {
-        free(error);
+        free(memory);
         goto err_no_mem;
     }
 
@@ -30,9 +29,6 @@ int read(char *input)
         free(memory);
         return 0;
     }
-    // printf("expression(s): ");
-    // print_exprs(exprs);
-    // putchar('\n');
     return 1;
 
 err_no_mem:
@@ -46,6 +42,53 @@ void eval(void)
 
 void print(void)
 {
+}
+
+int repl(void **instructions)
+{
+    int offset;
+    size_t size = 100;
+    char *buff = malloc(sizeof(char) * size);
+    
+    while (1) {
+        memset(buff, 0, size);
+        printf("> ");
+        fflush(stdout);
+
+        // Read input text
+        int c = fgetc(stdin);
+        if (c == '\0') {
+            free(buff);
+            return EXIT_FAILURE;
+        } else if (c != '(') {
+            ungetc(c, stdin);
+            getline(&buff, &size, stdin);
+        } else {
+            ungetc(c, stdin);
+            int paren_count = 0;
+            for (size_t i = 0; i < size && !(paren_count <= 0 && c == '\n'); i++) {
+                c = fgetc(stdin);
+                buff[i] = (char) c;
+                if (feof(stdin)) break;
+            }
+        }
+        if (feof(stdin)) {
+            printf("\nfarewellllllll\n");
+            return EXIT_SUCCESS;
+        }
+
+        // Parse
+        if (!read(buff)) {
+            continue;
+        }
+
+        // Compile and execute
+        offset = compile(instructions, exprs, 0);
+        print_instructions(instructions, offset+1);
+
+        long ret = vm_execute(&heap, instructions);
+        printf("%li\n", ret);
+    }
 }
 
 int main(int argc, char *argv[])
@@ -62,6 +105,7 @@ int main(int argc, char *argv[])
     int offset;
     
     if (argc == 2) {
+        tokenize
         // Parse expressions passed from command line
         if (!read(argv[1])) {
             return EXIT_FAILURE;
@@ -76,57 +120,8 @@ int main(int argc, char *argv[])
         printf("ret: %li\n", ret);
     } else if (argc == 1) {
         // Repl
-        size_t size = 100;
-        char *buff = malloc(sizeof(char) * size);
-        
-        while (1) {
-            memset(buff, 0, size);
-            printf("> ");
-            fflush(stdout);
-
-            // Read input text
-            int c = fgetc(stdin);
-            if (c == '\0') {
-                free(buff);
-                return EXIT_FAILURE;
-            } else if (c != '(') {
-                ungetc(c, stdin);
-                getline(&buff, &size, stdin);
-            } else {
-                ungetc(c, stdin);
-                int paren_count = 0;
-                for (size_t i = 0; i < size && !(paren_count <= 0 && c == '\n'); i++) {
-                    c = fgetc(stdin);
-                    buff[i] = (char) c;
-                    if (feof(stdin)) break;
-                }
-            }
-            if (feof(stdin)) {
-                printf("\nfarewellllllll\n");
-                return EXIT_SUCCESS;
-            }
-
-            // Parse
-            if (!read(buff)) {
-                continue;
-            }
-
-            // if (exprs->expr->type != EXPRESSION && exprs->next == NULL) {
-                // If symbol or value, print it without doing anything
-                // print_expr(exprs->expr, 0);
-            // } else {
-                // Compile and execute
-                offset = compile(instructions, exprs, 0);
-                print_instructions(instructions, offset+1);
-            // }
-
-            long ret = vm_execute(&heap, instructions);
-            printf("%li\n", ret);
-        }
+        return repl(instructions);
     } else {
-        // instructions[0] = 4
-        // instructions[1] = 5
-        // instructions[2]
         printf("needs arguments or something\n");
         return EXIT_FAILURE;
     }

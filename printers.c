@@ -44,11 +44,13 @@ void print_expr(struct Expr *expr, int depth)
                     printf(">=");
                     break;
                 case DEFINE:
-                    printf("$");
+                    putchar('$');
                     break;
                 case WHILE:
-                    printf("@");
+                    putchar('$');
                     break;
+                case IF:
+                    putchar('?');
                 default:
                     printf("***symbol not implemented***");
             }

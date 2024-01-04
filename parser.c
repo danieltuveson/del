@@ -1,7 +1,5 @@
 #include <assert.h>
-#include <stdlib.h>
 #include "printers.h"
-#include "common.h"
 #include "parser.h"
 
 
@@ -26,6 +24,149 @@ void *alloc(size_t size)
     void *memory = &allocator.memory[allocator.offset];
     allocator.offset += size;
     return memory;
+}
+
+enum SimpleToken {
+    ST_IF = 0, ST_THEN = 1, ST_ELSEIF = 2, ST_ELSE = 3, ST_END = 4, ST_FOR = 5,
+    ST_TO = 6, ST_IN = 7, ST_NEXT = 8, ST_WHILE = 9, ST_FUNCTION = 10, ST_EXIT = 11,
+    ST_DIM = 12, ST_AS = 13, ST_STRING = 14, ST_INT = 15, ST_FLOAT = 16,
+    ST_BOOL = 17, ST_AND = 18, ST_OR = 19, ST_NOT = 20, ST_NULL = 21, ST_PLUS = 22,
+    ST_MINUS = 23, ST_STAR = 24, ST_SLASH = 25, ST_EQ = 26, ST_LESS_EQ = 26,
+    ST_GREATER_EQ = 28, ST_LESS = 29, ST_GREATER = 30, ST_OPEN_PAREN = 31,
+    ST_CLOSE_PAREN = 32, ST_COMMA = 33, ST_AMP = 34, ST_UNDERSCORE = 35,
+    ST_NEWLINE = 36
+};
+
+enum TokenType {
+    TT_SIMPLE,
+    TT_COMMENT,
+    TT_STRING,
+    TT_NUMBER,
+    TT_SYMBOL
+};
+
+struct Tokens;
+struct Tokens {
+    int start;
+    int end;
+    enum TokenType type;
+    union {
+        enum SimpleToken st;
+        char *string; // used for string, comment, and symbol
+                      // interpretation of this value is dependent on token type
+        double number;
+    };
+    struct Tokens *next;
+};
+
+#define init_generic_token(tokens, start, end) do {\
+    tokens->start = start;\
+    tokens->end = end;\
+    tokens->next = NULL; } while (0)
+
+static inline struct Tokens *simple_token(enum SimpleToken st, int start, int end) {
+    struct Tokens *tokens = alloc(sizeof(struct Tokens));
+    init_generic_token(tokens, start, end);
+    tokens->type = TT_SIMPLE;
+    tokens->st = st;
+    return tokens;
+}
+static inline struct Tokens *comment_token(char *str, int start, int end) {
+    struct Tokens *tokens = alloc(sizeof(struct Tokens));
+    init_generic_token(tokens, start, end);
+    tokens->start = start;
+    tokens->end = end;
+    tokens->type = TT_COMMENT;
+    tokens->string = str;
+    return tokens;
+}
+static inline struct Tokens *string_token(char *str, int start, int end) {
+    struct Tokens *tokens = alloc(sizeof(struct Tokens));
+    init_generic_token(tokens, start, end);
+    tokens->type = TT_STRING;
+    tokens->string = str;
+    return tokens;
+}
+static inline struct Tokens *number_token(double num, int start, int end) {
+    struct Tokens *tokens = alloc(sizeof(struct Tokens));
+    init_generic_token(tokens, start, end);
+    tokens->type = TT_NUMBER;
+    tokens->number = num;
+    return tokens;
+}
+static inline struct Tokens *symbol_token(char *str, int start, int end) {
+    struct Tokens *tokens = alloc(sizeof(struct Tokens));
+    init_generic_token(tokens, start, end);
+    tokens->type = TT_SYMBOL;
+    tokens->string = str;
+    return tokens;
+}
+#undef init_generic_token
+
+// Index of simple token should match its corresponding enum value
+static char *simple_tokens[] = {
+    "if", "then", "elseif", "else", "end", "for", "to", "in", "next", "while", "function",
+    "exit", "dim", "as", "string", "int", "float", "bool", "and", "or", "not", "null",
+    "+", "-", "*", "/", "=", "<=", ">=", "<", ">", "(", ")", ",", "&", "_", "\n"
+};
+
+static int is_simple_token(char *input, int start, int end, enum SimpleToken *return_val)
+{
+    int is_equal = 1;
+    for (int i = 0; i < (int) sizeof(simple_tokens); i++) {
+        is_equal = 1;
+        for (int j = 0; j <= (end - start) && simple_tokens[i][j] != '\0'; j++) {
+            is_equal = is_equal && (simple_tokens[i][j] == input[j+start]);
+        }
+        if (is_equal) {
+            *return_val = (enum SimpleToken) i;
+            return 1;
+        }
+    }
+    return 0;
+}
+/*static*/ int is_number_token(char *input, int start, int end, double *number);
+static int is_comment_token(char *input, int start, int end, char *string) {
+    if (input[start++] == ''') {
+        while (input[start++] != '\0') /* keep on truckin */
+    }
+}
+int is_string_token(char *input, int start, int end, char *string) {
+    return input[start] == '"';
+}
+
+static struct Tokens **tokenize(char *input)
+{
+    struct Tokens **current;
+    struct Tokens **head = current;
+    enum SimpleToken st;
+    double number;
+    char *string;
+    for (int i = 0; input[i] != '\0'; i++) {
+        // ignore leading whitespace
+        while (input[i] == ' ' || input[i] == '\t') {
+            i++;
+        }
+        int start = i;
+        while (input[i] != ' ' && input[i] != '\t' && input[i] != '\0') {
+            i++;
+        }
+        if (is_simple_token(input, start, i, &st)) {
+            *current = simple_token(st, start, i);
+        } else if (is_number_token(input, start, i, &number)) {
+            *current = number_token(number, start, i);
+        } else if (input[i] == '"') {
+            // error code for unterminated string
+            return head;
+        } else if (is_comment_token(input, start, i, string)) {
+            *current = comment_token(string, start, i);
+        } else if (is_string_token(input, start, i, string)) {
+            *current = string_token(string, start, i);
+        } else {
+            *current = symbol_token(string, start, i);
+        }
+        *current = current->next;
+    }
 }
 
 static int parse_binexpr(char *error, struct BinaryExpr *binexpr, char **input_ptr);
@@ -60,7 +201,6 @@ static int parse_expr(char *error, struct Expr *expr, char **input_ptr)
         input++;
         expr->binexpr = alloc(sizeof(struct BinaryExpr));
         if (!parse_binexpr(error, expr->binexpr, &input)) {
-            //free(expr->binexpr);
             return 0;
         }
     } else {
@@ -108,6 +248,9 @@ static int parse_binexpr(char *error, struct BinaryExpr *binexpr, char **input_p
         case '>':
             op = GREATER;
             break;
+        case '?':
+            op = IF;
+            break;
         default:
             snprintf(error, ERR_MSG_LEN, "expected operator but got %c", *input);
             return 0;
@@ -116,26 +259,21 @@ static int parse_binexpr(char *error, struct BinaryExpr *binexpr, char **input_p
 
     struct Expr *expr1 = alloc(sizeof(struct Expr));
     if (!parse_expr(error, expr1, &input)) {
-        //free(expr1);
         snprintf(error, ERR_MSG_LEN, "error parsing first subexpression");
         return 0;
     } else if (op == DEFINE && expr1->type != SYMBOL) {
-        //free(expr1);
         snprintf(error, ERR_MSG_LEN, "error first argument of '$' must be a symbol");
         return 0;
     }
 
     struct Expr *expr2 = alloc(sizeof(struct Expr));
     if (!parse_expr(error, expr2, &input)) {
-        //free(expr2);
         snprintf(error, ERR_MSG_LEN, "error parsing second subexpression");
         return 0;
     }
 
     if (*input != ')') {
         snprintf(error, ERR_MSG_LEN, "unexpected end of expression");
-        //free(expr1);
-        //free(expr2);
         return 0;
     }
     input++;
@@ -148,19 +286,12 @@ static int parse_binexpr(char *error, struct BinaryExpr *binexpr, char **input_p
     return 1;
 }
 
-// this is not sufficient to actually delete an expression
-// static void free_expr(struct Expr *expr)
-// {
-//     //free(expr);
-// }
-
 static int parse_helper(struct Exprs *exprs, char *error, char *input)
 {
     while (*input != '\0') {
         exprs->expr = alloc(sizeof(struct Expr));
         exprs->next = NULL;
         if (!parse_expr(error, exprs->expr, &input)) {
-            //free_expr(exprs->expr);
             exprs->expr = NULL;
             return 0;
         }

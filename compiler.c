@@ -72,6 +72,16 @@ static int compile_expression(void **instructions, struct Expr *expr, int offset
 
                     instructions[old_offset] = (void *) offset; // set JNE jump to go to end of loop
                     break;
+                case IF:
+                    top_of_loop = offset;
+                    load(PUSH);
+                    old_offset = offset++;
+                    offset = compile_expression(instructions, expr1, offset++);
+                    load(JNE);
+                    offset = compile_expression(instructions, expr2, offset++);
+
+                    instructions[old_offset] = (void *) offset; // set JNE jump to go to after if statement
+                    break;
                 default:
                     printf("Error cannot compile expression\n");
                     break;
@@ -88,7 +98,8 @@ int compile(void **instructions, struct Exprs *exprs, int offset)
         expr = exprs->expr;
         offset = compile_expression(instructions, expr, offset);
         // Discard top level expression from the stack since it's not part of a subexpression
-        if (expr->type == EXPRESSION && expr->binexpr->op != WHILE) {
+        // (unless it's a statement that returns nothing)
+        if (expr->type == EXPRESSION && (expr->binexpr->op != WHILE && expr->binexpr->op != IF)) {
             load(POP);
         }
         instructions[offset] = (void *) RET;
