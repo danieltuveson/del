@@ -45,47 +45,48 @@
      ST_ELSE = 261,
      ST_END = 262,
      ST_FOR = 263,
-     ST_TO = 264,
-     ST_IN = 265,
-     ST_NEXT = 266,
-     ST_WHILE = 267,
-     ST_FUNCTION = 268,
-     ST_EXIT = 269,
-     ST_DIM = 270,
-     ST_AS = 271,
-     ST_STRING = 272,
-     ST_INT = 273,
-     ST_FLOAT = 274,
-     ST_BOOL = 275,
-     ST_AND = 276,
-     ST_OR = 277,
-     ST_NOT = 278,
-     ST_NULL = 279,
-     ST_PLUS = 280,
-     ST_MINUS = 281,
-     ST_STAR = 282,
-     ST_SLASH = 283,
-     ST_EQ = 284,
-     ST_EQEQ = 285,
-     ST_NOT_EQ = 286,
-     ST_LESS_EQ = 287,
-     ST_GREATER_EQ = 288,
-     ST_LESS = 289,
-     ST_GREATER = 290,
-     ST_OPEN_PAREN = 291,
-     ST_CLOSE_PAREN = 292,
-     ST_COMMA = 293,
-     ST_AMP = 294,
-     ST_UNDERSCORE = 295,
-     ST_SEMICOLON = 296,
-     ST_NEWLINE = 297,
-     UNARY_MINUS = 298,
-     UNARY_PLUS = 299,
-     T_STRING = 300,
-     T_IDENTIFIER = 301,
-     T_INT = 302,
-     T_FLOAT = 303,
-     T_OTHER = 304
+     ST_EACH = 264,
+     ST_TO = 265,
+     ST_IN = 266,
+     ST_NEXT = 267,
+     ST_WHILE = 268,
+     ST_FUNCTION = 269,
+     ST_EXIT = 270,
+     ST_DIM = 271,
+     ST_AS = 272,
+     ST_STRING = 273,
+     ST_INT = 274,
+     ST_FLOAT = 275,
+     ST_BOOL = 276,
+     ST_AND = 277,
+     ST_OR = 278,
+     ST_NOT = 279,
+     ST_NULL = 280,
+     ST_PLUS = 281,
+     ST_MINUS = 282,
+     ST_STAR = 283,
+     ST_SLASH = 284,
+     ST_EQ = 285,
+     ST_EQEQ = 286,
+     ST_NOT_EQ = 287,
+     ST_LESS_EQ = 288,
+     ST_GREATER_EQ = 289,
+     ST_LESS = 290,
+     ST_GREATER = 291,
+     ST_OPEN_PAREN = 292,
+     ST_CLOSE_PAREN = 293,
+     ST_COMMA = 294,
+     ST_AMP = 295,
+     ST_UNDERSCORE = 296,
+     ST_SEMICOLON = 297,
+     ST_NEWLINE = 298,
+     UNARY_MINUS = 299,
+     UNARY_PLUS = 300,
+     T_STRING = 301,
+     T_SYMBOL = 302,
+     T_INT = 303,
+     T_FLOAT = 304,
+     T_OTHER = 305
    };
 #endif
 /* Tokens.  */
@@ -95,63 +96,67 @@
 #define ST_ELSE 261
 #define ST_END 262
 #define ST_FOR 263
-#define ST_TO 264
-#define ST_IN 265
-#define ST_NEXT 266
-#define ST_WHILE 267
-#define ST_FUNCTION 268
-#define ST_EXIT 269
-#define ST_DIM 270
-#define ST_AS 271
-#define ST_STRING 272
-#define ST_INT 273
-#define ST_FLOAT 274
-#define ST_BOOL 275
-#define ST_AND 276
-#define ST_OR 277
-#define ST_NOT 278
-#define ST_NULL 279
-#define ST_PLUS 280
-#define ST_MINUS 281
-#define ST_STAR 282
-#define ST_SLASH 283
-#define ST_EQ 284
-#define ST_EQEQ 285
-#define ST_NOT_EQ 286
-#define ST_LESS_EQ 287
-#define ST_GREATER_EQ 288
-#define ST_LESS 289
-#define ST_GREATER 290
-#define ST_OPEN_PAREN 291
-#define ST_CLOSE_PAREN 292
-#define ST_COMMA 293
-#define ST_AMP 294
-#define ST_UNDERSCORE 295
-#define ST_SEMICOLON 296
-#define ST_NEWLINE 297
-#define UNARY_MINUS 298
-#define UNARY_PLUS 299
-#define T_STRING 300
-#define T_IDENTIFIER 301
-#define T_INT 302
-#define T_FLOAT 303
-#define T_OTHER 304
+#define ST_EACH 264
+#define ST_TO 265
+#define ST_IN 266
+#define ST_NEXT 267
+#define ST_WHILE 268
+#define ST_FUNCTION 269
+#define ST_EXIT 270
+#define ST_DIM 271
+#define ST_AS 272
+#define ST_STRING 273
+#define ST_INT 274
+#define ST_FLOAT 275
+#define ST_BOOL 276
+#define ST_AND 277
+#define ST_OR 278
+#define ST_NOT 279
+#define ST_NULL 280
+#define ST_PLUS 281
+#define ST_MINUS 282
+#define ST_STAR 283
+#define ST_SLASH 284
+#define ST_EQ 285
+#define ST_EQEQ 286
+#define ST_NOT_EQ 287
+#define ST_LESS_EQ 288
+#define ST_GREATER_EQ 289
+#define ST_LESS 290
+#define ST_GREATER 291
+#define ST_OPEN_PAREN 292
+#define ST_CLOSE_PAREN 293
+#define ST_COMMA 294
+#define ST_AMP 295
+#define ST_UNDERSCORE 296
+#define ST_SEMICOLON 297
+#define ST_NEWLINE 298
+#define UNARY_MINUS 299
+#define UNARY_PLUS 300
+#define T_STRING 301
+#define T_SYMBOL 302
+#define T_INT 303
+#define T_FLOAT 304
+#define T_OTHER 305
 
 
 
 
 #if ! defined YYSTYPE && ! defined YYSTYPE_IS_DECLARED
 typedef union YYSTYPE
-#line 241 "test.y"
+#line 407 "test.y"
 {
-    char name[20];
+    char *string;
+    char *symbol;
     long integer;
     struct Expr *expr;
     struct Value *val;
     double floating;
+    struct List *stmts;
+    struct Statement *stmt;
 }
 /* Line 1529 of yacc.c.  */
-#line 155 "test.tab.h"
+#line 160 "test.tab.h"
 	YYSTYPE;
 # define yystype YYSTYPE /* obsolescent; will be withdrawn */
 # define YYSTYPE_IS_DECLARED 1

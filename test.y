@@ -1,10 +1,30 @@
 %{
-#include <stdio.h>
-#include <stdlib.h>
+#include "test.h"
 #define YYDEBUG 1
 
 int yylex();
 int yyerror(char *s);
+
+struct List;
+struct List {
+    void *value;
+    struct List *prev;
+    struct List *next;
+};
+
+struct List *new_list(void *value) {
+    struct List *list = malloc(sizeof(struct List));
+    list->value = value;
+    list->next = NULL;
+    list->prev = NULL;
+    return list;
+}
+
+struct List *push(struct List *list, void *value) {
+    list->next = new_list(value);
+    list->next->prev = list;
+    return list->next;
+}
 
 enum ValueType {
     VTYPE_SYMBOL,
@@ -51,7 +71,7 @@ struct Value {
     enum ValueType type;
     union {
         char *string;
-        char *symbol;
+        Symbol symbol;
         long integer;
         double floating;
         int boolean;
@@ -60,10 +80,100 @@ struct Value {
     };
 };
 
-struct Value *new_expr(struct Expr *expr) {
+struct Statement;
+
+struct Set {
+    Symbol symbol;
+    struct Value *val;
+};
+
+struct IfStatement {
+    struct Value *condition;
+    Statements *if_stmts;
+    Statements *else_stmts;
+};
+
+struct While {
+    struct Value *condition;
+    Statements *stmts;
+};
+
+struct For {
+    struct Set *start;
+    struct Value *stop;
+    Statements *stmts;
+};
+
+struct ForEach {
+    Symbol symbol;
+    struct Value *condition;
+    Statements *stmts;
+};
+
+enum StatementType {
+    STMT_DIM,
+    STMT_SET,
+    STMT_IF,
+    STMT_WHILE,
+    STMT_FOR,
+    STMT_FOREACH,
+    STMT_FUNCTION_DEF,
+    STMT_EXIT_FOR,
+    STMT_EXIT_WHILE,
+    STMT_EXIT_FUNCTION
+};
+
+struct Statement {
+    enum StatementType type;
+    union {
+        struct Set *set;
+        struct IfStatement *if_stmt;
+        struct While *while_stmt;
+        struct For *for_stmt;
+        struct ForEach *for_each;
+    };
+};
+
+struct Statement *new_set(Symbol symbol, struct Value *val) {
+    struct Statement *stmt = malloc(sizeof(struct Statement));
+    stmt->type = STMT_SET;
+    stmt->set = malloc(sizeof(struct Set));
+    stmt->set->symbol = symbol;
+    stmt->set->val = val;
+    return stmt;
+}
+
+struct Statement *new_if(struct Value *condition, Statements *if_stmts, Statements *else_stmts) {
+    struct Statement *stmt = malloc(sizeof(struct Statement));
+    stmt->type = STMT_IF;
+    stmt->if_stmt = malloc(sizeof(struct IfStatement));
+    stmt->if_stmt->condition = condition;
+    stmt->if_stmt->if_stmts = if_stmts;
+    stmt->if_stmt->else_stmts = else_stmts;
+    return stmt;
+}
+
+struct Statement *new_while(struct Value *condition, Statements *stmts) {
+    struct Statement *stmt = malloc(sizeof(struct Statement));
+    stmt->type = STMT_WHILE;
+    stmt->while_stmt = malloc(sizeof(struct While));
+    stmt->while_stmt->condition = condition;
+    stmt->while_stmt->stmts = stmts;
+    return stmt;
+}
+
+
+struct Value *new_string(char *string) {
     struct Value *val = malloc(sizeof(struct Value));
-    val->type = VTYPE_EXPR;
-    val->expr = expr;
+    val->type = VTYPE_STRING;
+    val->string = string;
+    return val;
+}
+
+struct Value *new_symbol(char *symbol) {
+    struct Value *val = malloc(sizeof(struct Value));
+    val->type = VTYPE_SYMBOL;
+    val->symbol = symbol;
     return val;
 }
 
@@ -71,6 +181,34 @@ struct Value *new_integer(long integer) {
     struct Value *val = malloc(sizeof(struct Value));
     val->type = VTYPE_INT;
     val->integer = integer;
+    return val;
+}
+
+struct Value *new_floating(double floating) {
+    struct Value *val = malloc(sizeof(struct Value));
+    val->type = VTYPE_FLOAT;
+    val->floating = floating;
+    return val;
+}
+
+struct Value *new_boolean(int boolean) {
+    struct Value *val = malloc(sizeof(struct Value));
+    val->type = VTYPE_BOOL;
+    val->boolean = boolean;
+    return val;
+}
+
+struct Value *new_funcall(struct FunCall *funcall) {
+    struct Value *val = malloc(sizeof(struct Value));
+    val->type = VTYPE_FUNCALL;
+    val->funcall = funcall;
+    return val;
+}
+
+struct Value *new_expr(struct Expr *expr) {
+    struct Value *val = malloc(sizeof(struct Value));
+    val->type = VTYPE_EXPR;
+    val->expr = expr;
     return val;
 }
 
@@ -177,6 +315,33 @@ void print_value(struct Value *val) {
     }
 }
 
+void print_statement(struct Statement *stmt) {
+    switch (stmt->type) {
+    case STMT_DIM:
+        break;
+    case STMT_SET:
+        printf("%s = ", stmt->set->symbol);
+        print_value(stmt->set->val);
+        break;
+    case STMT_IF:
+        break;
+    case STMT_WHILE:
+        break;
+    case STMT_FOR:
+        break;
+    case STMT_FOREACH:
+        break;
+    case STMT_FUNCTION_DEF:
+        break;
+    case STMT_EXIT_WHILE:
+        break;
+    case STMT_EXIT_FOR:
+        break;
+    case STMT_EXIT_FUNCTION:
+        break;
+    }
+}
+
 #define define_unary_op(name,type) \
 struct Expr *name(struct Value *val1) {\
     struct Expr *expr = malloc(sizeof(struct Expr));\
@@ -215,10 +380,11 @@ define_binary_op(bin_slash, OP_SLASH)
 
 #undef define_binary_op
 
+struct List *program;
 %}
 
 %token ST_IF ST_THEN ST_ELSEIF ST_ELSE
-%token ST_END ST_FOR ST_TO ST_IN ST_NEXT
+%token ST_END ST_FOR ST_EACH ST_TO ST_IN ST_NEXT
 %token ST_WHILE ST_FUNCTION ST_EXIT ST_DIM
 %token ST_AS ST_STRING ST_INT ST_FLOAT ST_BOOL
 %token ST_AND ST_OR ST_NOT ST_NULL ST_PLUS 
@@ -236,23 +402,28 @@ define_binary_op(bin_slash, OP_SLASH)
 %left ST_STAR ST_SLASH
 %left UNARY_PLUS UNARY_MINUS
 
-%token T_STRING T_IDENTIFIER T_INT T_FLOAT T_OTHER
+%token T_STRING T_SYMBOL T_INT T_FLOAT T_OTHER
 
 %union {
-    char name[20];
+    char *string;
+    char *symbol;
     long integer;
     struct Expr *expr;
     struct Value *val;
     double floating;
+    struct List *stmts;
+    struct Statement *stmt;
 }
 
 %type <integer> T_INT
-%type <val> program
+%type <symbol> T_SYMBOL
+%type <stmts> program
+%type <stmts> statements
+%type <stmt> statement
 %type <val> expr
 %type <val> subexpr
 
 // %type <name> STRING
-// %type <name> T_IDENTIFIER
 
 // %type <integer> expr
 // %type <integer> stmt
@@ -263,12 +434,20 @@ define_binary_op(bin_slash, OP_SLASH)
 
 %%
 
-program: /* empty */
-     | program line
+program: statements { printf("this happens?\n"); program = $1; }
 ;
 
-line: ST_NEWLINE
-    | expr ST_NEWLINE { print_value($1); printf("\n"); }
+statements: statement ST_NEWLINE { print_statement($1); printf("\n"); $$ = new_list($1); }
+    | statement ST_NEWLINE statements { print_statement($1); printf("\n"); $$ = push($3, $1); }
+;
+
+statement: T_SYMBOL ST_EQ expr { $$ = new_set($1, $3); }
+         | ST_IF expr ST_THEN ST_NEWLINE statements ST_END ST_IF
+            { $$ = new_if($2, $5, NULL); }
+         | ST_IF expr ST_THEN ST_NEWLINE statements 
+            ST_ELSE ST_NEWLINE statements ST_END ST_IF
+            { $$ = new_if($2, $5, $8); }
+         | ST_WHILE expr ST_NEWLINE statements ST_END ST_WHILE { $$ = new_while($2, $4); }
 ;
 
 expr: T_INT { $$ = new_integer($1); }
@@ -292,11 +471,13 @@ subexpr: ST_PLUS expr %prec UNARY_PLUS { $$ = new_expr(unary_plus($2)); }
     | expr ST_LESS expr { $$ = new_expr(bin_less($1, $3)); }
 ;
 
+
 %%
 
 int main()
 {
     int val = yyparse();
-    // printf("yyparse: %d\n", val);
+    printf("yyparse: %d\n", val);
     return 0;
 }
+

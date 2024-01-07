@@ -1,6 +1,5 @@
 %{
-#include <stdio.h>
-#include <string.h>
+#include "test.h"
 #include "test.tab.h"
 void bad_characters();
 %}
@@ -18,6 +17,7 @@ letter     [a-zA-Z]
 "else"      { return ST_ELSE; }
 "end"       { return ST_END; }
 "for"       { return ST_FOR; }
+"each"      { return ST_EACH; }
 "to"        { return ST_TO; }
 "in"        { return ST_IN; }
 "next"      { return ST_NEXT; }
@@ -58,9 +58,9 @@ letter     [a-zA-Z]
 [ \t]     /* Ignore insignificant whitespace */
 
 ({letter}|"_")({letter}{digit})* {
-    printf("%s", yytext);
-    sscanf(yytext, "%s", yylval.name);
-    return T_IDENTIFIER; }
+    yylval.symbol = malloc((yyleng + 1) * sizeof(char));
+    strcpy(yylval.symbol, yytext);
+    return T_SYMBOL; }
 
 {digit}+  {
     yylval.integer = atoi(yytext);
