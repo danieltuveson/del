@@ -125,7 +125,7 @@ long vm_execute(struct Heap *heap, void **instructions)
         }
         ip++;
         i++;
-        // if (i > 100) {
+        // if (i > 10) {
         //     printf("infinite loop detected, ending execution\n");
         //     break;
         // }

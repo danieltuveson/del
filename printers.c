@@ -2,68 +2,68 @@
 #include "printers.h"
 
 
-void print_expr(struct Expr *expr, int depth)
-{
-    switch (expr->type) {
-        case VALUE:
-            printf("%li", expr->value);
-            break;
-        case SYMBOL:
-            printf("%s", expr->symbol);
-            break;
-        case EXPRESSION:
-            putchar('(');
-            switch (expr->binexpr->op) {
-                case ADDITION:
-                    putchar('+');
-                    break;
-                case SUBTRACTION:
-                    putchar('-');
-                    break;
-                case MULTIPLICATION:
-                    putchar('*'); break;
-                case DIVISION:
-                    putchar('/');
-                    break;
-                case EQUAL:
-                    putchar('=');
-                    break;
-                case NOT_EQUAL:
-                    printf("/=");
-                    break;
-                case LESS:
-                    putchar('<');
-                    break;
-                case GREATER:
-                    putchar('>');
-                    break;
-                case LEQUAL:
-                    printf("<=");
-                    break;
-                case GEQUAL:
-                    printf(">=");
-                    break;
-                case DEFINE:
-                    putchar('$');
-                    break;
-                case WHILE:
-                    putchar('$');
-                    break;
-                case IF:
-                    putchar('?');
-                default:
-                    printf("***symbol not implemented***");
-            }
-            depth++; // currently not used, might use later for indentation
-            putchar(' ');
-            print_expr(expr->binexpr->expr1, depth);
-            putchar(' ');
-            print_expr(expr->binexpr->expr2, depth);
-            putchar(')');
-            putchar(' ');
-            break;
-    }
-}
+// void print_expr(struct Expr *expr, int depth)
+// {
+//     switch (expr->type) {
+//         case VALUE:
+//             printf("%li", expr->value);
+//             break;
+//         case SYMBOL:
+//             printf("%s", expr->symbol);
+//             break;
+//         case EXPRESSION:
+//             putchar('(');
+//             switch (expr->binexpr->op) {
+//                 case ADDITION:
+//                     putchar('+');
+//                     break;
+//                 case SUBTRACTION:
+//                     putchar('-');
+//                     break;
+//                 case MULTIPLICATION:
+//                     putchar('*'); break;
+//                 case DIVISION:
+//                     putchar('/');
+//                     break;
+//                 case EQUAL:
+//                     putchar('=');
+//                     break;
+//                 case NOT_EQUAL:
+//                     printf("/=");
+//                     break;
+//                 case LESS:
+//                     putchar('<');
+//                     break;
+//                 case GREATER:
+//                     putchar('>');
+//                     break;
+//                 case LEQUAL:
+//                     printf("<=");
+//                     break;
+//                 case GEQUAL:
+//                     printf(">=");
+//                     break;
+//                 case DEFINE:
+//                     putchar('$');
+//                     break;
+//                 case WHILE:
+//                     putchar('$');
+//                     break;
+//                 case IF:
+//                     putchar('?');
+//                 default:
+//                     printf("***symbol not implemented***");
+//             }
+//             depth++; // currently not used, might use later for indentation
+//             putchar(' ');
+//             print_expr(expr->binexpr->expr1, depth);
+//             putchar(' ');
+//             print_expr(expr->binexpr->expr2, depth);
+//             putchar(')');
+//             putchar(' ');
+//             break;
+//     }
+// }
 
 void print_instructions(void **instructions, int length)
 {
@@ -125,13 +125,13 @@ void print_instructions(void **instructions, int length)
     }
 }
 
-void print_exprs(struct Exprs *exprs)
-{
-    while (exprs != NULL) {
-        print_expr(exprs->expr, 0);
-        exprs = exprs->next;
-    }
-}
+// void print_exprs(struct Exprs *exprs)
+// {
+//     while (exprs != NULL) {
+//         print_expr(exprs->expr, 0);
+//         exprs = exprs->next;
+//     }
+// }
 
 void print_stack(struct Stack *stack)
 {

@@ -144,7 +144,7 @@
 
 #if ! defined YYSTYPE && ! defined YYSTYPE_IS_DECLARED
 typedef union YYSTYPE
-#line 407 "test.y"
+#line 29 "parser.y"
 {
     char *string;
     char *symbol;
@@ -153,10 +153,13 @@ typedef union YYSTYPE
     struct Value *val;
     double floating;
     struct List *stmts;
+    struct List *definitions;
+    struct Definition *definition;
     struct Statement *stmt;
+    enum Type type;
 }
 /* Line 1529 of yacc.c.  */
-#line 160 "test.tab.h"
+#line 163 "parser.tab.h"
 	YYSTYPE;
 # define yystype YYSTYPE /* obsolescent; will be withdrawn */
 # define YYSTYPE_IS_DECLARED 1

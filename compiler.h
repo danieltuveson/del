@@ -1,7 +1,7 @@
 #ifndef COMPILER_H
 #define COMPILER_H
 
-#include "parser.h"
+#include "ast.h"
 
 enum Code {
     PUSH,
@@ -22,6 +22,6 @@ enum Code {
     LOAD
 };
 
-int compile(void **instructions, struct Exprs *exprs, int offset);
+int compile(void **instructions, Statements *stmts, int offset);
 
 #endif

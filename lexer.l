@@ -1,6 +1,6 @@
 %{
-#include "test.h"
-#include "test.tab.h"
+#include "ast.h"
+#include "parser.tab.h"
 void bad_characters();
 %}
 
@@ -8,6 +8,8 @@ void bad_characters();
 
 digit      [0-9]
 letter     [a-zA-Z]
+spaces     [ \t]
+newline    \n
 
 %%
 
@@ -51,11 +53,10 @@ letter     [a-zA-Z]
 "&"         { return ST_AMP; }
 "_"         { return ST_UNDERSCORE; }
 ";"         { return ST_SEMICOLON; }
-"\n"        { return ST_NEWLINE; }
-"\r\n"      { return ST_NEWLINE; }
+(({spaces}*)({newline}+)({spaces}*))+  { return ST_NEWLINE; }
 
 
-[ \t]     /* Ignore insignificant whitespace */
+{spaces}     /* Ignore insignificant whitespace */
 
 ({letter}|"_")({letter}{digit})* {
     yylval.symbol = malloc((yyleng + 1) * sizeof(char));

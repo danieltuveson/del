@@ -3,84 +3,75 @@
 
 #define load(op) instructions[offset++] = (void *) op
 
-static int compile_expression(void **instructions, struct Expr *expr, int offset);
+static int compile_value(void **instructions, struct Value *value, int offset);
 
-static inline void compile_binary_op_helper(void **instructions, struct Expr *expr1, struct Expr *expr2, int *offset_ptr, void *op) {
+static inline void compile_binary_op_helper(void **instructions, struct Value *val1, struct Value *val2, int *offset_ptr, void *op) {
     int offset = *offset_ptr;
-    offset = compile_expression(instructions, expr1, offset++);
-    offset = compile_expression(instructions, expr2, offset++);
+    offset = compile_value(instructions, val1, offset++);
+    offset = compile_value(instructions, val2, offset++);
     load(op);
     *offset_ptr = offset;
 }
-#define compile_binary_op(instructions, expr1, expr2, offset, op) compile_binary_op_helper(instructions, expr1, expr2, &offset, (void *) op)
+#define compile_binary_op(instructions, val1, val2, offset, op) compile_binary_op_helper(instructions, val1, val2, &offset, (void *) op)
 
-static int compile_expression(void **instructions, struct Expr *expr, int offset)
+static int compile_value(void **instructions, struct Value *val, int offset)
 {
-    struct Expr *expr1, *expr2;
-    int top_of_loop = 0;
-    int old_offset = 0;
-    switch (expr->type) {
-        case VALUE:
+    struct Value *val1, *val2;
+    switch (val->type) {
+        case VTYPE_STRING:
+        case VTYPE_FLOAT:
+        case VTYPE_BOOL:
+        case VTYPE_FUNCALL:
+            assert("Error compiling unexpected value\n");
+            break;
+        case VTYPE_INT:
+            printf("got an integer\n");
             load(PUSH);
-            load(expr->value);
+            load(val->integer);
             break;
-        case SYMBOL:
+        case VTYPE_SYMBOL:
             load(LOAD);
-            load(expr->symbol);
+            load(val->symbol);
             break;
-        case EXPRESSION:
-            expr1 = expr->binexpr->expr1;
-            expr2 = expr->binexpr->expr2;
-            switch (expr->binexpr->op) {
-                case ADDITION:
-                    compile_binary_op(instructions, expr1, expr2, offset, ADD);
+        case VTYPE_EXPR:
+            val1 = val->expr->val1;
+            val2 = val->expr->val1;
+            switch (val->expr->op) {
+                case OP_OR:
+                    assert("Error compiling unexpected operator\n");
                     break;
-                case SUBTRACTION:
-                    compile_binary_op(instructions, expr1, expr2, offset, SUB);
+                case OP_AND:
                     break;
-                case MULTIPLICATION:
-                    compile_binary_op(instructions, expr1, expr2, offset, MUL);
+                case OP_EQEQ:
+                    compile_binary_op(instructions, val1, val2, offset, EQ);
                     break;
-                case DIVISION:
-                    compile_binary_op(instructions, expr1, expr2, offset, DIV);
+                case OP_NOT_EQ:
                     break;
-                case EQUAL:
-                    compile_binary_op(instructions, expr1, expr2, offset, EQ);
+                case OP_GREATER_EQ:
                     break;
-                case LESS:
-                    compile_binary_op(instructions, expr1, expr2, offset, LT);
+                case OP_GREATER:
+                    compile_binary_op(instructions, val1, val2, offset, GT);
                     break;
-                case GREATER:
-                    compile_binary_op(instructions, expr1, expr2, offset, GT);
+                case OP_LESS_EQ:
                     break;
-                case DEFINE:
-                    load(PUSH);
-                    load(expr1->symbol);
-                    offset = compile_expression(instructions, expr2, offset++);
-                    load(DEF);
+                case OP_LESS:
+                    compile_binary_op(instructions, val1, val2, offset, LT);
                     break;
-                case WHILE:
-                    top_of_loop = offset;
-                    load(PUSH);
-                    old_offset = offset++;
-                    offset = compile_expression(instructions, expr1, offset++);
-                    load(JNE);
-                    offset = compile_expression(instructions, expr2, offset++);
-                    load(PUSH);
-                    load(top_of_loop);
-                    load(JMP);
-
-                    instructions[old_offset] = (void *) offset; // set JNE jump to go to end of loop
+                case OP_PLUS:
+                    compile_binary_op(instructions, val1, val2, offset, ADD);
                     break;
-                case IF:
-                    top_of_loop = offset;
-                    load(PUSH);
-                    old_offset = offset++;
-                    offset = compile_expression(instructions, expr1, offset++);
-                    load(JNE);
-                    offset = compile_expression(instructions, expr2, offset++);
-
-                    instructions[old_offset] = (void *) offset; // set JNE jump to go to after if statement
+                case OP_MINUS:
+                    compile_binary_op(instructions, val1, val2, offset, SUB);
+                    break;
+                case OP_STAR:
+                    compile_binary_op(instructions, val1, val2, offset, MUL);
+                    break;
+                case OP_SLASH:
+                    compile_binary_op(instructions, val1, val2, offset, DIV);
+                    break;
+                case OP_UNARY_PLUS:
+                    break;
+                case OP_UNARY_MINUS:
                     break;
                 default:
                     printf("Error cannot compile expression\n");
@@ -91,20 +82,104 @@ static int compile_expression(void **instructions, struct Expr *expr, int offset
     return offset;
 }
 
-int compile(void **instructions, struct Exprs *exprs, int offset)
+static int compile_statements(void **instructions, Statements *stmts, int offset);
+
+static int compile_statement(void **instructions, struct Statement *stmt, int offset)
 {
-    struct Expr *expr;
-    do {
-        expr = exprs->expr;
-        offset = compile_expression(instructions, expr, offset);
-        // Discard top level expression from the stack since it's not part of a subexpression
-        // (unless it's a statement that returns nothing)
-        if (expr->type == EXPRESSION && (expr->binexpr->op != WHILE && expr->binexpr->op != IF)) {
-            load(POP);
-        }
-        instructions[offset] = (void *) RET;
-        exprs = exprs->next;
-    } while (exprs != NULL);
+    int top_of_loop = 0;
+    int old_offset = 0;
+    Dim *dim = NULL;
+    struct Definition *def = NULL;
+    switch (stmt->type) {
+        case STMT_SET:
+            // stmt->set->symbol;
+            // stmt->set->val;
+            break;
+        case STMT_IF:
+            // stmt->if_stmt->else_stmts
+            top_of_loop = offset;
+            load(PUSH);
+            old_offset = offset++;
+            offset = compile_value(instructions, stmt->if_stmt->condition, offset++);
+            load(JNE);
+            offset = compile_statements(instructions, stmt->if_stmt->if_stmts, offset++);
+
+            // set JNE jump to go to after if statement
+            instructions[old_offset] = (void *) offset;
+            break;
+        case STMT_WHILE:
+            top_of_loop = offset;
+            load(PUSH);
+            old_offset = offset++;
+            offset = compile_value(instructions, stmt->while_stmt->condition, offset++);
+            load(JNE);
+            offset = compile_statements(instructions, stmt->while_stmt->stmts, offset++);
+            load(PUSH);
+            load(top_of_loop);
+            load(JMP);
+            instructions[old_offset] = (void *) offset; // set JNE jump to go to end of loop
+            break;
+        case STMT_DIM:
+            dim = stmt->dim;
+            while (dim != NULL) {
+                // TODO: check that value type is valid
+                def = (struct Definition *) stmt->dim->value;
+                load(PUSH);
+                load(def->name);
+                // Initialize to 0
+                load(PUSH);
+                load(0);
+                load(DEF);
+                dim = dim->next;
+            }
+            break;
+        case STMT_FOR:
+            // stmt->for_stmt->start;
+            // stmt->for_stmt->stop;
+            // stmt->for_stmt->stmts;
+        case STMT_FOREACH:
+            // stmt->for_each->symbol;
+            // stmt->for_each->condition;
+            // stmt->for_each->stmts;
+        case STMT_FUNCTION_DEF:
+        case STMT_EXIT_FOR:
+        case STMT_EXIT_WHILE:
+        case STMT_EXIT_FUNCTION:
+        default:
+            printf("cannot compile statement type: not implemented\n");
+            assert(0);
+            break;
+    }
+    return offset;
+}
+
+static int compile_statements(void **instructions, Statements *stmts, int offset)
+{
+    offset = compile_statement(instructions, stmts->value, offset);
+    if (stmts->next == NULL) {
+        return offset;
+    } else {
+        return compile_statements(instructions, stmts->next, offset);
+    }
+}
+
+int compile(void **instructions, Statements *stmts, int offset)
+{
+    // struct Expr *expr;
+    // do {
+    //     expr = exprs->expr;
+    //     offset = compile_expression(instructions, expr, offset);
+    //     // Discard top level expression from the stack since it's not part of a subexpression
+    //     // (unless it's a statement that returns nothing)
+    //     if (expr->type == EXPRESSION && (expr->binexpr->op != WHILE && expr->binexpr->op != IF)) {
+    //         load(POP);
+    //     }
+    //     instructions[offset] = (void *) RET;
+    //     exprs = exprs->next;
+    // } while (exprs != NULL);
+
+    offset = compile_statements(instructions, stmts, offset);
+    instructions[offset] = (void *) RET;
     return offset;
 }
 

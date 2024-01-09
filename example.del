@@ -1,0 +1,7 @@
+dim x as int, y as bool
+x = 1
+x = 2
+x = 3
+if 1 == 2 then
+x = 4
+end if
