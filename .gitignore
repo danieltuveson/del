@@ -10,4 +10,6 @@ lang
 *.out
 lex.yy.c
 lex.yy.h
+parser.tab.h
+parser.tab.c
 *.output
