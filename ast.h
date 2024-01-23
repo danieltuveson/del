@@ -10,7 +10,7 @@ struct List {
     struct List *prev;
     struct List *next;
 };
-// typedef struct List Values;
+typedef struct List Values;
 typedef struct List Statements;
 typedef struct List Dim;
 
@@ -60,8 +60,8 @@ struct Expr;
 struct Value;
 
 struct FunCall {
-    char *funname;
-    struct Value **values;
+    Symbol funname;
+    Values *values;
 };
 
 struct Expr {
@@ -77,7 +77,7 @@ struct Value {
         Symbol symbol;
         long integer;
         double floating;
-        int boolean;
+        long boolean;
         struct Expr *expr;
         struct FunCall *funcall;
     };
@@ -128,7 +128,8 @@ enum StatementType {
     STMT_FUNCTION_DEF,
     STMT_EXIT_FOR,
     STMT_EXIT_WHILE,
-    STMT_EXIT_FUNCTION
+    STMT_EXIT_FUNCTION,
+    STMT_FUNCALL
 };
 
 struct Statement {
@@ -140,6 +141,7 @@ struct Statement {
         struct While *while_stmt;
         struct For *for_stmt;
         struct ForEach *for_each;
+        struct FunCall *funcall;
     };
 };
 
@@ -154,6 +156,7 @@ struct Statement *new_if(struct Value *condition, Statements *if_stmts, Statemen
 struct Statement *new_while(struct Value *condition, Statements *stmts);
 struct Statement *new_dim(Dim *dim);
 struct Definition *new_define(Symbol name, enum Type type);
+struct Statement *new_sfuncall(Symbol funname, Values *values);
 
 /* Value constructors */
 struct Value *new_string(char *string);
@@ -161,7 +164,7 @@ struct Value *new_symbol(char *symbol);
 struct Value *new_integer(long integer);
 struct Value *new_floating(double floating);
 struct Value *new_boolean(int boolean);
-struct Value *new_funcall(struct FunCall *funcall);
+struct Value *new_vfuncall(Symbol funname, Values *values);
 struct Value *new_expr(struct Expr *expr);
 
 /* Expression constructors */
@@ -181,13 +184,6 @@ struct Expr *bin_plus(struct Value *val1, struct Value *val2);
 struct Expr *bin_minus(struct Value *val1, struct Value *val2);
 struct Expr *bin_star(struct Value *val1, struct Value *val2);
 struct Expr *bin_slash(struct Value *val1, struct Value *val2);
-
-/* Printers */
-void print_expr(struct Expr *expr);
-void print_value(struct Value *val);
-void print_statement(struct Statement *stmt);
-void print_statements(Statements *stmts);
-
 
 #endif
 

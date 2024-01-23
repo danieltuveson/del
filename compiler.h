@@ -5,6 +5,8 @@
 
 enum Code {
     PUSH,
+    AND,
+    OR,
     ADD,
     SUB,
     MUL,
@@ -12,14 +14,32 @@ enum Code {
     EQ,
     NEQ,
     LT,
+    LTE,
     GT,
+    GTE,
+    UNARY_PLUS,
+    UNARY_MINUS,
+    FLOAT_ADD,
+    FLOAT_SUB,
+    FLOAT_MUL,
+    FLOAT_DIV,
+    FLOAT_EQ,
+    FLOAT_NEQ,
+    FLOAT_LT,
+    FLOAT_LTE,
+    FLOAT_GT,
+    FLOAT_GTE,
+    FLOAT_UNARY_PLUS,
+    FLOAT_UNARY_MINUS,
     JE,
     JNE,
     JMP,
     POP,
     RET,
     DEF,
-    LOAD
+    SET,
+    LOAD,
+    CALL
 };
 
 int compile(void **instructions, Statements *stmts, int offset);

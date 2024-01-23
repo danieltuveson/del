@@ -1,0 +1,5 @@
+dim x as int, y as int
+
+x = 6
+print("x + 1")
+

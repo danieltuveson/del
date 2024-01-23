@@ -1,5 +1,6 @@
 #include "common.h"
 #include "ast.h"
+#include "printers.h"
 
 /* List functions */
 struct List *new_list(void *value)
@@ -38,16 +39,16 @@ struct Statement *new_set(Symbol symbol, struct Value *val)
 }
 
 struct Statement *new_if(struct Value *condition, Statements *if_stmts, Statements *else_stmts) {
-    printf("conna grash here\n");
     struct Statement *stmt = malloc(sizeof(struct Statement));
     stmt->type = STMT_IF;
     stmt->if_stmt = malloc(sizeof(struct IfStatement));
     stmt->if_stmt->condition = condition;
     stmt->if_stmt->if_stmts = reset_list_head(if_stmts);
-    if (stmt->if_stmt->else_stmts) {
+    if (else_stmts) {
         stmt->if_stmt->else_stmts = reset_list_head(else_stmts);
+    } else {
+        stmt->if_stmt->else_stmts = NULL;
     }
-    printf("maybe bed time\n");
     return stmt;
 }
 
@@ -75,6 +76,22 @@ struct Definition *new_define(Symbol name, enum Type type)
     def->name = name;
     def->type = type;
     return def;
+}
+
+static struct FunCall *new_funcall(Symbol funname, Values *values)
+{
+    struct FunCall *funcall = malloc(sizeof(struct FunCall));
+    funcall->funname = funname;
+    funcall->values = reset_list_head(values);
+    return funcall;
+}
+
+struct Statement *new_sfuncall(Symbol funname, Values *values)
+{
+    struct Statement *val = malloc(sizeof(struct Statement));
+    val->type = STMT_FUNCALL;
+    val->funcall = new_funcall(funname, values);
+    return val;
 }
 
 /* Functions for creating Values */
@@ -118,11 +135,11 @@ struct Value *new_boolean(int boolean)
     return val;
 }
 
-struct Value *new_funcall(struct FunCall *funcall)
+struct Value *new_vfuncall(Symbol funname, Values *values)
 {
     struct Value *val = malloc(sizeof(struct Value));
     val->type = VTYPE_FUNCALL;
-    val->funcall = funcall;
+    val->funcall = new_funcall(funname, values);
     return val;
 }
 
@@ -175,202 +192,4 @@ define_binary_op(bin_star, OP_STAR)
 define_binary_op(bin_slash, OP_SLASH)
 
 #undef define_binary_op
-
-
-/* Printers. Currently used for debugging purposes but could be used for 
- * building a formatter in the future */
-void print_expr(struct Expr *expr)
-{
-    printf("(");
-    switch (expr->op) {
-    case OP_OR:
-        print_value(expr->val1);
-        printf(" or ");
-        print_value(expr->val2);
-        break;
-    case OP_AND:
-        print_value(expr->val1);
-        printf(" and ");
-        print_value(expr->val2);
-        break;
-    case OP_EQEQ:
-        print_value(expr->val1);
-        printf(" == ");
-        print_value(expr->val2);
-        break;
-    case OP_NOT_EQ:
-        print_value(expr->val1);
-        printf(" <> ");
-        print_value(expr->val2);
-        break;
-    case OP_GREATER_EQ:
-        print_value(expr->val1);
-        printf(" >= ");
-        print_value(expr->val2);
-        break;
-    case OP_GREATER:
-        print_value(expr->val1);
-        printf(" > ");
-        print_value(expr->val2);
-        break;
-    case OP_LESS_EQ:
-        print_value(expr->val1);
-        printf(" <= ");
-        print_value(expr->val2);
-        break;
-    case OP_LESS:
-        print_value(expr->val1);
-        printf(" < ");
-        print_value(expr->val2);
-        break;
-    case OP_PLUS:
-        print_value(expr->val1);
-        printf(" + ");
-        print_value(expr->val2);
-        break;
-    case OP_MINUS:
-        print_value(expr->val1);
-        printf(" - ");
-        print_value(expr->val2);
-        break;
-    case OP_STAR:
-        print_value(expr->val1);
-        printf(" * ");
-        print_value(expr->val2);
-        break;
-    case OP_SLASH:
-        print_value(expr->val1);
-        printf(" / ");
-        print_value(expr->val2);
-        break;
-    case OP_UNARY_PLUS:
-        printf("+");
-        print_value(expr->val1);
-        break;
-    case OP_UNARY_MINUS:
-        printf("-");
-        print_value(expr->val1);
-        break;
-    }
-    printf(")");
-}
-
-void print_value(struct Value *val)
-{
-    switch (val->type) {
-    case VTYPE_SYMBOL:
-        printf("%s", val->symbol);
-        break;
-    case VTYPE_STRING:
-        printf("%s", val->string);
-        break;
-    case VTYPE_INT:
-        printf("%ld", val->integer);
-        break;
-    case VTYPE_FLOAT:
-        printf("%f", val->floating);
-        break;
-    case VTYPE_BOOL:
-        printf("%d", val->boolean);
-        break;
-    case VTYPE_EXPR:
-        print_expr(val->expr);
-        break;
-    case VTYPE_FUNCALL:
-        printf("not yet implemented");
-        break;
-    }
-}
-
-static void print_statements_indent(Statements *stmts, int indent);
-
-/* :) */
-static void left_pad(int indent) {
-    for (int i = 0; i < indent; i++) putchar(' ');
-}
-
-static const int TAB_WIDTH = 4;
-
-static void print_statement_indent(struct Statement *stmt, int indent)
-{
-    Dim *dim = NULL;
-    struct Definition *def = NULL;
-    left_pad(indent);
-    switch (stmt->type) {
-    case STMT_DIM:
-        dim = stmt->dim;
-        printf("dim ");
-        while (dim != NULL) {
-            def = (struct Definition *) dim->value;
-            printf("%s as ", def->name);
-            switch (def->type) {
-                case TYPE_INT:
-                    printf("int");
-                    break;
-                case TYPE_FLOAT:
-                    printf("float");
-                    break;
-                case TYPE_BOOL:
-                    printf("bool");
-                    break;
-                case TYPE_STRING:
-                    printf("string");
-                    break;
-            }
-            if (dim->next) printf(", ");
-            dim = dim->next;
-        }
-        break;
-    case STMT_SET:
-        printf("%s = ", stmt->set->symbol);
-        print_value(stmt->set->val);
-        break;
-    case STMT_IF:
-        printf("if ");
-        print_value(stmt->if_stmt->condition);
-        printf(" then\n");
-        print_statements_indent(stmt->if_stmt->if_stmts, indent + TAB_WIDTH);
-        if (stmt->if_stmt->else_stmts) {
-            left_pad(indent);
-            printf("else\n");
-            print_statements_indent(stmt->if_stmt->else_stmts, indent + TAB_WIDTH);
-        }
-        printf("end if");
-        break;
-    case STMT_WHILE:
-        break;
-    case STMT_FOR:
-        break;
-    case STMT_FOREACH:
-        break;
-    case STMT_FUNCTION_DEF:
-        break;
-    case STMT_EXIT_WHILE:
-        break;
-    case STMT_EXIT_FOR:
-        break;
-    case STMT_EXIT_FUNCTION:
-        break;
-    }
-    printf("\n");
-}
-
-static void print_statements_indent(Statements *stmts, int indent)
-{
-    while (stmts != NULL)
-    {
-        print_statement_indent(stmts->value, indent);
-        stmts = stmts->next;
-    }
-}
-
-void print_statement(struct Statement *stmt)
-{
-    print_statement_indent(stmt, 0);
-}
-
-void print_statements(Statements *stmts)
-{
-    print_statements_indent(stmts, 0);
-}
 

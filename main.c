@@ -5,6 +5,7 @@
 #include "compiler.h"
 #include "vm.h"
 #include "ast.h"
+#include "typecheck.h"
 
 
 // void *memory;
@@ -132,17 +133,27 @@ int main(int argc, char *argv[])
         printf("parse error\n");
     } else {
         void *instructions[100];
+        printf("````````````````` CODE `````````````````\n");
         assert(ast != NULL);
-        printf("printing stuff\n");
         print_statements(ast);
-        printf("done printing stuff\n");
         printf("\n");
 
+        printf("````````````````` TYPECHECK `````````````````\n");
+        if (typecheck()) {
+            printf("program has typechecked\n");
+        } else {
+            printf("program failed to typecheck\n");
+            return EXIT_FAILURE;
+        }
         // struct Statement *stmt = ast->value;
         // assert(stmt->type == STMT_SET);
         int offset = compile(instructions, ast, 0);
+        printf("\n");
+        printf("````````````` INSTRUCTIONS `````````````\n");
         print_instructions(instructions, offset+1);
+        printf("\n");
 
+        printf("`````````````` EXECUTION ```````````````\n");
         long ret = vm_execute(&heap, instructions);
         print_heap(&heap);
         printf("ret: %li\n", ret);

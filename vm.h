@@ -1,7 +1,20 @@
 #ifndef VM_H
 #define VM_H
 
-#define STACK_SIZE  1000
+#define STACK_SIZE  256
+#define LOCALS_SIZE 256
+#define GLOBALS_SIZE 256
+
+
+struct Locals {
+    char *names[LOCALS_SIZE];
+    void *values[LOCALS_SIZE];
+};
+
+struct Globals {
+    char *names[LOCALS_SIZE];
+    void *values[LOCALS_SIZE];
+};
 
 struct Stack {
     int offset;

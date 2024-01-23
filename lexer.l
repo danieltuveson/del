@@ -9,7 +9,8 @@ void bad_characters();
 digit      [0-9]
 letter     [a-zA-Z]
 spaces     [ \t]
-newline    \n
+newline    [\r\n|\n]
+comment    '[^\n]*
 
 %%
 
@@ -53,21 +54,31 @@ newline    \n
 "&"         { return ST_AMP; }
 "_"         { return ST_UNDERSCORE; }
 ";"         { return ST_SEMICOLON; }
-(({spaces}*)({newline}+)({spaces}*))+  { return ST_NEWLINE; }
+{newline}   { return ST_NEWLINE; }
 
 
 {spaces}     /* Ignore insignificant whitespace */
 
-({letter}|"_")({letter}{digit})* {
+{letter}* {
     yylval.symbol = malloc((yyleng + 1) * sizeof(char));
     strcpy(yylval.symbol, yytext);
     return T_SYMBOL; }
+
+\"[^\"]*\" {
+    yylval.string = malloc((yyleng - 1) * sizeof(char));
+    for (int i = 1; i < yyleng - 1; i++) {
+        yylval.string[i - 1] = yytext[i];
+    }
+    yylval.string[yyleng - 2] = '\0';
+    return T_STRING; }
 
 {digit}+  {
     yylval.integer = atoi(yytext);
     return (T_INT); }
 
-.          { bad_characters(); return (T_OTHER); }
+({newline}|{comment})+ { return ST_COMMENT; }
+
+.          { bad_characters(yytext); return (T_OTHER); }
 
 %%
 
@@ -77,11 +88,13 @@ void yyerror(const char *str)
 }
 
 
-void bad_characters(){
-    printf("unexpected characters in input");
+void bad_characters(char *text)
+{
+    printf("unexpected input:'%s'", text);
 }
 
-int yywrap(){
+int yywrap()
+{
     return 1;
 }
 
