@@ -6,25 +6,10 @@
 struct Expr;
 struct Value;
 struct Statement;
-struct List;
 
-/* Doublely linked list used for various types in the AST.
- * Should always point to elements of the same type. */
-struct List {
-    void *value;
-    struct List *prev;
-    struct List *next;
-};
 typedef struct List Values;
 typedef struct List Statements;
 typedef struct List Dim;
-
-struct Ast {
-    // Used to store strings for each symbol
-    struct List symbol_table; 
-    // Stores actual ast content (a list of statements)
-    struct List *ast;
-};
 
 /* Symbol is used to represent any variable, function, or type name */
 typedef char * Symbol;
