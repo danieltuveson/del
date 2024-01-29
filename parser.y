@@ -68,7 +68,7 @@ int yyerror(const char *s);
 %%
 
 
-program: statements { ast = reset_list_head($1); }
+program: statements { ast.ast = reset_list_head($1); }
        | end_of_line program { $$ = $2; }
 ;
 

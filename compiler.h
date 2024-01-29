@@ -5,6 +5,7 @@
 
 enum Code {
     PUSH,
+    PUSH_HEAP,
     AND,
     OR,
     ADD,
@@ -39,9 +40,10 @@ enum Code {
     DEF,
     SET,
     LOAD,
-    CALL
+    CALL,
+    STR_POP
 };
 
-int compile(void **instructions, Statements *stmts, int offset);
+int compile(uint64_t *instructions, Statements *stmts, int offset);
 
 #endif

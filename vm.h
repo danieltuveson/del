@@ -1,25 +1,46 @@
 #ifndef VM_H
 #define VM_H
 
-#define STACK_SIZE  256
-#define LOCALS_SIZE 256
-#define GLOBALS_SIZE 256
+#include "common.h"
 
+#define STACK_SIZE 256
+#define HEAP_SIZE  1024
+
+// enum HeapValType {
+//     L_INT,
+//     L_FLOAT,
+//     L_STRING,
+//     L_BOOL,
+//     L_OBJ
+// };
+// 
+// struct HeapVal {
+//     enum HeapValType type;
+//     union {
+//         long integer;
+//         double floating;
+//         char *string;
+//         long boolean;
+//         void *obj;
+//     };
+// };
 
 struct Locals {
-    char *names[LOCALS_SIZE];
-    void *values[LOCALS_SIZE];
-};
-
-struct Globals {
-    char *names[LOCALS_SIZE];
-    void *values[LOCALS_SIZE];
+    char *names[HEAP_SIZE];
+    uint64_t values[HEAP_SIZE];
+    int count;
+    int stack_depth;
 };
 
 struct Stack {
     int offset;
-    void *values[STACK_SIZE];
+    uint64_t values[STACK_SIZE];
 };
+
+/* A value on the heap consists of a "count" prefixing the number of values to return */
+// struct Heap {
+//     uint64_t heap[HEAP_SIZE];
+// };
 
 struct Heap {
     char *name;
@@ -27,7 +48,6 @@ struct Heap {
     struct Heap *next;
 };
 
-long vm_execute(struct Heap *heap, void **instructions);
-
+long vm_execute(struct Heap *heap, uint64_t *instructions);
 
 #endif

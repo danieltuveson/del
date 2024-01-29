@@ -2,9 +2,14 @@
 #define AST_H
 #include "common.h"
 
+/* Misc forward declarations */
+struct Expr;
+struct Value;
+struct Statement;
+struct List;
+
 /* Doublely linked list used for various types in the AST.
  * Should always point to elements of the same type. */
-struct List;
 struct List {
     void *value;
     struct List *prev;
@@ -14,13 +19,16 @@ typedef struct List Values;
 typedef struct List Statements;
 typedef struct List Dim;
 
-// Global variable to hold ast of currently parsed ast
-// I would prefer to avoid globals, but I'm not sure how
-// to get Bison to return a value without one
-struct List *ast;
+struct Ast {
+    // Used to store strings for each symbol
+    struct List symbol_table; 
+    // Stores actual ast content (a list of statements)
+    struct List *ast;
+};
 
 /* Symbol is used to represent any variable, function, or type name */
 typedef char * Symbol;
+
 
 enum ValueType {
     VTYPE_SYMBOL,
@@ -56,9 +64,6 @@ enum Type {
     TYPE_STRING
 };
 
-struct Expr;
-struct Value;
-
 struct FunCall {
     Symbol funname;
     Values *values;
@@ -82,8 +87,6 @@ struct Value {
         struct FunCall *funcall;
     };
 };
-
-struct Statement;
 
 struct Definition {
     Symbol name;

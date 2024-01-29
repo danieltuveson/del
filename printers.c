@@ -2,7 +2,7 @@
 #include "printers.h"
 
 
-void print_instructions(void **instructions, int length)
+void print_instructions(uint64_t *instructions, int length)
 {
     for (int i = 0; i < length; i++) {
         printf("%-5d", i);

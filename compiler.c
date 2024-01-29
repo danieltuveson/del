@@ -1,24 +1,98 @@
 #include "common.h"
 #include "compiler.h"
 
-#define load(op) instructions[offset++] = (void *) op
+/* The load macro assumes that the variables "instructions" and "offset" are passed into 
+ * the functions in which it is called.
+ */
+#define load(op) instructions[offset++] = (uint64_t) op
+#define compile_binary_op(instructions, val1, val2, offset, op)\
+    compile_binary_op_helper(instructions, val1, val2, &offset, (uint64_t) op)
 
-static int compile_value(void **instructions, struct Value *value, int offset);
+static int compile_value(uint64_t *instructions, struct Value *value, int offset);
+static int compile_statements(uint64_t *instructions, Statements *stmts, int offset);
 
-static inline void compile_binary_op_helper(void **instructions, struct Value *val1, struct Value *val2, int *offset_ptr, void *op) {
+static inline void compile_binary_op_helper(uint64_t *instructions,
+        struct Value *val1, struct Value *val2, int *offset_ptr, uint64_t op) {
     int offset = *offset_ptr;
     offset = compile_value(instructions, val1, offset++);
     offset = compile_value(instructions, val2, offset++);
     load(op);
     *offset_ptr = offset;
 }
-#define compile_binary_op(instructions, val1, val2, offset, op) compile_binary_op_helper(instructions, val1, val2, &offset, (void *) op)
 
-static int compile_value(void **instructions, struct Value *val, int offset)
+/* Boring and takes up too much space.
+ * Scrunching it up until I can think of something better!
+ */
+static int compile_expr(uint64_t *instructions, struct Expr *expr, int offset)
 {
     struct Value *val1, *val2;
+    val1 = expr->val1;
+    val2 = expr->val2;
+    switch (expr->op) {
+        case OP_OR: compile_binary_op(instructions, val1, val2, offset, OR); break;
+        case OP_AND: compile_binary_op(instructions, val1, val2, offset, AND); break;
+        case OP_EQEQ: compile_binary_op(instructions, val1, val2, offset, EQ); break;
+        case OP_NOT_EQ: compile_binary_op(instructions, val1, val2, offset, NEQ); break;
+        case OP_GREATER_EQ: compile_binary_op(instructions, val1, val2, offset, GTE); break;
+        case OP_GREATER: compile_binary_op(instructions, val1, val2, offset, GT); break;
+        case OP_LESS_EQ: compile_binary_op(instructions, val1, val2, offset, LTE); break;
+        case OP_LESS: compile_binary_op(instructions, val1, val2, offset, LT); break;
+        case OP_PLUS: compile_binary_op(instructions, val1, val2, offset, ADD); break;
+        case OP_MINUS: compile_binary_op(instructions, val1, val2, offset, SUB); break;
+        case OP_STAR: compile_binary_op(instructions, val1, val2, offset, MUL); break;
+        case OP_SLASH: compile_binary_op(instructions, val1, val2, offset, DIV); break;
+        case OP_UNARY_PLUS:
+            offset = compile_value(instructions, val1, offset++);
+            load(UNARY_PLUS);
+            break;
+        case OP_UNARY_MINUS:
+            offset = compile_value(instructions, val1, offset++);
+            load(UNARY_MINUS);
+            break;
+        default:
+            printf("Error cannot compile expression\n");
+            break;
+    }
+    return offset;
+}
+
+// Pack 8 byte chunks of chars into longs to push onto stack
+static int compile_string(uint64_t *instructions, char *string, int offset)
+{
+    uint64_t packed = 0;
+    uint64_t i = 0;
+    uint64_t tmp;
+    for (; string[i] != '\0'; i++) {
+        tmp = (uint64_t) string[i];
+        switch ((i + 1) % 8) {
+            case 0:
+                packed = packed | (tmp << 56);
+                load(PUSH_HEAP);
+                load(packed);
+                break;
+            case 1: packed = tmp;                  break;
+            case 2: packed = packed | (tmp << 8);  break;
+            case 3: packed = packed | (tmp << 16); break;
+            case 4: packed = packed | (tmp << 24); break;
+            case 5: packed = packed | (tmp << 32); break;
+            case 6: packed = packed | (tmp << 40); break;
+            case 7: packed = packed | (tmp << 48); break;
+        }
+    }
+    // If string is not multiple of 8 bytes, push the remainder
+    if ((i + 1) % 8 != 0) {
+        load(PUSH_HEAP);
+        load(packed);
+    }
+    return offset;
+}
+
+static int compile_value(uint64_t *instructions, struct Value *val, int offset)
+{
     switch (val->type) {
         case VTYPE_STRING:
+            offset = compile_string(instructions, val->string, offset);
+            break;
         case VTYPE_FLOAT:
         case VTYPE_BOOL:
         case VTYPE_FUNCALL:
@@ -32,67 +106,16 @@ static int compile_value(void **instructions, struct Value *val, int offset)
         case VTYPE_SYMBOL:
             load(LOAD);
             load(val->symbol);
+            // offset = compile_string(instructions, val->symbol, offset);
             break;
         case VTYPE_EXPR:
-            val1 = val->expr->val1;
-            val2 = val->expr->val2;
-            switch (val->expr->op) {
-                case OP_OR:
-                    compile_binary_op(instructions, val1, val2, offset, OR);
-                    break;
-                case OP_AND:
-                    compile_binary_op(instructions, val1, val2, offset, AND);
-                    break;
-                case OP_EQEQ:
-                    compile_binary_op(instructions, val1, val2, offset, EQ);
-                    break;
-                case OP_NOT_EQ:
-                    compile_binary_op(instructions, val1, val2, offset, NEQ);
-                    break;
-                case OP_GREATER_EQ:
-                    compile_binary_op(instructions, val1, val2, offset, GTE);
-                    break;
-                case OP_GREATER:
-                    compile_binary_op(instructions, val1, val2, offset, GT);
-                    break;
-                case OP_LESS_EQ:
-                    compile_binary_op(instructions, val1, val2, offset, LTE);
-                    break;
-                case OP_LESS:
-                    compile_binary_op(instructions, val1, val2, offset, LT);
-                    break;
-                case OP_PLUS:
-                    compile_binary_op(instructions, val1, val2, offset, ADD);
-                    break;
-                case OP_MINUS:
-                    compile_binary_op(instructions, val1, val2, offset, SUB);
-                    break;
-                case OP_STAR:
-                    compile_binary_op(instructions, val1, val2, offset, MUL);
-                    break;
-                case OP_SLASH:
-                    compile_binary_op(instructions, val1, val2, offset, DIV);
-                    break;
-                case OP_UNARY_PLUS:
-                    offset = compile_value(instructions, val1, offset++);
-                    load(UNARY_PLUS);
-                    break;
-                case OP_UNARY_MINUS:
-                    offset = compile_value(instructions, val1, offset++);
-                    load(UNARY_MINUS);
-                    break;
-                default:
-                    printf("Error cannot compile expression\n");
-                    break;
-            }
+            offset = compile_expr(instructions, val->expr, offset);
             break;
     }
     return offset;
 }
 
-static int compile_statements(void **instructions, Statements *stmts, int offset);
-
-static int compile_if(void **instructions, struct Statement *stmt, int offset)
+static int compile_if(uint64_t *instructions, struct Statement *stmt, int offset)
 {
     int top_of_loop = 0;
     int old_offset = 0;
@@ -104,7 +127,7 @@ static int compile_if(void **instructions, struct Statement *stmt, int offset)
     offset = compile_statements(instructions, stmt->if_stmt->if_stmts, offset++);
 
     // set JNE jump to go to after if statement
-    instructions[old_offset] = (void *) offset;
+    instructions[old_offset] = (uint64_t) offset;
 
     if (stmt->if_stmt->else_stmts) {
         offset = compile_statements(instructions, stmt->if_stmt->else_stmts, offset++);
@@ -112,7 +135,7 @@ static int compile_if(void **instructions, struct Statement *stmt, int offset)
     return offset;
 }
 
-static int compile_while(void **instructions, struct Statement *stmt, int offset)
+static int compile_while(uint64_t *instructions, struct Statement *stmt, int offset)
 {
     int top_of_loop = offset;
     load(PUSH);
@@ -123,17 +146,18 @@ static int compile_while(void **instructions, struct Statement *stmt, int offset
     load(PUSH);
     load(top_of_loop);
     load(JMP);
-    instructions[old_offset] = (void *) offset; // set JNE jump to go to end of loop
+    instructions[old_offset] = (uint64_t) offset; // set JNE jump to go to end of loop
     return offset;
 }
 
-static int compile_dim(void **instructions, Dim *dim, int offset)
+static int compile_dim(uint64_t *instructions, Dim *dim, int offset)
 {
     while (dim != NULL) {
         // TODO: check that value type is valid
         struct Definition *def = (struct Definition *) dim->value;
         load(PUSH);
         load(def->name);
+        // offset = compile_string(instructions, def->name, offset);
         load(PUSH);
         load(0); // Initialize to 0
         load(DEF);
@@ -142,7 +166,7 @@ static int compile_dim(void **instructions, Dim *dim, int offset)
     return offset;
 }
 
-static int compile_statement(void **instructions, struct Statement *stmt, int offset)
+static int compile_statement(uint64_t *instructions, struct Statement *stmt, int offset)
 {
     switch (stmt->type) {
         case STMT_SET:
@@ -170,6 +194,7 @@ static int compile_statement(void **instructions, struct Statement *stmt, int of
             // stmt->for_each->stmts;
         case STMT_FUNCALL:
             offset = offset; // no op
+            load(PUSH);
             int old_offset = offset++;
             long count = 0;
             Values *values = stmt->funcall->values;
@@ -181,9 +206,10 @@ static int compile_statement(void **instructions, struct Statement *stmt, int of
             }
             load(PUSH);
             load(stmt->funcall->funname);
+            // offset = compile_string(instructions, stmt->funcall->funname, offset);
             load(CALL);
             load(POP); // clear returned value off of the stack since this is a statement
-            instructions[old_offset] = (void *) count; // pass in number of arguments
+            instructions[old_offset] = (uint64_t) count; // pass in number of arguments
             // struct FunCall { Symbol funname; Values *values; };
             break;
         case STMT_FUNCTION_DEF:
@@ -198,37 +224,19 @@ static int compile_statement(void **instructions, struct Statement *stmt, int of
     return offset;
 }
 
-static int compile_statements(void **instructions, Statements *stmts, int offset)
+static int compile_statements(uint64_t *instructions, Statements *stmts, int offset)
 {
     while (stmts != NULL) {
         offset = compile_statement(instructions, stmts->value, offset);
         stmts = stmts->next;
     }
-    // offset = compile_statement(instructions, stmts->value, offset);
-    // if (stmts->next == NULL) {
-    //     return offset;
-    // } else {
-    //     return compile_statements(instructions, stmts->next, offset);
-    // }
+    return offset;
 }
 
-int compile(void **instructions, Statements *stmts, int offset)
+int compile(uint64_t *instructions, Statements *stmts, int offset)
 {
-    // struct Expr *expr;
-    // do {
-    //     expr = exprs->expr;
-    //     offset = compile_expression(instructions, expr, offset);
-    //     // Discard top level expression from the stack since it's not part of a subexpression
-    //     // (unless it's a statement that returns nothing)
-    //     if (expr->type == EXPRESSION && (expr->binexpr->op != WHILE && expr->binexpr->op != IF)) {
-    //         load(POP);
-    //     }
-    //     instructions[offset] = (void *) RET;
-    //     exprs = exprs->next;
-    // } while (exprs != NULL);
-
     offset = compile_statements(instructions, stmts, offset);
-    instructions[offset] = (void *) RET;
+    instructions[offset] = (uint64_t) RET;
     return offset;
 }
 

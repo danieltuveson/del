@@ -1,5 +1,5 @@
 dim x as int, y as int
 
-x = 6
-print("x + 1")
+x = 9 - 4 + 4 / 2
+dim z as int
 

@@ -1,0 +1,53 @@
+class Blah
+    dim x as int, y as float
+    function new(x as int, y as float)
+        self.x = x
+        self.y = y
+    end function
+end class
+
+class Blorp
+    dim spurt as string, blah as Blah
+    function new(spurt as string, blah as Blah)
+        self.spurt spurt
+        self.blah = blah
+    end function
+end class
+
+dim myBlah as Blah, myBlorp as Blorp
+
+myBlah = Blah(x, y)
+       -> heapVal[0] = 2, heapVal[1] = x, heapVal[2] = y
+
+myBlorp = Blorp("hi", myBlah)
+        -> heapVal[2] = 2, heapVal[3] = "hi", heapVal[4] = 0 (points to myBlah value in heap)
+
+structure of a class is:
+- number of data items as signed int (sign is only negative when we do mark/sweep gc)
+- data item 1..n
+
+something like this:
+new_object(instructions, heap, class)
+{
+    for def in class {
+        load(PUSH)
+        load(def)
+    }
+    load(PUSH)
+    load(numargs)
+    load(PUSH_HEAP)
+}
+
+
+for strings, push each char onto the heaps (in groups of 4, since we can fit 4 into a long)
+
+
+
+
+myBlah is index of where those values are in heap
+
+
+can store all heap values in one giant void* array, cast back and forth when
+pulling off of the heap
+
+

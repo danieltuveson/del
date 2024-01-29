@@ -95,9 +95,7 @@ struct Heap heap = { NULL, 0, NULL };
 
 int main(int argc, char *argv[])
 {
-    assert(sizeof(void *) == sizeof(long));
-    assert(sizeof(void *) == sizeof(double));
-
+    assert(sizeof(char *) == sizeof(uint64_t));
     // if (argc > 2) {
     //     printf("Too many arguments\n");
     //     return EXIT_FAILURE;
@@ -132,10 +130,10 @@ int main(int argc, char *argv[])
     if (ret != 0) {
         printf("parse error\n");
     } else {
-        void *instructions[100];
+        uint64_t instructions[100];
         printf("````````````````` CODE `````````````````\n");
-        assert(ast != NULL);
-        print_statements(ast);
+        assert(ast.ast != NULL);
+        print_statements(ast.ast);
         printf("\n");
 
         printf("````````````````` TYPECHECK `````````````````\n");
@@ -147,7 +145,7 @@ int main(int argc, char *argv[])
         }
         // struct Statement *stmt = ast->value;
         // assert(stmt->type == STMT_SET);
-        int offset = compile(instructions, ast, 0);
+        int offset = compile(instructions, ast.ast, 0);
         printf("\n");
         printf("````````````` INSTRUCTIONS `````````````\n");
         print_instructions(instructions, offset+1);
