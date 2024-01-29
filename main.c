@@ -10,7 +10,8 @@
 
 // void *memory;
 // struct Exprs *exprs;
-struct Heap heap = { NULL, 0, NULL };
+// struct Heap heap = { NULL, 0, NULL };
+struct Locals locals = { {0}, {0}, 0, 0 };
 
 // int read(char *input)
 // {
@@ -152,8 +153,8 @@ int main(int argc, char *argv[])
         printf("\n");
 
         printf("`````````````` EXECUTION ```````````````\n");
-        long ret = vm_execute(&heap, instructions);
-        print_heap(&heap);
+        long ret = vm_execute(&locals, instructions);
+        print_locals(&locals);
         printf("ret: %li\n", ret);
     }
     return EXIT_SUCCESS;

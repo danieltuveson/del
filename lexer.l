@@ -60,9 +60,38 @@ comment    '[^\n]*
 {spaces}     /* Ignore insignificant whitespace */
 
 {letter}* {
-    yylval.symbol = malloc((yyleng + 1) * sizeof(char));
-    strcpy(yylval.symbol, yytext);
-    return T_SYMBOL; }
+    // void *value;
+    // struct List *prev;
+    // struct List *next;
+    uint64_t cnt = 0;
+    struct List *symbol_table = ast.symbol_table;
+    char *symbol;
+    if (ast.symbol_table == NULL) {
+        symbol = malloc((yyleng + 1) * sizeof(char));
+        strcpy(symbol, yytext);
+        ast.symbol_table = new_list(symbol);
+        yylval.symbol = cnt;
+        return T_SYMBOL;
+    }
+    while (1) {
+        if (strcmp(symbol_table->value, yytext) == 0) {
+            yylval.symbol = cnt;
+            return T_SYMBOL;
+        }
+        cnt++;
+        if (symbol_table->next == NULL) {
+            break;
+        } else {
+            symbol_table = symbol_table->next;
+        }
+    }
+    symbol = malloc((yyleng + 1) * sizeof(char));
+    strcpy(symbol, yytext);
+    symbol_table->next = new_list(symbol);
+    yylval.symbol = cnt;
+    //printf("cnt : '%llu'\n", cnt);
+    return T_SYMBOL;
+}
 
 \"[^\"]*\" {
     yylval.string = malloc((yyleng - 1) * sizeof(char));
@@ -70,7 +99,8 @@ comment    '[^\n]*
         yylval.string[i - 1] = yytext[i];
     }
     yylval.string[yyleng - 2] = '\0';
-    return T_STRING; }
+    return T_STRING;
+}
 
 {digit}+  {
     yylval.integer = atoi(yytext);

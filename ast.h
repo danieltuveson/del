@@ -11,10 +11,6 @@ typedef struct List Values;
 typedef struct List Statements;
 typedef struct List Dim;
 
-/* Symbol is used to represent any variable, function, or type name */
-typedef char * Symbol;
-
-
 enum ValueType {
     VTYPE_SYMBOL,
     VTYPE_STRING,
@@ -148,7 +144,7 @@ struct Statement *new_sfuncall(Symbol funname, Values *values);
 
 /* Value constructors */
 struct Value *new_string(char *string);
-struct Value *new_symbol(char *symbol);
+struct Value *new_symbol(uint64_t symbol);
 struct Value *new_integer(long integer);
 struct Value *new_floating(double floating);
 struct Value *new_boolean(int boolean);

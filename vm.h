@@ -26,7 +26,7 @@
 // };
 
 struct Locals {
-    char *names[HEAP_SIZE];
+    Symbol names[HEAP_SIZE];
     uint64_t values[HEAP_SIZE];
     int count;
     int stack_depth;
@@ -42,12 +42,12 @@ struct Stack {
 //     uint64_t heap[HEAP_SIZE];
 // };
 
-struct Heap {
-    char *name;
-    long value;
-    struct Heap *next;
-};
+// struct Heap {
+//     Symbol name;
+//     uint64_t value;
+//     struct Heap *next;
+// };
 
-long vm_execute(struct Heap *heap, uint64_t *instructions);
+long vm_execute(struct Locals *locals, uint64_t *instructions);
 
 #endif

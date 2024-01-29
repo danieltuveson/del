@@ -13,3 +13,4 @@ lex.yy.h
 parser.tab.h
 parser.tab.c
 *.output
+del

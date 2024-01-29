@@ -30,7 +30,7 @@ int yyerror(const char *s);
 
 %union {
     char *string;
-    char *symbol;
+    uint64_t symbol;
     long integer;
     struct Expr *expr;
     struct Value *val;

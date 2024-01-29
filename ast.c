@@ -103,7 +103,7 @@ struct Value *new_string(char *string)
     return val;
 }
 
-struct Value *new_symbol(char *symbol)
+struct Value *new_symbol(uint64_t symbol)
 {
     struct Value *val = malloc(sizeof(struct Value));
     val->type = VTYPE_SYMBOL;

@@ -1,7 +1,6 @@
 #include "common.h"
 #include "printers.h"
 
-
 void print_instructions(uint64_t *instructions, int length)
 {
     for (int i = 0; i < length; i++) {
@@ -96,12 +95,16 @@ void print_stack(struct Stack *stack)
     printf("]\n");
 }
 
-void print_heap(struct Heap *heap)
+void print_locals(struct Locals *locals)
 {
+    // Symbol names[HEAP_SIZE];
+    // uint64_t values[HEAP_SIZE];
+    // int count;
+    // int stack_depth;
     printf("[");
-    while (heap->name != NULL) {
-        printf(" { %s: %li }, ", heap->name, heap->value);
-        heap = heap->next;
+    for (int i = 0; i < locals->count; i++) {
+        printf(" { %s: ", lookup_symbol(locals->names[i]));
+        printf("%llu }, ", locals->values[i]);
     }
     printf("]\n");
 }
@@ -188,7 +191,7 @@ void print_value(struct Value *val)
 {
     switch (val->type) {
     case VTYPE_SYMBOL:
-        printf("%s", val->symbol);
+        printf("%s", lookup_symbol(val->symbol));
         break;
     case VTYPE_STRING:
         printf("\"%s\"", val->string);
@@ -206,7 +209,7 @@ void print_value(struct Value *val)
         print_expr(val->expr);
         break;
     case VTYPE_FUNCALL:
-        printf("%s", val->funcall->funname);
+        printf("%s", lookup_symbol(val->funcall->funname));
         printf("(");
         for (Values *vals = val->funcall->values; vals != NULL;
                 vals = vals->next) {
@@ -238,7 +241,7 @@ static void print_statement_indent(struct Statement *stmt, int indent)
             printf("dim ");
             while (dim != NULL) {
                 def = (struct Definition *) dim->value;
-                printf("%s as ", def->name);
+                printf("%s as ", lookup_symbol(def->name));
                 switch (def->type) {
                     case TYPE_INT:
                         printf("int");
@@ -258,7 +261,7 @@ static void print_statement_indent(struct Statement *stmt, int indent)
             }
             break;
         case STMT_SET:
-            printf("%s = ", stmt->set->symbol);
+            printf("%s = ", lookup_symbol(stmt->set->symbol));
             print_value(stmt->set->val);
             break;
         case STMT_IF:
@@ -289,7 +292,7 @@ static void print_statement_indent(struct Statement *stmt, int indent)
             printf("print_statement not yet implemented for this type");
             break;
         case STMT_FUNCALL:
-            printf("%s", stmt->funcall->funname);
+            printf("%s", lookup_symbol(stmt->funcall->funname));
             printf("(");
             for (Values *vals = stmt->funcall->values; vals != NULL;
                     vals = vals->next) {

@@ -1,5 +1,5 @@
-dim x as int, y as int
+dim thing as int, y as int
 
-x = 9 - 4 + 4 / 2
+thing = 9 - 4 + 4 / 2
 dim z as int
 

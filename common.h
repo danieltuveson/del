@@ -29,5 +29,10 @@ struct Ast {
  */
 extern struct Ast ast;
 
+
+/* Symbol is used to represent any variable, function, or type name */
+typedef uint64_t Symbol;
+char *lookup_symbol(uint64_t symbol);
+
 #endif
 
