@@ -27,7 +27,7 @@ struct Ast {
  * I would prefer to avoid globals, but I'm not sure how
  * to get Bison to return a value without one
  */
-struct Ast ast;
+extern struct Ast ast;
 
 #endif
 
