@@ -5,10 +5,12 @@ This is probably the last time I will try to make a programming language
 
 Right now the syntax is kind of like Visual Basic, but I am probably going to rewrite the parser to use something closer to TypeScript's syntax.
 
+The language is **not done**. It will hopefully be done in a few months.
+
 ## Things I've done right
 
 ### VM implementation
-The VM is less than 300 lines of code (as for writing this). Everything in there does something that's absolutely necessary and uses a memory / speed efficient implmentation to do so. Calculations are done on the stack, local variables are stored in locals, and longer duration variables are stored in the heap. Most of the code is just a loop and a big switch statement on the opcodes. Accesses to the stack, heap, and locals only will involve indexing into their respective arrays and bumping a few counters. It's still not completely finished, but I think the overall design is really solid.
+The VM is less than 300 lines of code (as of writing this). Everything in there does something that's absolutely necessary and uses a memory / speed efficient implmentation to do so. Calculations are done on the stack, local variables are stored in locals, and longer duration variables are stored in the heap. Most of the code is just a loop and a big switch statement on the opcodes. Accesses to the stack, heap, and locals only will involve indexing into their respective arrays and bumping a few counters. It's still not completely finished, but I think the overall design is really solid.
 
 ## A brief summary of my crimes
 
