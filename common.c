@@ -1,6 +1,6 @@
 #include "common.h"
 
-struct Ast ast = { NULL, NULL };
+struct Ast ast = { NULL, 0, NULL };
 
 char *lookup_symbol(uint64_t symbol)
 {

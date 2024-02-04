@@ -8,6 +8,9 @@
 #include <string.h>
 #include <assert.h>
 
+/* Symbol is used to represent any variable, function, or type name */
+typedef uint64_t Symbol;
+
 /* Doublely linked list used for various types in the AST.
  * Should always point to elements of the same type. */
 struct List {
@@ -19,7 +22,9 @@ struct List {
 struct Ast {
     // Used to store strings for each symbol
     struct List *symbol_table; 
-    // Stores actual ast content (a list of statements)
+    // Stores the symbol for "main"
+    Symbol entrypoint;
+    // Stores actual ast content (a list of top level definitions)
     struct List *ast;
 };
 
@@ -29,9 +34,6 @@ struct Ast {
  */
 extern struct Ast ast;
 
-
-/* Symbol is used to represent any variable, function, or type name */
-typedef uint64_t Symbol;
 char *lookup_symbol(uint64_t symbol);
 
 #endif

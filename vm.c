@@ -19,13 +19,46 @@ static inline uint64_t pop(struct Stack *stack)
         v2 = (type) pop(stack_ptr); \
         push(stack_ptr, (uint64_t) (v2 op v1)); } while (0)
 
+static void uint64_as_string(uint64_t value, char *str, int start)
+{
+    for (int i = 0; i < 8; i++) {
+        str[i + start] = (char) (value >> (8 * i));
+    }
+    str[8 + start] = '\0';
+    printf("decoded as string '%s'\n", str);
+}
 
-// struct Locals {
-//     Symbol names[HEAP_SIZE];
-//     uint64_t values[HEAP_SIZE];
-//     int count;
-//     int stack_depth;
-// };
+/* Pops values from the stack and pushes them onto the heap */
+static inline void push_heap(struct Heap *heap, struct Stack *stack)
+{
+    uint64_t value, count, location;
+    value = 0;
+    count = pop(stack);
+    location = heap->offset;
+    heap->values[heap->offset++] = count;
+    printf("count: %llu\n", count);
+    printf("location: %llu\n", location);
+    for (uint64_t i = 0; i < count; i++) {
+        value = pop(stack);
+        char str[9] = {0};
+        uint64_as_string(value, str, 0);
+        printf("value: %llu\n", value);
+        heap->values[heap->offset++] = value;
+    }
+    push(stack, location);
+    heap->objcount++;
+}
+
+/* Get value from the heap and push it onto the stack */
+static inline void get_heap(struct Heap *heap, struct Stack *stack)
+{
+    uint64_t count, location;
+    location = pop(stack);
+    count = heap->values[location];
+    for (uint64_t i = count + location - 1; i >= location; i--) {
+        push(stack, heap->values[i]);
+    }
+}
 
 static int lookup(struct Locals *locals, Symbol lookup_val, uint64_t *val)
 {
@@ -58,23 +91,41 @@ static void def(struct Stack *stack, struct Locals *locals)
 // {
 // }
 // 
-// static struct Locals *def(struct Stack *stack, struct Locals *locals)
+
+// static char *load_string(struct Stack *stack, struct Heap *heap)
 // {
-//     // struct Locals {
-//     // char *names[HEAP_SIZE];
-//     // uint64_t values[HEAP_SIZE];
-//     // int count;
-//     // int stack_depth;
-//     int32_t val = (int32_t) pop(stack);
-//     uint64_t heap_loc = (uint64_t) pop(stack);
-//     char *str = get_string(struct Heap *heap, heap_loc);
-//     locals->names = "";
-//     locals->count++;
+//     uint64_t packed = 0;
+//     uint64_t i = 0;
+//     uint64_t tmp;
+//     for (; string[i] != '\0'; i++) {
+//         tmp = (uint64_t) string[i];
+//         switch ((i + 1) % 8) {
+//             case 0:
+//                 packed = packed | (tmp << 56);
+//                 load(PUSH_HEAP);
+//                 load(packed);
+//                 break;
+//             case 1: packed = tmp;                  break;
+//             case 2: packed = packed | (tmp << 8);  break;
+//             case 3: packed = packed | (tmp << 16); break;
+//             case 4: packed = packed | (tmp << 24); break;
+//             case 5: packed = packed | (tmp << 32); break;
+//             case 6: packed = packed | (tmp << 40); break;
+//             case 7: packed = packed | (tmp << 48); break;
+//         }
+//     }
+//     // If string is not multiple of 8 bytes, push the remainder
+//     if ((i + 1) % 8 != 0) {
+//         load(PUSH_HEAP);
+//         load(packed);
+//     }
+//     return offset;
 // }
 
 long vm_execute(struct Locals *locals, uint64_t *instructions)
 {
     struct Stack stack = {0, {0}};
+    struct Heap heap = {0, 0, {0}};
     uint64_t ip = 0;
     uint64_t ret = 0;
     uint64_t val1, val2;
@@ -87,19 +138,21 @@ long vm_execute(struct Locals *locals, uint64_t *instructions)
                 push(&stack, instructions[ip]);
                 break;
             case PUSH_HEAP:
+                push_heap(&heap, &stack);
                 break;
+            /* Grotesque lump of binary operators. Boring! */
             case AND: eval_binary_op(&stack, val1, val2, &&, uint64_t); break;
-            case OR: eval_binary_op(&stack, val1, val2, ||, uint64_t); break;
-            case ADD: eval_binary_op(&stack, val1, val2, +, uint64_t); break;
-            case SUB: eval_binary_op(&stack, val1, val2, -, uint64_t); break;
-            case MUL: eval_binary_op(&stack, val1, val2, *, uint64_t); break;
-            case DIV: eval_binary_op(&stack, val2, val1, /, uint64_t); break;
-            case EQ: eval_binary_op(&stack, val1, val2, ==, uint64_t); break;
+            case OR:  eval_binary_op(&stack, val1, val2, ||, uint64_t); break;
+            case ADD: eval_binary_op(&stack, val1, val2, +, uint64_t);  break;
+            case SUB: eval_binary_op(&stack, val1, val2, -, uint64_t);  break;
+            case MUL: eval_binary_op(&stack, val1, val2, *, uint64_t);  break;
+            case DIV: eval_binary_op(&stack, val2, val1, /, uint64_t);  break;
+            case EQ:  eval_binary_op(&stack, val1, val2, ==, uint64_t); break;
             case NEQ: eval_binary_op(&stack, val1, val2, !=, uint64_t); break;
             case LTE: eval_binary_op(&stack, val1, val2, <=, uint64_t); break;
             case GTE: eval_binary_op(&stack, val1, val2, >=, uint64_t); break;
-            case LT: eval_binary_op(&stack, val1, val2, <, uint64_t); break;
-            case GT: eval_binary_op(&stack, val1, val2, >, uint64_t); break;
+            case LT:  eval_binary_op(&stack, val1, val2, <, uint64_t);  break;
+            case GT:  eval_binary_op(&stack, val1, val2, >, uint64_t);  break;
             case UNARY_PLUS: val1 = (uint64_t) pop(&stack);
                 push(&stack, (uint64_t) val1); break;
             case UNARY_MINUS: val1 = (uint64_t) pop(&stack);
@@ -145,6 +198,9 @@ long vm_execute(struct Locals *locals, uint64_t *instructions)
             case POP:
                 ret = (uint64_t) pop(&stack);
                 break;
+            case GET_HEAP:
+                get_heap(&heap, &stack);
+                break;
             case RET:
                 goto exit_loop;
             case CALL:
@@ -162,7 +218,7 @@ long vm_execute(struct Locals *locals, uint64_t *instructions)
         ip++;
         i++;
         print_stack(&stack);
-        if (i > 20) {
+        if (i > 30) {
             printf("infinite loop detected, ending execution\n");
             break;
         }

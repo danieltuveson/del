@@ -7,9 +7,11 @@ struct Expr;
 struct Value;
 struct Statement;
 
+typedef struct List TopLevelDecls;
 typedef struct List Values;
 typedef struct List Statements;
 typedef struct List Dim;
+typedef struct List Definitions;
 
 enum ValueType {
     VTYPE_SYMBOL,
@@ -43,6 +45,28 @@ enum Type {
     TYPE_FLOAT,
     TYPE_BOOL,
     TYPE_STRING
+};
+
+enum TLDType {
+    TLD_TYPE_CLASS,
+    TLD_TYPE_FUNDEF
+};
+
+struct Class {
+    Symbol name;
+    Definitions *definitions;
+};
+
+struct FunDef {
+    Symbol name;
+    Definitions *definitions;
+    Statements *stmts;
+};
+
+struct TopLevelDecl {
+    enum TLDType type;
+    struct Class *cls;
+    struct FunDef *fundef;
 };
 
 struct FunCall {
@@ -134,6 +158,10 @@ struct List *new_list(void *value);
 struct List *append(struct List *list, void *value);
 struct List *reset_list_head(struct List *list);
 
+/* TLD constructors */
+struct TopLevelDecl *new_class(Symbol symbol, Definitions *definitions);
+struct TopLevelDecl *new_fundef(Symbol symbol, Definitions *definitions, Statements *stmts);
+
 /* Statement constructors */
 struct Statement *new_set(Symbol symbol, struct Value *val);
 struct Statement *new_if(struct Value *condition, Statements *if_stmts, Statements *else_stmts);
@@ -152,9 +180,12 @@ struct Value *new_vfuncall(Symbol funname, Values *values);
 struct Value *new_expr(struct Expr *expr);
 
 /* Expression constructors */
+
+/* Unary */
 struct Expr *unary_plus(struct Value *val1);
 struct Expr *unary_minus(struct Value *val1);
 
+/* Binary */
 struct Expr *name(struct Value *val1, struct Value *val2);
 struct Expr *bin_or(struct Value *val1, struct Value *val2);
 struct Expr *bin_and(struct Value *val1, struct Value *val2);

@@ -17,6 +17,7 @@ int yyerror(const char *s);
 %token ST_OPEN_PAREN ST_CLOSE_PAREN ST_COMMA
 %token ST_AMP ST_UNDERSCORE ST_SEMICOLON ST_NEWLINE
 %token ST_COMMENT
+%token ST_CLASS
 
 %left ST_OR
 %left ST_AND
@@ -30,26 +31,33 @@ int yyerror(const char *s);
 
 %union {
     char *string;
-    uint64_t symbol;
-    long integer;
+    Symbol symbol;
+    int64_t integer;
     struct Expr *expr;
     struct Value *val;
     double floating;
     struct List *stmts;
+    struct List *tlds;
     struct List *definitions;
     struct List *args;
     struct Definition *definition;
     struct Statement *stmt;
+    struct TopLevelDecl *tld;
     enum Type type;
 }
 
 %type <integer> T_INT
 %type <symbol> T_SYMBOL
 %type <string> T_STRING
-%type <stmts> program
+%type <tlds> program
+%type <tlds> tlds
+%type <tld> tld
+%type <tld> cls
+%type <tld> fundef
 %type <stmts> statements
 %type <stmt> statement
 %type <type> type
+%type <definitions> class_definitions
 %type <definitions> definitions
 %type <definition> definition
 %type <val> expr
@@ -61,15 +69,36 @@ int yyerror(const char *s);
 // %type <integer> expr
 // %type <integer> stmt
 // %type <floating> NUM
-
 %define parse.error detailed
 %require "3.8.2"
 
 %%
 
 
-program: statements { ast.ast = reset_list_head($1); }
-       | end_of_line program { $$ = $2; }
+// program: statements { ast.ast = reset_list_head($1); }
+//        | end_of_line program { $$ = $2; }
+// ;
+
+program: tlds { ast.ast = reset_list_head($1); }
+       | end_of_line tlds { ast.ast = reset_list_head($2); }
+;
+
+tlds: tld end_of_line { $$ = new_list($1); }
+    | tld end_of_line tlds { $$ = append($3, $1); }
+;
+
+tld: fundef { $$ = $1; } | cls { $$ = $1; };
+
+fundef: ST_FUNCTION T_SYMBOL ST_OPEN_PAREN definitions ST_CLOSE_PAREN end_of_line
+        statements ST_END ST_FUNCTION { $$ = new_fundef($2, $4, $7); }
+;
+
+cls: ST_CLASS T_SYMBOL end_of_line class_definitions ST_END ST_CLASS
+       { $$ = new_class($2, $4); }
+;
+
+class_definitions: definition end_of_line { $$ = new_list($1); }
+                 | definition end_of_line class_definitions { $$ = append($3, $1); }
 ;
 
 statements: statement end_of_line { $$ = new_list($1); }

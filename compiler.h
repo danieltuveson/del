@@ -41,9 +41,9 @@ enum Code {
     SET,
     LOAD,
     CALL,
-    STR_POP
+    GET_HEAP
 };
 
-int compile(uint64_t *instructions, Statements *stmts, int offset);
+int compile(uint64_t *instructions, TopLevelDecls *tlds, int offset);
 
 #endif

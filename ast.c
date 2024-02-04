@@ -27,6 +27,28 @@ struct List *reset_list_head(struct List *list)
     return list;
 }
 
+/* Functions to create top level definitions */
+struct TopLevelDecl *new_class(Symbol symbol, Definitions *definitions)
+{
+    struct TopLevelDecl *tld = malloc(sizeof(struct TopLevelDecl));
+    tld->type = TLD_TYPE_CLASS;
+    tld->cls = malloc(sizeof(struct Class));
+    tld->cls->name = symbol;
+    tld->cls->definitions = reset_list_head(definitions);
+    return tld;
+}
+
+struct TopLevelDecl *new_fundef(Symbol symbol, Definitions *definitions, Statements *stmts)
+{
+    struct TopLevelDecl *tld = malloc(sizeof(struct TopLevelDecl));
+    tld->type = TLD_TYPE_FUNDEF;
+    tld->fundef = malloc(sizeof(struct FunDef));
+    tld->fundef->name = symbol;
+    tld->fundef->definitions = reset_list_head(definitions);
+    tld->fundef->stmts = reset_list_head(stmts);
+    return tld;
+}
+
 /* Functions to create Statements */
 struct Statement *new_set(Symbol symbol, struct Value *val)
 {

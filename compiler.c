@@ -67,10 +67,10 @@ static int compile_string(uint64_t *instructions, char *string, int offset)
         switch ((i + 1) % 8) {
             case 0:
                 packed = packed | (tmp << 56);
-                load(PUSH_HEAP);
+                load(PUSH);
                 load(packed);
                 break;
-            case 1: packed = tmp;                  break;
+            case 1: packed = tmp    | (tmp << 0);  break; /* technically "tmp << 0" does nothing*/
             case 2: packed = packed | (tmp << 8);  break;
             case 3: packed = packed | (tmp << 16); break;
             case 4: packed = packed | (tmp << 24); break;
@@ -81,10 +81,21 @@ static int compile_string(uint64_t *instructions, char *string, int offset)
     }
     // If string is not multiple of 8 bytes, push the remainder
     if ((i + 1) % 8 != 0) {
-        load(PUSH_HEAP);
+        load(PUSH);
         load(packed);
+        // push count
+        load(PUSH);
+        load(i / 8 + 1);
+    } else {
+        load(PUSH);
+        load(i / 8);
     }
+    load(PUSH_HEAP);
     return offset;
+    // offset = compile_value(instructions, val->funcall->values->value, offset++);
+    // load(PUSH);
+    // load(1);
+    // load(PUSH_HEAP);
 }
 
 static int compile_value(uint64_t *instructions, struct Value *val, int offset)
@@ -96,6 +107,12 @@ static int compile_value(uint64_t *instructions, struct Value *val, int offset)
         case VTYPE_FLOAT:
         case VTYPE_BOOL:
         case VTYPE_FUNCALL:
+            // Just using function call semantics to experiment with heap allocation
+            offset = compile_value(instructions, val->funcall->values->value, offset++);
+            load(PUSH);
+            load(1);
+            load(PUSH_HEAP);
+            // load(val->funcall->funname);
             // struct FunCall { Symbol funname; Values *values; };
             assert("Error compiling unexpected value\n");
             break;
@@ -184,6 +201,30 @@ static int compile_statement(uint64_t *instructions, struct Statement *stmt, int
         case STMT_DIM:
             offset = compile_dim(instructions, stmt->dim, offset);
             break;
+        case STMT_FUNCALL:
+            // offset = offset; // no op
+            // load(PUSH);
+            // int old_offset = offset++;
+            // long count = 0;
+            // Values *values = stmt->funcall->values;
+            // while (values != NULL) {
+            //     struct Value *val = (struct Value *) values->value;
+            //     offset = compile_value(instructions, val, offset);
+            //     values = values->next;
+            //     count++;
+            // }
+            // load(PUSH);
+            // load(stmt->funcall->funname);
+            // // offset = compile_string(instructions, stmt->funcall->funname, offset);
+            // load(CALL);
+            // load(POP); // clear returned value off of the stack since this is a statement
+            // instructions[old_offset] = (uint64_t) count; // pass in number of arguments
+            // // struct FunCall { Symbol funname; Values *values; };
+            // break;
+        case STMT_FUNCTION_DEF:
+        case STMT_EXIT_FOR:
+        case STMT_EXIT_WHILE:
+        case STMT_EXIT_FUNCTION:
         case STMT_FOR:
             // stmt->for_stmt->start;
             // stmt->for_stmt->stop;
@@ -192,30 +233,6 @@ static int compile_statement(uint64_t *instructions, struct Statement *stmt, int
             // stmt->for_each->symbol;
             // stmt->for_each->condition;
             // stmt->for_each->stmts;
-        case STMT_FUNCALL:
-            offset = offset; // no op
-            load(PUSH);
-            int old_offset = offset++;
-            long count = 0;
-            Values *values = stmt->funcall->values;
-            while (values != NULL) {
-                struct Value *val = (struct Value *) values->value;
-                offset = compile_value(instructions, val, offset);
-                values = values->next;
-                count++;
-            }
-            load(PUSH);
-            load(stmt->funcall->funname);
-            // offset = compile_string(instructions, stmt->funcall->funname, offset);
-            load(CALL);
-            load(POP); // clear returned value off of the stack since this is a statement
-            instructions[old_offset] = (uint64_t) count; // pass in number of arguments
-            // struct FunCall { Symbol funname; Values *values; };
-            break;
-        case STMT_FUNCTION_DEF:
-        case STMT_EXIT_FOR:
-        case STMT_EXIT_WHILE:
-        case STMT_EXIT_FUNCTION:
         default:
             printf("cannot compile statement type: not implemented\n");
             assert(0);
@@ -233,10 +250,67 @@ static int compile_statements(uint64_t *instructions, Statements *stmts, int off
     return offset;
 }
 
-int compile(uint64_t *instructions, Statements *stmts, int offset)
+// static int compile_class(uint64_t *instructions, struct TopLevelDecl *tld, int offset)
+// {
+//     return -1;
+// }
+// 
+// static int compile_fundef(uint64_t *instructions, struct FunDef *fundef, int offset)
+// {
+// }
+
+static int compile_entrypoint(uint64_t *instructions, TopLevelDecls *tlds, int offset)
 {
-    offset = compile_statements(instructions, stmts, offset);
-    instructions[offset] = (uint64_t) RET;
+    struct TopLevelDecl *tld = NULL;
+    while (tlds != NULL) {
+        tld = (struct TopLevelDecl *) tlds->value;
+        if (tld->type == TLD_TYPE_FUNDEF && tld->fundef->name == ast.entrypoint) {
+            offset = compile_statements(instructions, tld->fundef->stmts, offset);
+            instructions[offset] = (uint64_t) RET;
+            return offset;
+        }
+        tlds = tlds->next;
+    }
     return offset;
 }
 
+static int compile_fundef(uint64_t *instructions, struct FunDef *fundef, int offset)
+{
+    // New scope
+    //
+    // Return value
+    // Exit scope
+    // Pop off local variables declared in this scope
+    return offset;
+}
+
+static int compile_tlds(uint64_t *instructions, TopLevelDecls *tlds, int offset)
+{
+    struct TopLevelDecl *tld = NULL;
+    offset = compile_entrypoint(instructions, tlds, offset);
+    while (tlds != NULL) {
+        tld = (struct TopLevelDecl *) tlds->value;
+        switch (tld->type) {
+            case TLD_TYPE_CLASS:
+                offset = compile_fundef(instructions, tld->fundef, offset);
+                break;
+            case TLD_TYPE_FUNDEF:
+                if (tld->fundef->name == ast.entrypoint) {
+                    break;
+                }
+                offset = compile_fundef(instructions, tld->fundef, offset);
+                break;
+        }
+        tlds = tlds->next;
+    }
+    return offset;
+}
+
+int compile(uint64_t *instructions, TopLevelDecls *tlds, int offset)
+{
+    // offset = compile_statements(instructions, stmts, offset);
+    // instructions[offset] = (uint64_t) RET;
+    offset = compile_tlds(instructions, tlds, offset);
+    return offset;
+}
+ 

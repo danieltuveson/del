@@ -37,6 +37,7 @@ comment    '[^\n]*
 "or"        { return ST_OR; }
 "not"       { return ST_NOT; }
 "null"      { return ST_NULL; }
+"class"     { return ST_CLASS; }
 "+"         { return ST_PLUS; }
 "-"         { return ST_MINUS; }
 "*"         { return ST_STAR; }
@@ -60,9 +61,7 @@ comment    '[^\n]*
 {spaces}     /* Ignore insignificant whitespace */
 
 {letter}* {
-    // void *value;
-    // struct List *prev;
-    // struct List *next;
+    /* Adds symbols to symbol table */
     uint64_t cnt = 0;
     struct List *symbol_table = ast.symbol_table;
     char *symbol;
@@ -70,13 +69,11 @@ comment    '[^\n]*
         symbol = malloc((yyleng + 1) * sizeof(char));
         strcpy(symbol, yytext);
         ast.symbol_table = new_list(symbol);
-        yylval.symbol = cnt;
-        return T_SYMBOL;
+        goto addsymbol;
     }
     while (1) {
         if (strcmp(symbol_table->value, yytext) == 0) {
-            yylval.symbol = cnt;
-            return T_SYMBOL;
+            goto addsymbol;
         }
         cnt++;
         if (symbol_table->next == NULL) {
@@ -88,9 +85,14 @@ comment    '[^\n]*
     symbol = malloc((yyleng + 1) * sizeof(char));
     strcpy(symbol, yytext);
     symbol_table->next = new_list(symbol);
+
+addsymbol:
+    if (strcmp(yytext, "main") == 0) {
+        ast.entrypoint = cnt;
+    }
     yylval.symbol = cnt;
-    //printf("cnt : '%llu'\n", cnt);
     return T_SYMBOL;
+
 }
 
 \"[^\"]*\" {

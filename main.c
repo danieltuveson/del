@@ -134,7 +134,7 @@ int main(int argc, char *argv[])
         uint64_t instructions[100];
         printf("````````````````` CODE `````````````````\n");
         assert(ast.ast != NULL);
-        print_statements(ast.ast);
+        print_tlds(ast.ast);
         printf("\n");
 
         printf("````````````````` TYPECHECK `````````````````\n");

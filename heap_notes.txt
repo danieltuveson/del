@@ -1,13 +1,11 @@
 class Blah
-    dim x as int, y as float
-    function new(x as int, y as float)
-        self.x = x
-        self.y = y
-    end function
+    x as int
+    y as float
 end class
 
 class Blorp
-    dim spurt as string, blah as Blah
+    spurt as string
+    blah as Blah
     function new(spurt as string, blah as Blah)
         self.spurt spurt
         self.blah = blah
