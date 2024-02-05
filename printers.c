@@ -216,7 +216,7 @@ void print_value(struct Value *val)
     case VTYPE_FUNCALL:
         printf("%s", lookup_symbol(val->funcall->funname));
         printf("(");
-        for (Values *vals = val->funcall->values; vals != NULL;
+        for (Values *vals = val->funcall->args; vals != NULL;
                 vals = vals->next) {
             print_value(vals->value);
             if (vals->next != NULL) printf(", ");
@@ -233,7 +233,7 @@ static void left_pad(int indent) {
     for (int i = 0; i < indent; i++) putchar(' ');
 }
 
-static void print_definitions(struct List *lst, char sep, int indent)
+static void print_definitions(struct List *lst, char sep)
 {
     struct Definition *def = NULL;
     while (lst != NULL) {
@@ -264,7 +264,7 @@ static void print_statement_indent(struct Statement *stmt, int indent)
     switch (stmt->type) {
         case STMT_DIM:
             printf("dim ");
-            print_definitions(stmt->dim, ',', indent);
+            print_definitions(stmt->dim, ',');
             break;
         case STMT_SET:
             printf("%s = ", lookup_symbol(stmt->set->symbol));
@@ -302,7 +302,7 @@ static void print_statement_indent(struct Statement *stmt, int indent)
         case STMT_FUNCALL:
             printf("%s", lookup_symbol(stmt->funcall->funname));
             printf("(");
-            for (Values *vals = stmt->funcall->values; vals != NULL;
+            for (Values *vals = stmt->funcall->args; vals != NULL;
                     vals = vals->next) {
                 print_value(vals->value);
                 if (vals->next != NULL) printf(", ");
@@ -335,7 +335,7 @@ void print_statements(Statements *stmts)
 static void print_fundef(struct FunDef *fundef, int indent)
 {
     printf("function %s(", lookup_symbol(fundef->name));
-    print_definitions(fundef->definitions, ',', indent);
+    print_definitions(fundef->definitions, ',');
     printf(")\n");
     print_statements_indent(fundef->stmts, TAB_WIDTH + indent);
     printf("end function\n");

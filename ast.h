@@ -71,7 +71,7 @@ struct TopLevelDecl {
 
 struct FunCall {
     Symbol funname;
-    Values *values;
+    Values *args;
 };
 
 struct Expr {
@@ -153,11 +153,6 @@ struct Statement {
     };
 };
 
-/* List functions */
-struct List *new_list(void *value);
-struct List *append(struct List *list, void *value);
-struct List *reset_list_head(struct List *list);
-
 /* TLD constructors */
 struct TopLevelDecl *new_class(Symbol symbol, Definitions *definitions);
 struct TopLevelDecl *new_fundef(Symbol symbol, Definitions *definitions, Statements *stmts);
@@ -168,7 +163,7 @@ struct Statement *new_if(struct Value *condition, Statements *if_stmts, Statemen
 struct Statement *new_while(struct Value *condition, Statements *stmts);
 struct Statement *new_dim(Dim *dim);
 struct Definition *new_define(Symbol name, enum Type type);
-struct Statement *new_sfuncall(Symbol funname, Values *values);
+struct Statement *new_sfuncall(Symbol funname, Values *args);
 
 /* Value constructors */
 struct Value *new_string(char *string);
@@ -176,7 +171,7 @@ struct Value *new_symbol(uint64_t symbol);
 struct Value *new_integer(long integer);
 struct Value *new_floating(double floating);
 struct Value *new_boolean(int boolean);
-struct Value *new_vfuncall(Symbol funname, Values *values);
+struct Value *new_vfuncall(Symbol funname, Values *args);
 struct Value *new_expr(struct Expr *expr);
 
 /* Expression constructors */

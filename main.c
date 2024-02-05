@@ -94,7 +94,8 @@ struct Locals locals = { {0}, {0}, 0, 0 };
 //     }
 // }
 
-int main(int argc, char *argv[])
+// int main(int argc, char *argv[])
+int main(void)
 {
     assert(sizeof(char *) == sizeof(uint64_t));
     // if (argc > 2) {
@@ -131,7 +132,8 @@ int main(int argc, char *argv[])
     if (ret != 0) {
         printf("parse error\n");
     } else {
-        uint64_t instructions[100];
+        uint64_t instructions[INSTRUCTIONS_SIZE];
+        struct CompilerContext cc = { instructions, 0, NULL };
         printf("````````````````` CODE `````````````````\n");
         assert(ast.ast != NULL);
         print_tlds(ast.ast);
@@ -146,7 +148,7 @@ int main(int argc, char *argv[])
         }
         // struct Statement *stmt = ast->value;
         // assert(stmt->type == STMT_SET);
-        int offset = compile(instructions, ast.ast, 0);
+        int offset = compile(&cc, ast.ast);
         printf("\n");
         printf("````````````` INSTRUCTIONS `````````````\n");
         print_instructions(instructions, offset+1);

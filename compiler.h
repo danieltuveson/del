@@ -2,6 +2,13 @@
 #define COMPILER_H
 
 #include "ast.h"
+#include "functiontable.h"
+
+struct CompilerContext {
+    uint64_t *instructions;
+    int offset;
+    struct FunctionTable *ft;
+};
 
 enum Code {
     PUSH,
@@ -44,6 +51,6 @@ enum Code {
     GET_HEAP
 };
 
-int compile(uint64_t *instructions, TopLevelDecls *tlds, int offset);
+int compile(struct CompilerContext *cc, TopLevelDecls *tlds);
 
 #endif

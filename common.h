@@ -8,6 +8,11 @@
 #include <string.h>
 #include <assert.h>
 
+#define INSTRUCTIONS_SIZE 100
+#define STACK_SIZE 256
+#define STACK_SIZE 256
+#define HEAP_SIZE  1024
+
 /* Symbol is used to represent any variable, function, or type name */
 typedef uint64_t Symbol;
 
@@ -35,6 +40,11 @@ struct Ast {
 extern struct Ast ast;
 
 char *lookup_symbol(uint64_t symbol);
+
+/* List functions */
+struct List *new_list(void *value);
+struct List *append(struct List *list, void *value);
+struct List *reset_list_head(struct List *list);
 
 #endif
 

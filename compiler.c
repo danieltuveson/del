@@ -1,10 +1,16 @@
 #include "common.h"
 #include "compiler.h"
 
-/* The load macro assumes that the variables "instructions" and "offset" are passed into 
- * the functions in which it is called.
+static inline int next_safe(int offset) {
+    assert("offset is out of bounds\n" && offset < INSTRUCTIONS_SIZE - 1);
+    return offset;
+}
+#define next() next_safe(offset++)
+
+/* The load macro assumes that the variables "instructions" and "offset" are
+ * passed into the functions in which it is called.
  */
-#define load(op) instructions[offset++] = (uint64_t) op
+#define load(op) instructions[next()] = (uint64_t) op
 #define compile_binary_op(instructions, val1, val2, offset, op)\
     compile_binary_op_helper(instructions, val1, val2, &offset, (uint64_t) op)
 
@@ -14,8 +20,8 @@ static int compile_statements(uint64_t *instructions, Statements *stmts, int off
 static inline void compile_binary_op_helper(uint64_t *instructions,
         struct Value *val1, struct Value *val2, int *offset_ptr, uint64_t op) {
     int offset = *offset_ptr;
-    offset = compile_value(instructions, val1, offset++);
-    offset = compile_value(instructions, val2, offset++);
+    offset = compile_value(instructions, val1, next());
+    offset = compile_value(instructions, val2, next());
     load(op);
     *offset_ptr = offset;
 }
@@ -42,11 +48,11 @@ static int compile_expr(uint64_t *instructions, struct Expr *expr, int offset)
         case OP_STAR: compile_binary_op(instructions, val1, val2, offset, MUL); break;
         case OP_SLASH: compile_binary_op(instructions, val1, val2, offset, DIV); break;
         case OP_UNARY_PLUS:
-            offset = compile_value(instructions, val1, offset++);
+            offset = compile_value(instructions, val1, next());
             load(UNARY_PLUS);
             break;
         case OP_UNARY_MINUS:
-            offset = compile_value(instructions, val1, offset++);
+            offset = compile_value(instructions, val1, next());
             load(UNARY_MINUS);
             break;
         default:
@@ -70,7 +76,7 @@ static int compile_string(uint64_t *instructions, char *string, int offset)
                 load(PUSH);
                 load(packed);
                 break;
-            case 1: packed = tmp    | (tmp << 0);  break; /* technically "tmp << 0" does nothing*/
+            case 1: packed = tmp    | (tmp << 0);  break; /* technically "tmp << 0" does nothing */
             case 2: packed = packed | (tmp << 8);  break;
             case 3: packed = packed | (tmp << 16); break;
             case 4: packed = packed | (tmp << 24); break;
@@ -92,10 +98,23 @@ static int compile_string(uint64_t *instructions, char *string, int offset)
     }
     load(PUSH_HEAP);
     return offset;
-    // offset = compile_value(instructions, val->funcall->values->value, offset++);
+    // offset = compile_value(instructions, val->funcall->values->value, next());
     // load(PUSH);
     // load(1);
     // load(PUSH_HEAP);
+}
+
+static int compile_funcall(uint64_t *instructions, struct FunCall *funcall, int offset)
+{
+    load(PUSH);
+    int bookmark = next();
+    for (Values *args = funcall->args; args != NULL; args = args->next) {
+        offset = compile_value(instructions, args->value, next());
+    }
+    load(JMP);
+    add_callsite(ft, funcall->funname, next());
+    instructions[bookmark] = offset;
+    return offset;
 }
 
 static int compile_value(uint64_t *instructions, struct Value *val, int offset)
@@ -106,15 +125,18 @@ static int compile_value(uint64_t *instructions, struct Value *val, int offset)
             break;
         case VTYPE_FLOAT:
         case VTYPE_BOOL:
-        case VTYPE_FUNCALL:
+        // case VTYPE_OBJECT:
             // Just using function call semantics to experiment with heap allocation
-            offset = compile_value(instructions, val->funcall->values->value, offset++);
-            load(PUSH);
-            load(1);
-            load(PUSH_HEAP);
+            // offset = compile_value(instructions, val->funcall->values->value, next());
+            // load(PUSH);
+            // load(1);
+            // load(PUSH_HEAP);
             // load(val->funcall->funname);
             // struct FunCall { Symbol funname; Values *values; };
             assert("Error compiling unexpected value\n");
+            break;
+        case VTYPE_FUNCALL:
+            offset = compile_funcall(instructions, val->funcall, offset);
             break;
         case VTYPE_INT:
             load(PUSH);
@@ -138,16 +160,16 @@ static int compile_if(uint64_t *instructions, struct Statement *stmt, int offset
     int old_offset = 0;
     top_of_loop = offset;
     load(PUSH);
-    old_offset = offset++;
-    offset = compile_value(instructions, stmt->if_stmt->condition, offset++);
+    old_offset = next();
+    offset = compile_value(instructions, stmt->if_stmt->condition, next());
     load(JNE);
-    offset = compile_statements(instructions, stmt->if_stmt->if_stmts, offset++);
+    offset = compile_statements(instructions, stmt->if_stmt->if_stmts, next());
 
     // set JNE jump to go to after if statement
     instructions[old_offset] = (uint64_t) offset;
 
     if (stmt->if_stmt->else_stmts) {
-        offset = compile_statements(instructions, stmt->if_stmt->else_stmts, offset++);
+        offset = compile_statements(instructions, stmt->if_stmt->else_stmts, next());
     }
     return offset;
 }
@@ -156,10 +178,10 @@ static int compile_while(uint64_t *instructions, struct Statement *stmt, int off
 {
     int top_of_loop = offset;
     load(PUSH);
-    int old_offset = offset++;
-    offset = compile_value(instructions, stmt->while_stmt->condition, offset++);
+    int old_offset = next();
+    offset = compile_value(instructions, stmt->while_stmt->condition, next());
     load(JNE);
-    offset = compile_statements(instructions, stmt->while_stmt->stmts, offset++);
+    offset = compile_statements(instructions, stmt->while_stmt->stmts, next());
     load(PUSH);
     load(top_of_loop);
     load(JMP);
@@ -169,7 +191,7 @@ static int compile_while(uint64_t *instructions, struct Statement *stmt, int off
 
 static int compile_dim(uint64_t *instructions, Dim *dim, int offset)
 {
-    while (dim != NULL) {
+    for (; dim != NULL; dim = dim->next) {
         // TODO: check that value type is valid
         struct Definition *def = (struct Definition *) dim->value;
         load(PUSH);
@@ -178,7 +200,6 @@ static int compile_dim(uint64_t *instructions, Dim *dim, int offset)
         load(PUSH);
         load(0); // Initialize to 0
         load(DEF);
-        dim = dim->next;
     }
     return offset;
 }
@@ -189,7 +210,7 @@ static int compile_statement(uint64_t *instructions, struct Statement *stmt, int
         case STMT_SET:
             load(PUSH);
             load(stmt->set->symbol);
-            offset = compile_value(instructions, stmt->set->val, offset++);
+            offset = compile_value(instructions, stmt->set->val, next());
             load(DEF); // will work on an alternate "SET" operation later.
             break;
         case STMT_IF:
@@ -204,7 +225,7 @@ static int compile_statement(uint64_t *instructions, struct Statement *stmt, int
         case STMT_FUNCALL:
             // offset = offset; // no op
             // load(PUSH);
-            // int old_offset = offset++;
+            // int old_offset = next();
             // long count = 0;
             // Values *values = stmt->funcall->values;
             // while (values != NULL) {
@@ -243,9 +264,8 @@ static int compile_statement(uint64_t *instructions, struct Statement *stmt, int
 
 static int compile_statements(uint64_t *instructions, Statements *stmts, int offset)
 {
-    while (stmts != NULL) {
+    for (; stmts != NULL; stmts = stmts->next) {
         offset = compile_statement(instructions, stmts->value, offset);
-        stmts = stmts->next;
     }
     return offset;
 }
@@ -262,14 +282,13 @@ static int compile_statements(uint64_t *instructions, Statements *stmts, int off
 static int compile_entrypoint(uint64_t *instructions, TopLevelDecls *tlds, int offset)
 {
     struct TopLevelDecl *tld = NULL;
-    while (tlds != NULL) {
+    for (; tlds != NULL; tlds = tlds->next) {
         tld = (struct TopLevelDecl *) tlds->value;
         if (tld->type == TLD_TYPE_FUNDEF && tld->fundef->name == ast.entrypoint) {
             offset = compile_statements(instructions, tld->fundef->stmts, offset);
             instructions[offset] = (uint64_t) RET;
             return offset;
         }
-        tlds = tlds->next;
     }
     return offset;
 }
@@ -287,8 +306,9 @@ static int compile_fundef(uint64_t *instructions, struct FunDef *fundef, int off
 static int compile_tlds(uint64_t *instructions, TopLevelDecls *tlds, int offset)
 {
     struct TopLevelDecl *tld = NULL;
+    struct FunctionTable *ft = new_ft(0);
     offset = compile_entrypoint(instructions, tlds, offset);
-    while (tlds != NULL) {
+    for (;tlds != NULL; tlds = tlds->next) {
         tld = (struct TopLevelDecl *) tlds->value;
         switch (tld->type) {
             case TLD_TYPE_CLASS:
@@ -301,16 +321,19 @@ static int compile_tlds(uint64_t *instructions, TopLevelDecls *tlds, int offset)
                 offset = compile_fundef(instructions, tld->fundef, offset);
                 break;
         }
-        tlds = tlds->next;
     }
     return offset;
 }
 
-int compile(uint64_t *instructions, TopLevelDecls *tlds, int offset)
+int compile(struct CompilerContext *cc, TopLevelDecls *tlds)
 {
     // offset = compile_statements(instructions, stmts, offset);
     // instructions[offset] = (uint64_t) RET;
-    offset = compile_tlds(instructions, tlds, offset);
-    return offset;
+    cc->offset = compile_tlds(cc->instructions, tlds, cc->offset);
+    return cc->offset;
 }
  
+#undef next
+#undef load
+#undef compile_binary_op
+

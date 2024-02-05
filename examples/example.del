@@ -4,13 +4,13 @@
 ' thing = 9 - 4 + 4 / 2  - 1
 ' print("hello, w")
 
-function main(thing as int)
-    dim z as int, y as string
-    z = heap(666)
-    y = "abcdefghijk"
-end function
 
 function donothing(stuff as string)
     stuff = "do nothing"
 end function
 
+function main(thing as int)
+    dim z as int, y as string
+    ' z = heap(666)
+    y = "abcdefghijk"
+end function

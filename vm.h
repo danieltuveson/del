@@ -3,10 +3,6 @@
 
 #include "common.h"
 
-#define STACK_SIZE 256
-#define STACK_SIZE 256
-#define HEAP_SIZE  1024
-
 // enum HeapValType {
 //     L_INT,
 //     L_FLOAT,

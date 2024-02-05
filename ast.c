@@ -2,31 +2,6 @@
 #include "ast.h"
 #include "printers.h"
 
-/* List functions */
-struct List *new_list(void *value)
-{
-    struct List *list = malloc(sizeof(struct List));
-    list->value = value;
-    list->next = NULL;
-    list->prev = NULL;
-    return list;
-}
-
-struct List *append(struct List *list, void *value)
-{
-    list->prev = new_list(value);
-    list->prev->next = list;
-    return list->prev;
-}
-
-/* Our parser walks the list while building it, so we want to move the
- * pointer to the start of the list when we're finished. */
-struct List *reset_list_head(struct List *list)
-{
-    while (list->prev != NULL) list = list->prev;
-    return list;
-}
-
 /* Functions to create top level definitions */
 struct TopLevelDecl *new_class(Symbol symbol, Definitions *definitions)
 {
@@ -100,19 +75,19 @@ struct Definition *new_define(Symbol name, enum Type type)
     return def;
 }
 
-static struct FunCall *new_funcall(Symbol funname, Values *values)
+static struct FunCall *new_funcall(Symbol funname, Values *args)
 {
     struct FunCall *funcall = malloc(sizeof(struct FunCall));
     funcall->funname = funname;
-    funcall->values = reset_list_head(values);
+    funcall->args = reset_list_head(args);
     return funcall;
 }
 
-struct Statement *new_sfuncall(Symbol funname, Values *values)
+struct Statement *new_sfuncall(Symbol funname, Values *args)
 {
     struct Statement *val = malloc(sizeof(struct Statement));
     val->type = STMT_FUNCALL;
-    val->funcall = new_funcall(funname, values);
+    val->funcall = new_funcall(funname, args);
     return val;
 }
 
@@ -157,11 +132,11 @@ struct Value *new_boolean(int boolean)
     return val;
 }
 
-struct Value *new_vfuncall(Symbol funname, Values *values)
+struct Value *new_vfuncall(Symbol funname, Values *args)
 {
     struct Value *val = malloc(sizeof(struct Value));
     val->type = VTYPE_FUNCALL;
-    val->funcall = new_funcall(funname, values);
+    val->funcall = new_funcall(funname, args);
     return val;
 }
 
