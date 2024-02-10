@@ -38,6 +38,7 @@ comment    '[^\n]*
 "not"       { return ST_NOT; }
 "null"      { return ST_NULL; }
 "class"     { return ST_CLASS; }
+"return"    { return ST_RETURN; }
 "+"         { return ST_PLUS; }
 "-"         { return ST_MINUS; }
 "*"         { return ST_STAR; }

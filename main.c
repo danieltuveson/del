@@ -7,7 +7,6 @@
 #include "ast.h"
 #include "typecheck.h"
 
-
 // void *memory;
 // struct Exprs *exprs;
 // struct Heap heap = { NULL, 0, NULL };
@@ -139,7 +138,7 @@ int main(void)
         print_tlds(ast.ast);
         printf("\n");
 
-        printf("````````````````` TYPECHECK `````````````````\n");
+        printf("`````````````` TYPECHECK ```````````````\n");
         if (typecheck()) {
             printf("program has typechecked\n");
         } else {
@@ -151,6 +150,9 @@ int main(void)
         int offset = compile(&cc, ast.ast);
         printf("\n");
         printf("````````````` INSTRUCTIONS `````````````\n");
+        printf("function table:\n");
+        print_ft(cc.ft);
+        printf("\n");
         print_instructions(instructions, offset+1);
         printf("\n");
 

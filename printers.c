@@ -36,9 +36,6 @@ void print_instructions(uint64_t *instructions, int length)
             case JNE:
                 printf("JNE\n");
                 break;
-            case RET:
-                printf("RET\n");
-                break;
             case DEF:
                 printf("DEF\n");
                 break;
@@ -85,8 +82,14 @@ void print_instructions(uint64_t *instructions, int length)
                 i++;
                 printf("LOAD %llu\n", (uint64_t) instructions[i]);
                 break;
-            default:
-                printf("***non-printable instruction***\n");
+            case EXIT:
+                printf("EXIT\n");
+                break;
+            case SWAP:
+                printf("SWAP\n");
+                break;
+            // default:
+            //     printf("***non-printable instruction***\n");
         }
     }
 }
@@ -291,6 +294,10 @@ static void print_statement_indent(struct Statement *stmt, int indent)
             left_pad(indent);
             printf("end while");
             break;
+        case STMT_RETURN:
+            printf("return ");
+            print_value(stmt->ret);
+            break;
         case STMT_FOR:
         case STMT_FOREACH:
         case STMT_FUNCTION_DEF:
@@ -335,7 +342,7 @@ void print_statements(Statements *stmts)
 static void print_fundef(struct FunDef *fundef, int indent)
 {
     printf("function %s(", lookup_symbol(fundef->name));
-    print_definitions(fundef->definitions, ',');
+    print_definitions(fundef->args, ',');
     printf(")\n");
     print_statements_indent(fundef->stmts, TAB_WIDTH + indent);
     printf("end function\n");
@@ -365,5 +372,23 @@ static void print_tlds_indent(TopLevelDecls *tlds, int indent)
 void print_tlds(TopLevelDecls *tlds)
 {
     print_tlds_indent(tlds, 0);
+}
+
+void print_ft_node(struct FunctionTableNode *fn)
+{
+    printf("%s: ", lookup_symbol(fn->function));
+    for (struct List *calls = reset_list_head(fn->callsites); calls != NULL; calls = calls->next) {
+        printf("%llu", *((uint64_t *) calls->value));
+        if (calls->next != NULL) printf(", ");
+    }
+    printf("\n");
+}
+
+void print_ft(struct FunctionTable *ft)
+{
+    if (ft == NULL) return;
+    print_ft_node(ft->node);
+    print_ft(ft->left);
+    print_ft(ft->right);
 }
 

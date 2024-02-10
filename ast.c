@@ -13,13 +13,13 @@ struct TopLevelDecl *new_class(Symbol symbol, Definitions *definitions)
     return tld;
 }
 
-struct TopLevelDecl *new_fundef(Symbol symbol, Definitions *definitions, Statements *stmts)
+struct TopLevelDecl *new_fundef(Symbol symbol, Definitions *args, Statements *stmts)
 {
     struct TopLevelDecl *tld = malloc(sizeof(struct TopLevelDecl));
     tld->type = TLD_TYPE_FUNDEF;
     tld->fundef = malloc(sizeof(struct FunDef));
     tld->fundef->name = symbol;
-    tld->fundef->definitions = reset_list_head(definitions);
+    tld->fundef->args = reset_list_head(args);
     tld->fundef->stmts = reset_list_head(stmts);
     return tld;
 }
@@ -85,10 +85,18 @@ static struct FunCall *new_funcall(Symbol funname, Values *args)
 
 struct Statement *new_sfuncall(Symbol funname, Values *args)
 {
-    struct Statement *val = malloc(sizeof(struct Statement));
-    val->type = STMT_FUNCALL;
-    val->funcall = new_funcall(funname, args);
-    return val;
+    struct Statement *stmt = malloc(sizeof(struct Statement));
+    stmt->type = STMT_FUNCALL;
+    stmt->funcall = new_funcall(funname, args);
+    return stmt;
+}
+
+struct Statement *new_return(struct Value *val)
+{
+    struct Statement *stmt = malloc(sizeof(struct Statement));
+    stmt->type = STMT_RETURN;
+    stmt->ret = val;
+    return stmt;
 }
 
 /* Functions for creating Values */

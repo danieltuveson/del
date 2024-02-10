@@ -5,12 +5,12 @@
 ' print("hello, w")
 
 
-function donothing(stuff as string)
-    stuff = "do nothing"
+function donothing(otherstuff as int)
+    otherstuff = 44
+    return otherstuff + 1
 end function
 
 function main(thing as int)
-    dim z as int, y as string
-    ' z = heap(666)
-    y = "abcdefghijk"
+    dim x as int
+    x = donothing(6)
 end function

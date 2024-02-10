@@ -43,12 +43,13 @@ enum Code {
     JNE,
     JMP,
     POP,
-    RET,
+    EXIT,
     DEF,
     SET,
     LOAD,
     CALL,
-    GET_HEAP
+    GET_HEAP,
+    SWAP
 };
 
 int compile(struct CompilerContext *cc, TopLevelDecls *tlds);

@@ -13,6 +13,18 @@ static inline uint64_t pop(struct Stack *stack)
     return stack->values[--stack->offset];
 }
 
+static inline void swap(struct Stack *stack)
+{
+    uint64_t val1, val2;
+    val1 = pop(stack);
+    val2 = pop(stack);
+    push(stack, val1);
+    push(stack, val2);
+//     uint64_t swp = stack->values[stack->offset];
+//     stack->values[stack->offset] = stack->values[stack->offset-1];
+//     stack->values[stack->offset-1] = swp;
+}
+
 #define eval_binary_op(stack_ptr, v1, v2, op, type) \
     do { \
         v1 = (type) pop(stack_ptr); \
@@ -73,8 +85,8 @@ static int lookup(struct Locals *locals, Symbol lookup_val, uint64_t *val)
 
 static void def(struct Stack *stack, struct Locals *locals)
 {
-    uint64_t val = (uint64_t) pop(stack);
     Symbol symbol = (Symbol) pop(stack);
+    uint64_t val = (uint64_t) pop(stack);
     int i;
     for (i = 0; i < locals->count; i++) {
         if (symbol == locals->names[i]) {
@@ -150,7 +162,7 @@ long vm_execute(struct Locals *locals, uint64_t *instructions)
             case EQ:  eval_binary_op(&stack, val1, val2, ==, uint64_t); break;
             case NEQ: eval_binary_op(&stack, val1, val2, !=, uint64_t); break;
             case LTE: eval_binary_op(&stack, val1, val2, <=, uint64_t); break;
-            case GTE: eval_binary_op(&stack, val1, val2, >=, uint64_t); break;
+            case GTE: printf("?????\n"); eval_binary_op(&stack, val1, val2, >=, uint64_t); break;
             case LT:  eval_binary_op(&stack, val1, val2, <, uint64_t);  break;
             case GT:  eval_binary_op(&stack, val1, val2, >, uint64_t);  break;
             case UNARY_PLUS: val1 = (uint64_t) pop(&stack);
@@ -201,7 +213,7 @@ long vm_execute(struct Locals *locals, uint64_t *instructions)
             case GET_HEAP:
                 get_heap(&heap, &stack);
                 break;
-            case RET:
+            case EXIT:
                 goto exit_loop;
             case CALL:
                 symbol = (Symbol) pop(&stack);
@@ -210,6 +222,9 @@ long vm_execute(struct Locals *locals, uint64_t *instructions)
                 } else {
                     assert("unknown function encountered\n" && 0);
                 }
+                break;
+            case SWAP:
+                swap(&stack);
                 break;
             default:
                 printf("unknown instruction encountered: '%llu'", instructions[ip]);
@@ -224,7 +239,6 @@ long vm_execute(struct Locals *locals, uint64_t *instructions)
         }
     }
 exit_loop:
-    // print_stack(&stack);
     return ret;
 }
 

@@ -59,7 +59,7 @@ struct Class {
 
 struct FunDef {
     Symbol name;
-    Definitions *definitions;
+    Definitions *args;
     Statements *stmts;
 };
 
@@ -137,7 +137,8 @@ enum StatementType {
     STMT_EXIT_FOR,
     STMT_EXIT_WHILE,
     STMT_EXIT_FUNCTION,
-    STMT_FUNCALL
+    STMT_FUNCALL,
+    STMT_RETURN
 };
 
 struct Statement {
@@ -150,6 +151,7 @@ struct Statement {
         struct For *for_stmt;
         struct ForEach *for_each;
         struct FunCall *funcall;
+        struct Value *ret;
     };
 };
 
@@ -164,6 +166,7 @@ struct Statement *new_while(struct Value *condition, Statements *stmts);
 struct Statement *new_dim(Dim *dim);
 struct Definition *new_define(Symbol name, enum Type type);
 struct Statement *new_sfuncall(Symbol funname, Values *args);
+struct Statement *new_return(struct Value *val);
 
 /* Value constructors */
 struct Value *new_string(char *string);

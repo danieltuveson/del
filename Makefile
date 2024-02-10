@@ -4,7 +4,7 @@ objects = main.o common.o compiler.o functiontable.o parser.o printers.o vm.o as
 
 del: $(objects)
 	cc $(CFLAGS) -o del $(objects)
- 
+
 lex.yy.c lex.yy.h: lexer.l ast.c ast.h
 	flex --header-file=lex.yy.h lexer.l
 
@@ -21,6 +21,6 @@ lex.yy.o: lex.yy.c lex.yy.h
 	cc -c -o lex.yy.o lex.yy.c
 
 clean:
-	rm -f del *.o *.yy.h *.tab.h *.yy.c *.tab.c *.output
+	rm -f del test *.o *.yy.h *.tab.h *.yy.c *.tab.c *.output
 	rm -rf *.dSYM
 

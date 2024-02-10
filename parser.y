@@ -17,7 +17,7 @@ int yyerror(const char *s);
 %token ST_OPEN_PAREN ST_CLOSE_PAREN ST_COMMA
 %token ST_AMP ST_UNDERSCORE ST_SEMICOLON ST_NEWLINE
 %token ST_COMMENT
-%token ST_CLASS
+%token ST_CLASS ST_RETURN
 
 %left ST_OR
 %left ST_AND
@@ -114,6 +114,7 @@ statement: T_SYMBOL ST_EQ expr { $$ = new_set($1, $3); }
          | ST_WHILE expr end_of_line statements ST_END ST_WHILE { $$ = new_while($2, $4); }
          | ST_DIM definitions { $$ = new_dim($2); }
          | T_SYMBOL ST_OPEN_PAREN args ST_CLOSE_PAREN { $$ = new_sfuncall($1, $3); }
+         | ST_RETURN expr { $$ = new_return($2); }
 ;
 
 definitions: definition { $$ = new_list($1); }
