@@ -4,13 +4,12 @@
 ' thing = 9 - 4 + 4 / 2  - 1
 ' print("hello, w")
 
-
-function donothing(otherstuff as int)
-    otherstuff = 44
-    return otherstuff + 1
+' Some function
+function add(a as int, b as int)
+    return a + b
 end function
 
+' Entrypoint
 function main(thing as int)
-    dim x as int
-    x = donothing(6)
+    x = add(2, 5)
 end function

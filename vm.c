@@ -134,8 +134,9 @@ static void def(struct Stack *stack, struct Locals *locals)
 //     return offset;
 // }
 
-long vm_execute(struct Locals *locals, uint64_t *instructions)
+long vm_execute(uint64_t *instructions)
 {
+    struct Locals locals = { {0}, {0}, 0, 0 };
     struct Stack stack = {0, {0}};
     struct Heap heap = {0, 0, {0}};
     uint64_t ip = 0;
@@ -162,7 +163,7 @@ long vm_execute(struct Locals *locals, uint64_t *instructions)
             case EQ:  eval_binary_op(&stack, val1, val2, ==, uint64_t); break;
             case NEQ: eval_binary_op(&stack, val1, val2, !=, uint64_t); break;
             case LTE: eval_binary_op(&stack, val1, val2, <=, uint64_t); break;
-            case GTE: printf("?????\n"); eval_binary_op(&stack, val1, val2, >=, uint64_t); break;
+            case GTE: eval_binary_op(&stack, val1, val2, >=, uint64_t); break;
             case LT:  eval_binary_op(&stack, val1, val2, <, uint64_t);  break;
             case GT:  eval_binary_op(&stack, val1, val2, >, uint64_t);  break;
             case UNARY_PLUS: val1 = (uint64_t) pop(&stack);
@@ -172,18 +173,14 @@ long vm_execute(struct Locals *locals, uint64_t *instructions)
             case SET:
                 assert("error SET is not yet implemented\n" && 0);
                 break;
-            //     val1 = (long) pop(&stack);
-            //     symbol = (char *) pop(&stack);
-            //     heap_scratch = lookup(heap, symbol, &val2);
-            //     heap_scratch->value = val1; // update existing value
             case DEF:
-                def(&stack, locals);
-                print_locals(locals);
+                def(&stack, &locals);
+                print_locals(&locals);
                 break;
             case LOAD:
                 ip++;
                 symbol = (Symbol) instructions[ip];
-                if (lookup(locals, symbol, &val1)) {
+                if (lookup(&locals, symbol, &val1)) {
                     push(&stack, (uint64_t) val1);
                 } else {
                     printf("variable '%s' is undefined\n", lookup_symbol(symbol));
@@ -239,6 +236,7 @@ long vm_execute(struct Locals *locals, uint64_t *instructions)
         }
     }
 exit_loop:
+    print_locals(&locals);
     return ret;
 }
 

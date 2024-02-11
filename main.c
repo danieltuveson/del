@@ -10,7 +10,7 @@
 // void *memory;
 // struct Exprs *exprs;
 // struct Heap heap = { NULL, 0, NULL };
-struct Locals locals = { {0}, {0}, 0, 0 };
+// struct Locals locals = { {0}, {0}, 0, 0 };
 
 // int read(char *input)
 // {
@@ -147,18 +147,17 @@ int main(void)
         }
         // struct Statement *stmt = ast->value;
         // assert(stmt->type == STMT_SET);
-        int offset = compile(&cc, ast.ast);
+        compile(&cc, ast.ast);
         printf("\n");
         printf("````````````` INSTRUCTIONS `````````````\n");
         printf("function table:\n");
         print_ft(cc.ft);
         printf("\n");
-        print_instructions(instructions, offset+1);
+        print_instructions(&cc);
         printf("\n");
 
         printf("`````````````` EXECUTION ```````````````\n");
-        long ret = vm_execute(&locals, instructions);
-        print_locals(&locals);
+        long ret = vm_execute(instructions);
         printf("ret: %li\n", ret);
     }
     return EXIT_SUCCESS;

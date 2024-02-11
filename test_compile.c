@@ -1,3 +1,5 @@
+#include "vm.h"
+#include "printers.h"
 
 #define init_test_state() \
     uint64_t instructions[INSTRUCTIONS_SIZE]; \
@@ -39,6 +41,12 @@ static void test_compile_int(void)
     assert(cc->offset == 2);
     assert(cc->instructions[0] == PUSH);
     assert(cc->instructions[1] == 1101);
+    assert(cc->offset == 2);
+
+    // test runtime
+    load(cc, POP);
+    load(cc, EXIT);
+    assert(1101 == vm_execute(instructions));
     printf("compile_int test passed\n");
 }
 
@@ -50,6 +58,7 @@ static void test_compile_loadsym(void)
     assert(cc->offset == 2);
     assert(cc->instructions[0] == LOAD);
     assert(cc->instructions[1] == 1245);
+    assert(cc->offset == 2);
     printf("compile_loadsym test passed\n");
 }
 
@@ -63,7 +72,12 @@ static void test_compile_add(void)
     assert(cc->instructions[3] == 66);
     assert(cc->instructions[4] == ADD);
     assert(cc->offset == 5);
-    printf("add test passed\n");
+
+    // test runtime
+    load(cc, POP);
+    load(cc, EXIT);
+    assert(70 == vm_execute(instructions));
+    printf("compile_add test passed\n");
 }
 
 static void test_compile_string(void)
@@ -107,7 +121,31 @@ static void test_compile_string(void)
     assert(cc->instructions[5] == 2);
 
     assert(cc->instructions[6] == PUSH_HEAP);
+
+    assert(cc->offset == 7);
     printf("compile_string test passed\n");
+}
+
+static void test_compile_set(void)
+{
+    init_test_state();
+    assert(cc->offset == 0);
+    compile_statement(cc, new_set(1000, new_integer(123)));
+
+    assert(cc->instructions[0] == PUSH);
+    assert(cc->instructions[1] == 123);
+    assert(cc->instructions[2] == PUSH);
+    assert(cc->instructions[3] == 1000);
+    assert(cc->instructions[4] == DEF);
+    assert(cc->offset == 5);
+
+    // test runtime
+    load(cc, LOAD);
+    load(cc, 1000);
+    load(cc, POP);
+    load(cc, EXIT);
+    assert(123 == vm_execute(instructions));
+    printf("compile_set test passed\n");
 }
 
 static void run_tests(void)
@@ -119,6 +157,7 @@ static void run_tests(void)
     test_compile_loadsym();
     test_compile_add();
     test_compile_string();
+    test_compile_set();
     printf("end of compilation tests\n");
 }
  

@@ -3,8 +3,10 @@
 
 static const int TAB_WIDTH = 4;
 
-void print_instructions(uint64_t *instructions, int length)
+void print_instructions(struct CompilerContext *cc)
 {
+    int length = cc->offset;
+    uint64_t *instructions = cc->instructions;
     for (int i = 0; i < length; i++) {
         printf("%-5d", i);
         switch ((enum Code) instructions[i]) {
@@ -88,8 +90,8 @@ void print_instructions(uint64_t *instructions, int length)
             case SWAP:
                 printf("SWAP\n");
                 break;
-            // default:
-            //     printf("***non-printable instruction***\n");
+            default:
+                printf("***non-printable instruction***\n");
         }
     }
 }
@@ -105,10 +107,6 @@ void print_stack(struct Stack *stack)
 
 void print_locals(struct Locals *locals)
 {
-    // Symbol names[HEAP_SIZE];
-    // uint64_t values[HEAP_SIZE];
-    // int count;
-    // int stack_depth;
     printf("[");
     for (int i = 0; i < locals->count; i++) {
         printf(" { %s: ", lookup_symbol(locals->names[i]));
