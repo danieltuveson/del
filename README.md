@@ -3,8 +3,6 @@ This is probably the last time I will try to make a programming language
 
 `del` is a minimal programming language designed to be embedded in C applications. It is statically typed and has functions, classes, and the usual control flow mechanisms. It's main design goals are to be fast, simple, and intuitive. I intend to use it as a scripting language for writing an interactive fiction game, but we'll see if that ever happens.
 
-Right now the syntax is kind of like Visual Basic, but I am probably going to rewrite the parser to use something closer to TypeScript's syntax.
-
 The language is **not done**. It will hopefully be done in a few months.
 
 ## Things I've done right
