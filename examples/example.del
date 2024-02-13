@@ -1,15 +1,19 @@
-' dim thing as int, y as int
-' 
-' y = 1
-' thing = 9 - 4 + 4 / 2  - 1
-' print("hello, w")
+// dim thing as int, y as int
+// 
+// y = 1
+// thing = 9 - 4 + 4 / 2  - 1
+// print("hello, w")
+//
+// Some function
+function add(a: int, b: int) {
+    if (a > b) {
+        return (a + b);
+    } else {
+        return (b - a);
+    }
+}
 
-' Some function
-function add(a as int, b as int)
-    return a + b
-end function
-
-' Entrypoint
-function main(thing as int)
-    x = add(2, 5)
-end function
+// Entrypoint
+function main(thing: int) {
+    x = add(2, 5);
+}

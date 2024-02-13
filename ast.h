@@ -10,7 +10,7 @@ struct Statement;
 typedef struct List TopLevelDecls;
 typedef struct List Values;
 typedef struct List Statements;
-typedef struct List Dim;
+typedef struct List Let;
 typedef struct List Definitions;
 
 enum ValueType {
@@ -127,7 +127,7 @@ struct ForEach {
 };
 
 enum StatementType {
-    STMT_DIM,
+    STMT_LET,
     STMT_SET,
     STMT_IF,
     STMT_WHILE,
@@ -144,7 +144,7 @@ enum StatementType {
 struct Statement {
     enum StatementType type;
     union {
-        Dim *dim;
+        Let *let;
         struct Set *set;
         struct IfStatement *if_stmt;
         struct While *while_stmt;
@@ -163,7 +163,7 @@ struct TopLevelDecl *new_fundef(Symbol symbol, Definitions *definitions, Stateme
 struct Statement *new_set(Symbol symbol, struct Value *val);
 struct Statement *new_if(struct Value *condition, Statements *if_stmts, Statements *else_stmts);
 struct Statement *new_while(struct Value *condition, Statements *stmts);
-struct Statement *new_dim(Dim *dim);
+struct Statement *new_let(Let *let);
 struct Definition *new_define(Symbol name, enum Type type);
 struct Statement *new_sfuncall(Symbol funname, Values *args);
 struct Statement *new_return(struct Value *val);

@@ -59,11 +59,11 @@ struct Statement *new_while(struct Value *condition, Statements *stmts)
     return stmt;
 }
 
-struct Statement *new_dim(Dim *dim)
+struct Statement *new_let(Let *let)
 {
     struct Statement *stmt = malloc(sizeof(struct Statement));
-    stmt->type = STMT_DIM;
-    stmt->dim = reset_list_head(dim);
+    stmt->type = STMT_LET;
+    stmt->let = reset_list_head(let);
     return stmt;
 }
  

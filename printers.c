@@ -123,12 +123,12 @@ void print_expr(struct Expr *expr)
     switch (expr->op) {
     case OP_OR:
         print_value(expr->val1);
-        printf(" or ");
+        printf(" || ");
         print_value(expr->val2);
         break;
     case OP_AND:
         print_value(expr->val1);
-        printf(" and ");
+        printf(" && ");
         print_value(expr->val2);
         break;
     case OP_EQEQ:
@@ -138,7 +138,7 @@ void print_expr(struct Expr *expr)
         break;
     case OP_NOT_EQ:
         print_value(expr->val1);
-        printf(" <> ");
+        printf(" != ");
         print_value(expr->val2);
         break;
     case OP_GREATER_EQ:
@@ -239,7 +239,7 @@ static void print_definitions(struct List *lst, char sep)
     struct Definition *def = NULL;
     while (lst != NULL) {
         def = (struct Definition *) lst->value;
-        printf("%s as ", lookup_symbol(def->name));
+        printf("%s: ", lookup_symbol(def->name));
         switch (def->type) {
             case TYPE_INT:
                 printf("int");
@@ -263,38 +263,40 @@ static void print_statement_indent(struct Statement *stmt, int indent)
 {
     left_pad(indent);
     switch (stmt->type) {
-        case STMT_DIM:
-            printf("dim ");
-            print_definitions(stmt->dim, ',');
+        case STMT_LET:
+            printf("let ");
+            print_definitions(stmt->let, ',');
             break;
         case STMT_SET:
             printf("%s = ", lookup_symbol(stmt->set->symbol));
             print_value(stmt->set->val);
+            printf(";");
             break;
         case STMT_IF:
             printf("if ");
             print_value(stmt->if_stmt->condition);
-            printf(" then\n");
+            printf(" {\n");
             print_statements_indent(stmt->if_stmt->if_stmts, indent + TAB_WIDTH);
             if (stmt->if_stmt->else_stmts) {
                 left_pad(indent);
-                printf("else\n");
+                printf("} else {\n");
                 print_statements_indent(stmt->if_stmt->else_stmts, indent + TAB_WIDTH);
             }
             left_pad(indent);
-            printf("end if");
+            printf("}");
             break;
         case STMT_WHILE:
             printf("while ");
             print_value(stmt->while_stmt->condition);
-            printf("\n");
+            printf(" {\n");
             print_statements_indent(stmt->while_stmt->stmts, indent + TAB_WIDTH);
             left_pad(indent);
-            printf("end while");
+            printf("}");
             break;
         case STMT_RETURN:
             printf("return ");
             print_value(stmt->ret);
+            printf(";");
             break;
         case STMT_FOR:
         case STMT_FOREACH:
@@ -312,7 +314,7 @@ static void print_statement_indent(struct Statement *stmt, int indent)
                 print_value(vals->value);
                 if (vals->next != NULL) printf(", ");
             }
-            printf(")");
+            printf(");");
             break;
     }
     printf("\n");
@@ -341,9 +343,9 @@ static void print_fundef(struct FunDef *fundef, int indent)
 {
     printf("function %s(", lookup_symbol(fundef->name));
     print_definitions(fundef->args, ',');
-    printf(")\n");
+    printf(") {\n");
     print_statements_indent(fundef->stmts, TAB_WIDTH + indent);
-    printf("end function\n");
+    printf("}\n");
 }
 
 static void print_tld_indent(struct TopLevelDecl *tld, int indent)

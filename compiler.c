@@ -221,11 +221,11 @@ static void compile_statements(struct CompilerContext *cc, Statements *stmts)
     }
 }
 
-// static int compile_dim(struct CompilerContext *cc, Dim *dim, int offset)
+// static int compile_let(struct CompilerContext *cc, Let *let, int offset)
 // {
-//     for (; dim != NULL; dim = dim->next) {
+//     for (; let != NULL; let = let->next) {
 //         // TODO: check that value type is valid
-//         struct Definition *def = (struct Definition *) dim->value;
+//         struct Definition *def = (struct Definition *) let->value;
 //         load(PUSH);
 //         load(0); // Initialize to 0
 //         load(PUSH);
@@ -250,8 +250,8 @@ static void compile_statements(struct CompilerContext *cc, Statements *stmts)
 //         case STMT_WHILE:
 //             offset = compile_while(cc, stmt, offset);
 //             break;
-//         case STMT_DIM:
-//             offset = compile_dim(cc, stmt->dim, offset);
+//         case STMT_LET:
+//             offset = compile_let(cc, stmt->let, offset);
 //             break;
 //         case STMT_RETURN:
 //             offset = compile_value(cc, stmt->ret, offset);

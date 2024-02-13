@@ -7,17 +7,19 @@ int yyerror(const char *s);
 
 %}
 
-%token ST_IF ST_THEN ST_ELSEIF ST_ELSE
-%token ST_END ST_FOR ST_EACH ST_TO ST_IN ST_NEXT
-%token ST_WHILE ST_FUNCTION ST_EXIT ST_DIM
-%token ST_AS ST_STRING ST_INT ST_FLOAT ST_BOOL
-%token ST_AND ST_OR ST_NOT ST_NULL ST_PLUS 
-%token ST_MINUS ST_STAR ST_SLASH ST_EQ ST_EQEQ ST_NOT_EQ
+%token ST_IF ST_ELSE
+%token ST_FOR ST_IN
+%token ST_WHILE ST_FUNCTION ST_LET
+%token ST_STRING ST_INT ST_FLOAT ST_BOOL ST_NULL
+%token ST_AND ST_OR ST_NOT
+%token ST_PLUS ST_MINUS ST_STAR ST_SLASH
+%token ST_EQ ST_EQEQ ST_NOT_EQ
 %token ST_LESS_EQ ST_GREATER_EQ ST_LESS ST_GREATER
 %token ST_OPEN_PAREN ST_CLOSE_PAREN ST_COMMA
 %token ST_AMP ST_UNDERSCORE ST_SEMICOLON ST_NEWLINE
 %token ST_COMMENT
 %token ST_CLASS ST_RETURN
+%token ST_COLON ST_OPEN_BRACE ST_CLOSE_BRACE
 
 %left ST_OR
 %left ST_AND
@@ -55,6 +57,10 @@ int yyerror(const char *s);
 %type <tld> cls
 %type <tld> fundef
 %type <stmts> statements
+%type <stmts> block
+// %type <stmt> open_statement
+// %type <stmt> closed_statement
+// %type <stmt> simple_statement
 %type <stmt> statement
 %type <type> type
 %type <definitions> class_definitions
@@ -71,58 +77,68 @@ int yyerror(const char *s);
 // %type <floating> NUM
 %define parse.error detailed
 %require "3.8.2"
-
 %%
 
+program: tlds { ast.ast = reset_list_head($1); };
 
-// program: statements { ast.ast = reset_list_head($1); }
-//        | end_of_line program { $$ = $2; }
-// ;
-
-program: tlds { ast.ast = reset_list_head($1); }
-       | end_of_line tlds { ast.ast = reset_list_head($2); }
-;
-
-tlds: tld end_of_line { $$ = new_list($1); }
-    | tld end_of_line tlds { $$ = append($3, $1); }
+tlds: tld { $$ = new_list($1); }
+    | tld tlds { $$ = append($2, $1); }
 ;
 
 tld: fundef { $$ = $1; } | cls { $$ = $1; };
 
-fundef: ST_FUNCTION T_SYMBOL ST_OPEN_PAREN definitions ST_CLOSE_PAREN end_of_line
-        statements ST_END ST_FUNCTION { $$ = new_fundef($2, $4, $7); }
+fundef: ST_FUNCTION T_SYMBOL ST_OPEN_PAREN definitions ST_CLOSE_PAREN ST_OPEN_BRACE
+        statements ST_CLOSE_BRACE { $$ = new_fundef($2, $4, $7); }
 ;
 
-cls: ST_CLASS T_SYMBOL end_of_line class_definitions ST_END ST_CLASS
+cls: ST_CLASS T_SYMBOL ST_OPEN_BRACE class_definitions ST_CLOSE_BRACE
        { $$ = new_class($2, $4); }
 ;
 
-class_definitions: definition end_of_line { $$ = new_list($1); }
-                 | definition end_of_line class_definitions { $$ = append($3, $1); }
+class_definitions: definition ST_SEMICOLON { $$ = new_list($1); }
+                 | definition ST_SEMICOLON class_definitions { $$ = append($3, $1); }
 ;
 
-statements: statement end_of_line { $$ = new_list($1); }
-          | statement end_of_line statements { $$ = append($3, $1); }
+statements: statement { $$ = new_list($1); }
+          | statement statements { $$ = append($2, $1); }
 ;
 
-statement: T_SYMBOL ST_EQ expr { $$ = new_set($1, $3); }
-         | ST_IF expr ST_THEN end_of_line statements ST_END ST_IF
-            { $$ = new_if($2, $5, NULL); }
-         | ST_IF expr ST_THEN end_of_line statements 
-            ST_ELSE end_of_line statements ST_END ST_IF
-            { $$ = new_if($2, $5, $8); }
-         | ST_WHILE expr end_of_line statements ST_END ST_WHILE { $$ = new_while($2, $4); }
-         | ST_DIM definitions { $$ = new_dim($2); }
-         | T_SYMBOL ST_OPEN_PAREN args ST_CLOSE_PAREN { $$ = new_sfuncall($1, $3); }
-         | ST_RETURN expr { $$ = new_return($2); }
+// statement: open_statement
+//          | closed_statement
+// ;
+// 
+// open_statement: ST_IF expr simple_statement { $$ = new_if($2, $3, NULL); }
+//               | ST_IF expr open_statement { $$ = new_if($2, $3, NULL); }
+//               | ST_IF expr closed_statement ST_ELSE open_statement { $$ = new_if($2, $3, $5); }
+//               | ST_WHILE expr open_statement { $$ = new_while($2, $3); }
+// ;
+// 
+// closed_statement: simple_statement
+//                 | ST_IF expr closed_statement ST_ELSE closed_statement { $$ = new_if($2, $3, $5); }
+//                 | ST_WHILE expr closed_statement { $$ = new_while($2, $3); }
+//                 ;
+// 
+// simple_statements: simple_statement { $$ = new_list($1); }
+//                  | ST_OPEN_BRACE simple_statement simple_statements ST_CLOSE_BRACE
+//                    { $$ = append($3, $2); }
+// ;
+
+block: ST_OPEN_BRACE statements ST_CLOSE_BRACE { $$ = $2; };
+
+statement: T_SYMBOL ST_EQ expr ST_SEMICOLON { $$ = new_set($1, $3); }
+         | ST_LET definitions ST_SEMICOLON { $$ = new_let($2); }
+         | T_SYMBOL ST_OPEN_PAREN args ST_CLOSE_PAREN ST_SEMICOLON { $$ = new_sfuncall($1, $3); }
+         | ST_RETURN expr ST_SEMICOLON { $$ = new_return($2); }
+         | ST_IF expr block { $$ = new_if($2, $3, NULL); }
+         | ST_IF expr block ST_ELSE block { $$ = new_if($2, $3, $5); }
+         | ST_WHILE expr block { $$ = new_while($2, $3); }
 ;
 
 definitions: definition { $$ = new_list($1); }
            | definition ST_COMMA definitions { $$ = append($3, $1); }
 ;
 
-definition: T_SYMBOL ST_AS type { $$ = new_define($1, $3); }
-;
+definition: T_SYMBOL ST_COLON type { $$ = new_define($1, $3); };
 
 type: ST_INT { $$ = TYPE_INT; }
     | ST_FLOAT { $$ = TYPE_FLOAT; }
@@ -156,12 +172,6 @@ subexpr: ST_PLUS expr %prec UNARY_PLUS { $$ = new_expr(unary_plus($2)); }
     | expr ST_GREATER expr { $$ = new_expr(bin_greater($1, $3)); }
     | expr ST_LESS expr { $$ = new_expr(bin_less($1, $3)); }
 ;
-
-end_of_line: newline_or_comment
-    | end_of_line newline_or_comment
-    ;
-
-newline_or_comment: ST_COMMENT | ST_NEWLINE;
 
 %%
 

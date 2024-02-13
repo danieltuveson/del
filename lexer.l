@@ -8,34 +8,25 @@ void bad_characters();
 
 digit      [0-9]
 letter     [a-zA-Z]
-spaces     [ \t]
-newline    [\r\n|\n]
-comment    '[^\n]*
+spaces     [ \t\n\r]
+comment    \/\/[^\n]*
 
 %%
 
 "if"        { return ST_IF; }
-"then"      { return ST_THEN; }
-"elseif"    { return ST_ELSEIF; }
 "else"      { return ST_ELSE; }
-"end"       { return ST_END; }
 "for"       { return ST_FOR; }
-"each"      { return ST_EACH; }
-"to"        { return ST_TO; }
 "in"        { return ST_IN; }
-"next"      { return ST_NEXT; }
 "while"     { return ST_WHILE; }
 "function"  { return ST_FUNCTION; }
-"exit"      { return ST_EXIT; }
-"dim"       { return ST_DIM; }
-"as"        { return ST_AS; }
+"let"       { return ST_LET; }
 "string"    { return ST_STRING; }
 "int"       { return ST_INT; }
 "float"     { return ST_FLOAT; }
 "bool"      { return ST_BOOL; }
-"and"       { return ST_AND; }
-"or"        { return ST_OR; }
-"not"       { return ST_NOT; }
+"&&"        { return ST_AND; }
+"||"        { return ST_OR; }
+"!"         { return ST_NOT; }
 "null"      { return ST_NULL; }
 "class"     { return ST_CLASS; }
 "return"    { return ST_RETURN; }
@@ -45,19 +36,20 @@ comment    '[^\n]*
 "/"         { return ST_SLASH; }
 "="         { return ST_EQ; }
 "=="        { return ST_EQEQ; }
-"<>"        { return ST_NOT_EQ; }
+"!="        { return ST_NOT_EQ; }
 "<="        { return ST_LESS_EQ; }
 ">="        { return ST_GREATER_EQ; }
 "<"         { return ST_LESS; }
 ">"         { return ST_GREATER; }
 "("         { return ST_OPEN_PAREN; }
 ")"         { return ST_CLOSE_PAREN; }
+"{"         { return ST_OPEN_BRACE; }
+"}"         { return ST_CLOSE_BRACE; }
 ","         { return ST_COMMA; }
 "&"         { return ST_AMP; }
 "_"         { return ST_UNDERSCORE; }
 ";"         { return ST_SEMICOLON; }
-{newline}   { return ST_NEWLINE; }
-
+":"         { return ST_COLON; }
 
 {spaces}     /* Ignore insignificant whitespace */
 
@@ -109,7 +101,7 @@ addsymbol:
     yylval.integer = atoi(yytext);
     return (T_INT); }
 
-({newline}|{comment})+ { return ST_COMMENT; }
+({comment})+
 
 .          { bad_characters(yytext); return (T_OTHER); }
 
