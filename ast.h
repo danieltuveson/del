@@ -12,6 +12,7 @@ typedef struct List Values;
 typedef struct List Statements;
 typedef struct List Let;
 typedef struct List Definitions;
+typedef struct List Methods;
 
 enum ValueType {
     VTYPE_SYMBOL,
@@ -55,6 +56,7 @@ enum TLDType {
 struct Class {
     Symbol name;
     Definitions *definitions;
+    Methods *methods;
 };
 
 struct FunDef {
@@ -156,8 +158,9 @@ struct Statement {
 };
 
 /* TLD constructors */
-struct TopLevelDecl *new_class(Symbol symbol, Definitions *definitions);
-struct TopLevelDecl *new_fundef(Symbol symbol, Definitions *definitions, Statements *stmts);
+struct TopLevelDecl *new_class(Symbol symbol, Definitions *definitions, Methods *methods);
+struct TopLevelDecl *new_tld_fundef(Symbol symbol, Definitions *args, Statements *stmts);
+struct FunDef *new_fundef(Symbol symbol, Definitions *args, Statements *stmts);
 
 /* Statement constructors */
 struct Statement *new_set(Symbol symbol, struct Value *val);

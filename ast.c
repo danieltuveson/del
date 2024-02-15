@@ -3,24 +3,31 @@
 #include "printers.h"
 
 /* Functions to create top level definitions */
-struct TopLevelDecl *new_class(Symbol symbol, Definitions *definitions)
+struct TopLevelDecl *new_class(Symbol symbol, Definitions *definitions, Methods *methods)
 {
     struct TopLevelDecl *tld = malloc(sizeof(struct TopLevelDecl));
     tld->type = TLD_TYPE_CLASS;
     tld->cls = malloc(sizeof(struct Class));
     tld->cls->name = symbol;
-    tld->cls->definitions = reset_list_head(definitions);
+    tld->cls->definitions = definitions == NULL ? NULL : reset_list_head(definitions);
+    tld->cls->methods = methods == NULL ? NULL : reset_list_head(methods);
     return tld;
 }
 
-struct TopLevelDecl *new_fundef(Symbol symbol, Definitions *args, Statements *stmts)
+struct FunDef *new_fundef(Symbol symbol, Definitions *args, Statements *stmts)
+{
+    struct FunDef *fundef = malloc(sizeof(struct FunDef));
+    fundef->name = symbol;
+    fundef->args = reset_list_head(args);
+    fundef->stmts = reset_list_head(stmts);
+    return fundef;
+}
+
+struct TopLevelDecl *new_tld_fundef(Symbol symbol, Definitions *args, Statements *stmts)
 {
     struct TopLevelDecl *tld = malloc(sizeof(struct TopLevelDecl));
     tld->type = TLD_TYPE_FUNDEF;
-    tld->fundef = malloc(sizeof(struct FunDef));
-    tld->fundef->name = symbol;
-    tld->fundef->args = reset_list_head(args);
-    tld->fundef->stmts = reset_list_head(stmts);
+    tld->fundef = new_fundef(symbol, args, stmts);
     return tld;
 }
 

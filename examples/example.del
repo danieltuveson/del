@@ -5,6 +5,15 @@
 // print("hello, w")
 //
 // Some function
+
+class Stuff {
+    property: int;
+    otherprop: string;
+    function dostuff(thing: int) {
+        inner = thing(4);
+    }
+}
+
 function add(a: int, b: int) {
     if (a > b) {
         return (a + b);

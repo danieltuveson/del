@@ -234,11 +234,12 @@ static void left_pad(int indent) {
     for (int i = 0; i < indent; i++) putchar(' ');
 }
 
-static void print_definitions(struct List *lst, char sep)
+static void print_definitions(struct List *lst, char sep, int indent)
 {
     struct Definition *def = NULL;
     while (lst != NULL) {
         def = (struct Definition *) lst->value;
+        if (sep == ';') left_pad(indent);
         printf("%s: ", lookup_symbol(def->name));
         switch (def->type) {
             case TYPE_INT:
@@ -254,7 +255,8 @@ static void print_definitions(struct List *lst, char sep)
                 printf("string");
                 break;
         }
-        if (lst->next) printf("%c ", sep);
+        if (lst->next && sep == ',') printf(", ");
+        if (sep == ';') printf(";\n");
         lst = lst->next;
     }
 }
@@ -265,7 +267,7 @@ static void print_statement_indent(struct Statement *stmt, int indent)
     switch (stmt->type) {
         case STMT_LET:
             printf("let ");
-            print_definitions(stmt->let, ',');
+            print_definitions(stmt->let, ',', indent);
             break;
         case STMT_SET:
             printf("%s = ", lookup_symbol(stmt->set->symbol));
@@ -339,25 +341,43 @@ void print_statements(Statements *stmts)
     print_statements_indent(stmts, 0);
 }
 
-static void print_fundef(struct FunDef *fundef, int indent)
+static void print_fundef(struct FunDef *fundef, int indent, int ismethod)
 {
-    printf("function %s(", lookup_symbol(fundef->name));
-    print_definitions(fundef->args, ',');
+    left_pad(indent);
+    if (!ismethod) {
+        printf("function ");
+    }
+    printf("%s(", lookup_symbol(fundef->name));
+    print_definitions(fundef->args, ',', indent);
     printf(") {\n");
     print_statements_indent(fundef->stmts, TAB_WIDTH + indent);
-    printf("}\n");
+    left_pad(indent);
+    printf("}");
+}
+
+static void print_class(struct Class *cls, int indent)
+{
+    printf("class %s {\n", lookup_symbol(cls->name));
+    print_definitions(cls->definitions, ';', indent + TAB_WIDTH);
+    for (Methods *methods = cls->methods; methods != NULL; methods = methods->next) {
+        struct FunDef *method = (struct FunDef *) methods->value;
+        print_fundef(method, indent + TAB_WIDTH, 1);
+        printf("\n");
+    }
+    printf("}");
 }
 
 static void print_tld_indent(struct TopLevelDecl *tld, int indent)
 {
     switch (tld->type) {
         case TLD_TYPE_CLASS:
-            printf("**print function for class not yet implemented**\n");
+            print_class(tld->cls, indent);
             break;
         case TLD_TYPE_FUNDEF:
-            print_fundef(tld->fundef, indent);
+            print_fundef(tld->fundef, indent, 0);
             break;
     }
+    printf("\n\n");
 }
 
 static void print_tlds_indent(TopLevelDecls *tlds, int indent)

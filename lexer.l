@@ -50,10 +50,10 @@ comment    \/\/[^\n]*
 "_"         { return ST_UNDERSCORE; }
 ";"         { return ST_SEMICOLON; }
 ":"         { return ST_COLON; }
-
+"."         { return ST_DOT; }
 {spaces}     /* Ignore insignificant whitespace */
 
-{letter}* {
+{letter}+ {
     /* Adds symbols to symbol table */
     uint64_t cnt = 0;
     struct List *symbol_table = ast.symbol_table;

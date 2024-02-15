@@ -20,6 +20,7 @@ int yyerror(const char *s);
 %token ST_COMMENT
 %token ST_CLASS ST_RETURN
 %token ST_COLON ST_OPEN_BRACE ST_CLOSE_BRACE
+%token ST_DOT
 
 %left ST_OR
 %left ST_AND
@@ -40,8 +41,10 @@ int yyerror(const char *s);
     double floating;
     struct List *stmts;
     struct List *tlds;
+    struct List *methods;
     struct List *definitions;
     struct List *args;
+    struct FunDef *method;
     struct Definition *definition;
     struct Statement *stmt;
     struct TopLevelDecl *tld;
@@ -53,14 +56,13 @@ int yyerror(const char *s);
 %type <string> T_STRING
 %type <tlds> program
 %type <tlds> tlds
+%type <methods> methods
 %type <tld> tld
 %type <tld> cls
 %type <tld> fundef
+%type <method> method
 %type <stmts> statements
 %type <stmts> block
-// %type <stmt> open_statement
-// %type <stmt> closed_statement
-// %type <stmt> simple_statement
 %type <stmt> statement
 %type <type> type
 %type <definitions> class_definitions
@@ -70,11 +72,6 @@ int yyerror(const char *s);
 %type <args> args
 %type <val> subexpr
 
-// %type <name> STRING
-
-// %type <integer> expr
-// %type <integer> stmt
-// %type <floating> NUM
 %define parse.error detailed
 %require "3.8.2"
 %%
@@ -88,40 +85,32 @@ tlds: tld { $$ = new_list($1); }
 tld: fundef { $$ = $1; } | cls { $$ = $1; };
 
 fundef: ST_FUNCTION T_SYMBOL ST_OPEN_PAREN definitions ST_CLOSE_PAREN ST_OPEN_BRACE
-        statements ST_CLOSE_BRACE { $$ = new_fundef($2, $4, $7); }
+        statements ST_CLOSE_BRACE { $$ = new_tld_fundef($2, $4, $7); }
 ;
 
-cls: ST_CLASS T_SYMBOL ST_OPEN_BRACE class_definitions ST_CLOSE_BRACE
-       { $$ = new_class($2, $4); }
+cls: ST_CLASS T_SYMBOL ST_OPEN_BRACE class_definitions methods ST_CLOSE_BRACE
+       { $$ = new_class($2, $4, $5); }
+   | ST_CLASS T_SYMBOL ST_OPEN_BRACE class_definitions ST_CLOSE_BRACE
+       { $$ = new_class($2, $4, NULL); }
+   | ST_CLASS T_SYMBOL ST_OPEN_BRACE methods ST_CLOSE_BRACE
+       { $$ = new_class($2, NULL, $4); }
 ;
 
 class_definitions: definition ST_SEMICOLON { $$ = new_list($1); }
                  | definition ST_SEMICOLON class_definitions { $$ = append($3, $1); }
 ;
 
+methods: method { $$ = new_list($1); }
+       | method methods { $$ = append($2, $1); }
+;
+
+method: ST_FUNCTION T_SYMBOL ST_OPEN_PAREN definitions ST_CLOSE_PAREN ST_OPEN_BRACE
+        statements ST_CLOSE_BRACE { $$ = new_fundef($2, $4, $7); }
+;
+
 statements: statement { $$ = new_list($1); }
           | statement statements { $$ = append($2, $1); }
 ;
-
-// statement: open_statement
-//          | closed_statement
-// ;
-// 
-// open_statement: ST_IF expr simple_statement { $$ = new_if($2, $3, NULL); }
-//               | ST_IF expr open_statement { $$ = new_if($2, $3, NULL); }
-//               | ST_IF expr closed_statement ST_ELSE open_statement { $$ = new_if($2, $3, $5); }
-//               | ST_WHILE expr open_statement { $$ = new_while($2, $3); }
-// ;
-// 
-// closed_statement: simple_statement
-//                 | ST_IF expr closed_statement ST_ELSE closed_statement { $$ = new_if($2, $3, $5); }
-//                 | ST_WHILE expr closed_statement { $$ = new_while($2, $3); }
-//                 ;
-// 
-// simple_statements: simple_statement { $$ = new_list($1); }
-//                  | ST_OPEN_BRACE simple_statement simple_statements ST_CLOSE_BRACE
-//                    { $$ = append($3, $2); }
-// ;
 
 block: ST_OPEN_BRACE statements ST_CLOSE_BRACE { $$ = $2; };
 
@@ -133,6 +122,8 @@ statement: T_SYMBOL ST_EQ expr ST_SEMICOLON { $$ = new_set($1, $3); }
          | ST_IF expr block ST_ELSE block { $$ = new_if($2, $3, $5); }
          | ST_WHILE expr block { $$ = new_while($2, $3); }
 ;
+
+// funcall: T_SYMBOL ST_OPEN_PAREN args ST_CLOSE_PAREN ST_SEMICOLON { $$ = new_sfuncall($1, $3); }
 
 definitions: definition { $$ = new_list($1); }
            | definition ST_COMMA definitions { $$ = append($3, $1); }
