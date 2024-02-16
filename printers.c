@@ -110,9 +110,19 @@ void print_locals(struct Locals *locals)
     printf("[");
     for (int i = 0; i < locals->count; i++) {
         printf(" { %s: ", lookup_symbol(locals->names[i]));
-        printf("%llu }, ", locals->values[i]);
+        printf("%lli }, ", (int64_t) locals->values[i]);
     }
     printf("]\n");
+}
+
+void print_heap(struct Heap *heap)
+{
+    printf("[ objcount: %d, offset: %d, values: { ", heap->objcount, heap->offset);
+    for (int i = 0; i < heap->offset; i++) {
+        printf("%llu", heap->values[i]);
+        if (i != heap->offset - 1) printf(", ");
+    }
+    printf(" } ]\n");
 }
 
 /* AST printers. Currently used for debugging purposes but could be used for 

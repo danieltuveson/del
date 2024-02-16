@@ -148,6 +148,22 @@ static void test_compile_set(void)
     printf("compile_set test passed\n");
 }
 
+static void test_compile_object(void)
+{
+    init_test_state();
+
+    // test runtime
+    load(cc, PUSH);
+    load(cc, 567);
+    load(cc, PUSH);
+    load(cc, 123);
+    load(cc, PUSH);
+    load(cc, 2);
+    load(cc, PUSH_HEAP);
+    vm_execute(instructions);
+    printf("compile_object test passed\n");
+}
+
 static void run_tests(void)
 {
     printf("start of compilation tests\n");
@@ -158,6 +174,7 @@ static void run_tests(void)
     test_compile_add();
     test_compile_string();
     test_compile_set();
+    test_compile_object();
     printf("end of compilation tests\n");
 }
  

@@ -18,7 +18,7 @@ struct FunDef *new_fundef(Symbol symbol, Definitions *args, Statements *stmts)
 {
     struct FunDef *fundef = malloc(sizeof(struct FunDef));
     fundef->name = symbol;
-    fundef->args = reset_list_head(args);
+    fundef->args = args;
     fundef->stmts = reset_list_head(stmts);
     return fundef;
 }
@@ -86,7 +86,7 @@ static struct FunCall *new_funcall(Symbol funname, Values *args)
 {
     struct FunCall *funcall = malloc(sizeof(struct FunCall));
     funcall->funname = funname;
-    funcall->args = reset_list_head(args);
+    funcall->args = args;
     return funcall;
 }
 

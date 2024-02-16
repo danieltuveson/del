@@ -6,23 +6,22 @@
 //
 // Some function
 
-class Stuff {
-    property: int;
-    otherprop: string;
-    function dostuff(thing: int) {
-        inner = thing(4);
-    }
-}
+// class Stuff {
+//     property: int;
+//     otherprop: string;
+//     function dostuff(thing: int) {
+//         inner = thing(4);
+//     }
+// }
 
 function add(a: int, b: int) {
-    if (a > b) {
-        return (a + b);
-    } else {
-        return (b - a);
-    }
+    return b - a;
 }
 
 // Entrypoint
 function main(thing: int) {
-    x = add(2, 5);
+    a = 2;
+    b = 8;
+    x = b - a;
+    x = add(2, 8);
 }

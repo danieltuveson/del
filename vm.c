@@ -52,9 +52,9 @@ static inline void push_heap(struct Heap *heap, struct Stack *stack)
     printf("location: %llu\n", location);
     for (uint64_t i = 0; i < count; i++) {
         value = pop(stack);
-        char str[9] = {0};
-        uint64_as_string(value, str, 0);
-        printf("value: %llu\n", value);
+        // char str[9] = {0};
+        // uint64_as_string(value, str, 0);
+        // printf("value: %llu\n", value);
         heap->values[heap->offset++] = value;
     }
     push(stack, location);
@@ -152,23 +152,24 @@ long vm_execute(uint64_t *instructions)
                 break;
             case PUSH_HEAP:
                 push_heap(&heap, &stack);
+                print_heap(&heap);
                 break;
             /* Grotesque lump of binary operators. Boring! */
-            case AND: eval_binary_op(&stack, val1, val2, &&, uint64_t); break;
-            case OR:  eval_binary_op(&stack, val1, val2, ||, uint64_t); break;
-            case ADD: eval_binary_op(&stack, val1, val2, +, uint64_t);  break;
-            case SUB: eval_binary_op(&stack, val1, val2, -, uint64_t);  break;
-            case MUL: eval_binary_op(&stack, val1, val2, *, uint64_t);  break;
-            case DIV: eval_binary_op(&stack, val2, val1, /, uint64_t);  break;
-            case EQ:  eval_binary_op(&stack, val1, val2, ==, uint64_t); break;
-            case NEQ: eval_binary_op(&stack, val1, val2, !=, uint64_t); break;
-            case LTE: eval_binary_op(&stack, val1, val2, <=, uint64_t); break;
-            case GTE: eval_binary_op(&stack, val1, val2, >=, uint64_t); break;
-            case LT:  eval_binary_op(&stack, val1, val2, <, uint64_t);  break;
-            case GT:  eval_binary_op(&stack, val1, val2, >, uint64_t);  break;
-            case UNARY_PLUS: val1 = (uint64_t) pop(&stack);
+            case AND: eval_binary_op(&stack, val1, val2, &&, int64_t); break;
+            case OR:  eval_binary_op(&stack, val1, val2, ||, int64_t); break;
+            case ADD: eval_binary_op(&stack, val1, val2, +, int64_t);  break;
+            case SUB: eval_binary_op(&stack, val1, val2, -, int64_t);  break;
+            case MUL: eval_binary_op(&stack, val1, val2, *, int64_t);  break;
+            case DIV: eval_binary_op(&stack, val2, val1, /, int64_t);  break;
+            case EQ:  eval_binary_op(&stack, val1, val2, ==, int64_t); break;
+            case NEQ: eval_binary_op(&stack, val1, val2, !=, int64_t); break;
+            case LTE: eval_binary_op(&stack, val1, val2, <=, int64_t); break;
+            case GTE: eval_binary_op(&stack, val1, val2, >=, int64_t); break;
+            case LT:  eval_binary_op(&stack, val1, val2, <, int64_t);  break;
+            case GT:  eval_binary_op(&stack, val1, val2, >, int64_t);  break;
+            case UNARY_PLUS: val1 = (int64_t) pop(&stack);
                 push(&stack, (uint64_t) val1); break;
-            case UNARY_MINUS: val1 = (uint64_t) pop(&stack);
+            case UNARY_MINUS: val1 = (int64_t) pop(&stack);
                 push(&stack, (uint64_t) (-1 * val1)); break;
             case SET:
                 assert("error SET is not yet implemented\n" && 0);
@@ -193,7 +194,6 @@ long vm_execute(uint64_t *instructions)
                 val1 = (uint64_t) pop(&stack);
                 if (!val1) {
                     ip = (uint64_t) pop(&stack);
-                    //printf("jne'ing to %li!\n", ip);
                     ip--; // reverse the effects of the ip++ below
                 } else {
                     pop(&stack);
@@ -201,7 +201,6 @@ long vm_execute(uint64_t *instructions)
                 break;
             case JMP:
                 ip = (uint64_t) pop(&stack);
-                //printf("jumping to %li!\n", ip);
                 ip--; // reverse the effects of the ip++ below
                 break;
             case POP:

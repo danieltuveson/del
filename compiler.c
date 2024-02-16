@@ -81,7 +81,7 @@ static void compile_unary_op(struct CompilerContext *cc, struct Value *val, enum
 
 static void compile_funargs(struct CompilerContext *cc, struct FunDef *fundef)
 {
-    for (Definitions *defs = fundef->args; defs != NULL; defs = defs->next) {
+    for (Definitions *defs = fundef->args; defs != NULL; defs = defs->prev) {
         struct Definition *def = (struct Definition *) defs->value;
         load(cc, PUSH);
         load(cc, def->name);
@@ -107,7 +107,7 @@ static void compile_funcall(struct CompilerContext *cc, struct FunCall *funcall)
 {
     load(cc, PUSH);
     int bookmark = next(cc);
-    for (Values *args = funcall->args; args != NULL; args = args->next) {
+    for (Values *args = funcall->args; args != NULL; args = args->prev) {
         compile_value(cc, args->value);
     }
     load(cc, PUSH);
@@ -342,8 +342,6 @@ static void resolve_function_declarations(uint64_t *instructions, struct Functio
 
 int compile(struct CompilerContext *cc, TopLevelDecls *tlds)
 {
-    // compile_statements(cc, stmts, offset);
-    // cc->instructions[offset] = (uint64_t) RET;
     compile_tlds(cc, tlds);
     resolve_function_declarations(cc->instructions, cc->ft);
     return cc->offset;
