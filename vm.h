@@ -40,10 +40,21 @@ struct Stack {
     uint64_t values[STACK_SIZE];
 };
 
-/* A value on the heap consists of a "count" prefixing the number of values for that object
- * For example, if you wanted to push a struct of { 4.5, 6.8 } onto a new heap, it
- * the heap would become [ 2, 4.5, 6.8 ]. If you pushed {45, 68, 90}, it would become
- * [ 2, 4.5, 6.8, 3, 45, 68, 90 ]
+#define COUNT_OFFSET    32
+#define METADATA_OFFSET 48
+#define METADATA_MASK   (UINT64_MAX - ((1ULL << METADATA_OFFSET) - 1))
+#define LOCATION_MASK   ((1ULL << COUNT_OFFSET) - 1)
+#define COUNT_MASK      (UINT64_MAX - (LOCATION_MASK + METADATA_MASK))
+
+/* A value on the heap is just a slice of bytes
+ * A pointer to the heap consists of 3 parts:
+ * - The first byte represents metadata about the heap value. TBD what goes here - I'm going to
+ *   include the "mark" portion of mark and sweep gc as one of these bits. I also think I should
+ *   include metadata for strings, like how many bytes are in the last uint64.
+ * - The next 3 bytes stores the size of the data. For most objects this will be small, but
+ *   arrays could possibly use up the full range.
+ * - The last 32 bits store the location in the heap: that means our heap can store up to about 
+ *   4 gigabytes of data before hitting this limit.
  */
 struct Heap {
     int objcount;

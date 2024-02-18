@@ -45,6 +45,8 @@ comment    \/\/[^\n]*
 ")"         { return ST_CLOSE_PAREN; }
 "{"         { return ST_OPEN_BRACE; }
 "}"         { return ST_CLOSE_BRACE; }
+"["         { return ST_OPEN_BRACKET; }
+"]"         { return ST_CLOSE_BRACKET; }
 ","         { return ST_COMMA; }
 "&"         { return ST_AMP; }
 "_"         { return ST_UNDERSCORE; }

@@ -38,8 +38,8 @@ void print_instructions(struct CompilerContext *cc)
             case JNE:
                 printf("JNE\n");
                 break;
-            case DEF:
-                printf("DEF\n");
+            case SET_LOCAL:
+                printf("SET_LOCAL\n");
                 break;
             case POP:
                 printf("POP\n");
@@ -80,9 +80,9 @@ void print_instructions(struct CompilerContext *cc)
             case CALL:
                 printf("CALL\n");
                 break;
-            case LOAD:
+            case GET_LOCAL:
                 i++;
-                printf("LOAD %llu\n", (uint64_t) instructions[i]);
+                printf("GET_LOCAL %llu\n", (uint64_t) instructions[i]);
                 break;
             case EXIT:
                 printf("EXIT\n");
@@ -271,6 +271,24 @@ static void print_definitions(struct List *lst, char sep, int indent)
     }
 }
 
+static void print_set(struct Set *set)
+{
+    printf("%s", lookup_symbol(set->symbol));
+    for (LValues *lvalues = set->lvalues; lvalues != NULL; lvalues = lvalues->next) {
+        struct LValue *lvalue = lvalues->value;
+        if (lvalue->type == LV_PROPERTY) {
+            printf(".%s", lookup_symbol(lvalue->property));
+        } else {
+            printf("[");
+            print_value(lvalue->index);
+            printf("]");
+        }
+    }
+    printf(" = ");
+    print_value(set->val);
+    printf(";");
+}
+
 static void print_statement_indent(struct Statement *stmt, int indent)
 {
     left_pad(indent);
@@ -280,9 +298,7 @@ static void print_statement_indent(struct Statement *stmt, int indent)
             print_definitions(stmt->let, ',', indent);
             break;
         case STMT_SET:
-            printf("%s = ", lookup_symbol(stmt->set->symbol));
-            print_value(stmt->set->val);
-            printf(";");
+            print_set(stmt->set);
             break;
         case STMT_IF:
             printf("if ");

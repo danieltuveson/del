@@ -3,6 +3,24 @@
 #include "vm.h"
 #include "printers.h"
 
+typedef uint64_t HeapPointer;
+
+static inline void set_count(HeapPointer *ptr, uint64_t count)
+{
+    assert(count <= UINT16_MAX);
+    *ptr = *ptr | (count << COUNT_OFFSET);
+}
+
+static inline uint64_t get_count(HeapPointer ptr)
+{
+    return (ptr & COUNT_MASK) >> COUNT_OFFSET;
+}
+
+static inline uint64_t get_location(HeapPointer ptr)
+{
+    return ptr & LOCATION_MASK;
+}
+
 static inline void push(struct Stack *stack, uint64_t value)
 {
     stack->values[stack->offset++] = value;
@@ -43,13 +61,14 @@ static void uint64_as_string(uint64_t value, char *str, int start)
 /* Pops values from the stack and pushes them onto the heap */
 static inline void push_heap(struct Heap *heap, struct Stack *stack)
 {
-    uint64_t value, count, location;
+    uint64_t value, count, ptr;
     value = 0;
     count = pop(stack);
-    location = heap->offset;
-    heap->values[heap->offset++] = count;
-    printf("count: %llu\n", count);
-    printf("location: %llu\n", location);
+    ptr = heap->offset;
+    set_count(&ptr, count);
+    // heap->values[heap->offset++] = count;
+    // printf("count: %llu\n", count);
+    // printf("location: %llu\n", location);
     for (uint64_t i = 0; i < count; i++) {
         value = pop(stack);
         // char str[9] = {0};
@@ -57,19 +76,29 @@ static inline void push_heap(struct Heap *heap, struct Stack *stack)
         // printf("value: %llu\n", value);
         heap->values[heap->offset++] = value;
     }
-    push(stack, location);
+    // Store count in bits before location
+    push(stack, ptr);
     heap->objcount++;
 }
 
 /* Get value from the heap and push it onto the stack */
-static inline void get_heap(struct Heap *heap, struct Stack *stack)
+// static inline void get_heap(struct Heap *heap, struct Stack *stack)
+// {
+//     uint64_t ptr, count, location;
+//     ptr = pop(stack);
+//     location = get_location(ptr);
+//     count = get_count(ptr);
+//     for (uint64_t i = count + location - 1; i >= location; i--) {
+//         push(stack, heap->values[i]);
+//     }
+// }
+
+static inline void get_heap(struct Heap *heap, struct Stack *stack, uint64_t index)
 {
-    uint64_t count, location;
-    location = pop(stack);
-    count = heap->values[location];
-    for (uint64_t i = count + location - 1; i >= location; i--) {
-        push(stack, heap->values[i]);
-    }
+    uint64_t ptr, count, location;
+    ptr = pop(stack);
+    location = get_location(ptr);
+    push(stack, heap->values[location + index]);
 }
 
 static int lookup(struct Locals *locals, Symbol lookup_val, uint64_t *val)
@@ -174,11 +203,11 @@ long vm_execute(uint64_t *instructions)
             case SET:
                 assert("error SET is not yet implemented\n" && 0);
                 break;
-            case DEF:
+            case SET_LOCAL:
                 def(&stack, &locals);
                 print_locals(&locals);
                 break;
-            case LOAD:
+            case GET_LOCAL:
                 ip++;
                 symbol = (Symbol) instructions[ip];
                 if (lookup(&locals, symbol, &val1)) {
@@ -207,7 +236,8 @@ long vm_execute(uint64_t *instructions)
                 ret = (uint64_t) pop(&stack);
                 break;
             case GET_HEAP:
-                get_heap(&heap, &stack);
+                val1 = (uint64_t) pop(&stack);
+                get_heap(&heap, &stack, val1);
                 break;
             case EXIT:
                 goto exit_loop;

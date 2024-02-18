@@ -19,7 +19,7 @@ int yyerror(const char *s);
 %token ST_AMP ST_UNDERSCORE ST_SEMICOLON ST_NEWLINE
 %token ST_COMMENT
 %token ST_CLASS ST_RETURN
-%token ST_COLON ST_OPEN_BRACE ST_CLOSE_BRACE
+%token ST_COLON ST_OPEN_BRACE ST_CLOSE_BRACE ST_OPEN_BRACKET ST_CLOSE_BRACKET
 %token ST_DOT
 
 %left ST_OR
@@ -49,6 +49,8 @@ int yyerror(const char *s);
     struct Statement *stmt;
     struct TopLevelDecl *tld;
     enum Type type;
+    struct List *lvalues;
+    struct LValue *lvalue;
 }
 
 %type <integer> T_INT
@@ -71,6 +73,8 @@ int yyerror(const char *s);
 %type <val> expr
 %type <args> args
 %type <val> subexpr
+%type <lvalues> accessors
+%type <lvalue> accessor
 
 %define parse.error detailed
 %require "3.8.2"
@@ -114,7 +118,8 @@ statements: statement { $$ = new_list($1); }
 
 block: ST_OPEN_BRACE statements ST_CLOSE_BRACE { $$ = $2; };
 
-statement: T_SYMBOL ST_EQ expr ST_SEMICOLON { $$ = new_set($1, $3); }
+statement: T_SYMBOL ST_EQ expr ST_SEMICOLON { $$ = new_set($1, $3, NULL); }
+         | T_SYMBOL accessors expr ST_SEMICOLON { $$ = new_set($1, $3, $2); }
          | ST_LET definitions ST_SEMICOLON { $$ = new_let($2); }
          | T_SYMBOL ST_OPEN_PAREN args ST_CLOSE_PAREN ST_SEMICOLON { $$ = new_sfuncall($1, $3); }
          | ST_RETURN expr ST_SEMICOLON { $$ = new_return($2); }
@@ -123,7 +128,11 @@ statement: T_SYMBOL ST_EQ expr ST_SEMICOLON { $$ = new_set($1, $3); }
          | ST_WHILE expr block { $$ = new_while($2, $3); }
 ;
 
-// funcall: T_SYMBOL ST_OPEN_PAREN args ST_CLOSE_PAREN ST_SEMICOLON { $$ = new_sfuncall($1, $3); }
+accessors: accessor accessors { $$ = append($2, $1); }
+         | accessor ST_EQ { $$ = new_list($1); }
+
+accessor: ST_DOT T_SYMBOL { $$ = new_property($2); }
+        | ST_OPEN_BRACKET T_INT ST_CLOSE_BRACKET { $$ = new_index(new_integer($2)); }
 
 definitions: definition { $$ = new_list($1); }
            | definition ST_COMMA definitions { $$ = append($3, $1); }

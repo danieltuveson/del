@@ -14,14 +14,15 @@
 //     }
 // }
 
-function add(a: int, b: int) {
-    return b - a;
-}
+// function add(a: int, b: int) {
+//     return b - a;
+// }
 
 // Entrypoint
 function main(thing: int) {
     a = 2;
-    b = 8;
+    b.blorp = 8;
+    b[5] = "hi";
     x = b - a;
     x = add(2, 8);
 }

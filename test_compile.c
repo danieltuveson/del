@@ -56,7 +56,7 @@ static void test_compile_loadsym(void)
     assert(cc->offset == 0);
     compile_value(cc, new_symbol(1245));
     assert(cc->offset == 2);
-    assert(cc->instructions[0] == LOAD);
+    assert(cc->instructions[0] == GET_LOCAL);
     assert(cc->instructions[1] == 1245);
     assert(cc->offset == 2);
     printf("compile_loadsym test passed\n");
@@ -130,17 +130,17 @@ static void test_compile_set(void)
 {
     init_test_state();
     assert(cc->offset == 0);
-    compile_statement(cc, new_set(1000, new_integer(123)));
+    compile_statement(cc, new_set(1000, new_integer(123), NULL));
 
     assert(cc->instructions[0] == PUSH);
     assert(cc->instructions[1] == 123);
     assert(cc->instructions[2] == PUSH);
     assert(cc->instructions[3] == 1000);
-    assert(cc->instructions[4] == DEF);
+    assert(cc->instructions[4] == SET_LOCAL);
     assert(cc->offset == 5);
 
     // test runtime
-    load(cc, LOAD);
+    load(cc, GET_LOCAL);
     load(cc, 1000);
     load(cc, POP);
     load(cc, EXIT);
@@ -153,6 +153,8 @@ static void test_compile_object(void)
     init_test_state();
 
     // test runtime
+
+    // push heap value
     load(cc, PUSH);
     load(cc, 567);
     load(cc, PUSH);
@@ -160,6 +162,19 @@ static void test_compile_object(void)
     load(cc, PUSH);
     load(cc, 2);
     load(cc, PUSH_HEAP);
+    
+    // Set local variable to heap location
+    // load(cc, PUSH);
+    // load(cc, 1000);
+    // load(cc, SET_LOCAL);
+    
+    // Get heap value 
+    load(cc, PUSH);
+    load(cc, 0);
+    load(cc, GET_HEAP);
+
+    load(cc, POP);
+    load(cc, EXIT);
     vm_execute(instructions);
     printf("compile_object test passed\n");
 }

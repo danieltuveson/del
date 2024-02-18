@@ -44,9 +44,9 @@ enum Code {
     JMP,
     POP,
     EXIT,
-    DEF,
+    SET_LOCAL,
     SET,
-    LOAD,
+    GET_LOCAL,
     CALL,
     GET_HEAP,
     SWAP

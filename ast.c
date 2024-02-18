@@ -32,12 +32,13 @@ struct TopLevelDecl *new_tld_fundef(Symbol symbol, Definitions *args, Statements
 }
 
 /* Functions to create Statements */
-struct Statement *new_set(Symbol symbol, struct Value *val)
+struct Statement *new_set(Symbol symbol, struct Value *val, LValues *lvalues)
 {
     struct Statement *stmt = malloc(sizeof(struct Statement));
     stmt->type = STMT_SET;
     stmt->set = malloc(sizeof(struct Set));
     stmt->set->symbol = symbol;
+    stmt->set->lvalues = lvalues;
     stmt->set->val = val;
     return stmt;
 }
@@ -161,6 +162,22 @@ struct Value *new_expr(struct Expr *expr)
     val->type = VTYPE_EXPR;
     val->expr = expr;
     return val;
+}
+
+struct LValue *new_property(Symbol property)
+{
+    struct LValue *lvalue = malloc(sizeof(struct LValue));
+    lvalue->type = LV_PROPERTY;
+    lvalue->property = property;
+    return lvalue;
+}
+
+struct LValue *new_index(struct Value *index)
+{
+    struct LValue *lvalue = malloc(sizeof(struct LValue));
+    lvalue->type = LV_INDEX;
+    lvalue->index = index;
+    return lvalue;
 }
 
 /* Macros used to generate functions for creating Expressions.

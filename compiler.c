@@ -26,7 +26,7 @@ static void compile_int(struct CompilerContext *cc, uint64_t integer)
 
 static void compile_loadsym(struct CompilerContext *cc, Symbol symbol)
 {
-    load(cc, LOAD);
+    load(cc, GET_LOCAL);
     load(cc, symbol);
 }
 
@@ -85,7 +85,7 @@ static void compile_funargs(struct CompilerContext *cc, struct FunDef *fundef)
         struct Definition *def = (struct Definition *) defs->value;
         load(cc, PUSH);
         load(cc, def->name);
-        load(cc, DEF);
+        load(cc, SET_LOCAL);
     }
 }
 
@@ -153,13 +153,12 @@ static void compile_expr(struct CompilerContext *cc, struct Expr *expr)
     }
 }
 
-
 static void compile_set(struct CompilerContext *cc, struct Set *set)
 {
     compile_value(cc, set->val);
     load(cc, PUSH);
     load(cc, set->symbol);
-    load(cc, DEF);
+    load(cc, SET_LOCAL);
 }
 
 static void compile_return(struct CompilerContext *cc, struct Value *ret)
@@ -230,7 +229,7 @@ static void compile_statements(struct CompilerContext *cc, Statements *stmts)
 //         load(0); // Initialize to 0
 //         load(PUSH);
 //         load(def->name);
-//         load(DEF);
+//         load(SET_LOCAL);
 //     }
 //     return offset;
 // }
@@ -242,7 +241,7 @@ static void compile_statements(struct CompilerContext *cc, Statements *stmts)
 //             load(PUSH);
 //             offset = compile_value(cc, stmt->set->val, next());
 //             load(stmt->set->symbol);
-//             load(DEF); // will work on an alternate "SET" operation later.
+//             load(SET_LOCAL); // will work on an alternate "SET" operation later.
 //             break;
 //         case STMT_IF:
 //             offset = compile_if(cc, stmt, offset);
@@ -338,15 +337,15 @@ static void resolve_function_declarations(uint64_t *instructions, struct Functio
     return;
 }
 
-// #include "test_compile.c"
+#include "test_compile.c"
 
 int compile(struct CompilerContext *cc, TopLevelDecls *tlds)
 {
-    compile_tlds(cc, tlds);
-    resolve_function_declarations(cc->instructions, cc->ft);
-    return cc->offset;
-    // run_tests();
-    // printf("compiler under construction. come back later.\n");
-    // exit(0);
+    // compile_tlds(cc, tlds);
+    // resolve_function_declarations(cc->instructions, cc->ft);
+    // return cc->offset;
+    run_tests();
+    printf("compiler under construction. come back later.\n");
+    exit(0);
 }
 

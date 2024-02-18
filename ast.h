@@ -13,6 +13,7 @@ typedef struct List Statements;
 typedef struct List Let;
 typedef struct List Definitions;
 typedef struct List Methods;
+typedef struct List LValues;
 
 enum ValueType {
     VTYPE_SYMBOL,
@@ -95,6 +96,19 @@ struct Value {
     };
 };
 
+enum LValueType {
+    LV_PROPERTY,
+    LV_INDEX
+};
+
+struct LValue {
+    enum LValueType type;
+    union {
+        Symbol property;
+        struct Value *index;
+    };
+};
+
 struct Definition {
     Symbol name;
     enum Type type;
@@ -102,6 +116,7 @@ struct Definition {
 
 struct Set {
     Symbol symbol;
+    LValues *lvalues; // May be null
     struct Value *val;
 };
 
@@ -163,7 +178,7 @@ struct TopLevelDecl *new_tld_fundef(Symbol symbol, Definitions *args, Statements
 struct FunDef *new_fundef(Symbol symbol, Definitions *args, Statements *stmts);
 
 /* Statement constructors */
-struct Statement *new_set(Symbol symbol, struct Value *val);
+struct Statement *new_set(Symbol symbol, struct Value *val, LValues *lvalues);
 struct Statement *new_if(struct Value *condition, Statements *if_stmts, Statements *else_stmts);
 struct Statement *new_while(struct Value *condition, Statements *stmts);
 struct Statement *new_let(Let *let);
@@ -179,6 +194,8 @@ struct Value *new_floating(double floating);
 struct Value *new_boolean(int boolean);
 struct Value *new_vfuncall(Symbol funname, Values *args);
 struct Value *new_expr(struct Expr *expr);
+struct LValue *new_property(Symbol property);
+struct LValue *new_index(struct Value *index);
 
 /* Expression constructors */
 
