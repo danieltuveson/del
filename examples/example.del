@@ -20,7 +20,9 @@
 
 // Entrypoint
 function main(thing: int) {
-    a = 2;
+    while x == 4 {
+        a = 2;
+    }
     b.blorp = 8;
     b[5] = "hi";
     x = b - a;

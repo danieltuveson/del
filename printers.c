@@ -289,6 +289,32 @@ static void print_set(struct Set *set)
     printf(";");
 }
 
+static void print_if(struct IfStatement *if_stmt, int indent)
+{
+    printf("if ");
+    print_value(if_stmt->condition);
+    printf(" {\n");
+    print_statements_indent(if_stmt->if_stmts, indent + TAB_WIDTH);
+    if (if_stmt->else_stmts) {
+        left_pad(indent);
+        printf("} else {\n");
+        print_statements_indent(if_stmt->else_stmts, indent + TAB_WIDTH);
+    }
+    left_pad(indent);
+    printf("}");
+
+}
+
+static void print_while(struct While *while_stmt, int indent)
+{
+    printf("while ");
+    print_value(while_stmt->condition);
+    printf(" {\n");
+    print_statements_indent(while_stmt->stmts, indent + TAB_WIDTH);
+    left_pad(indent);
+    printf("}");
+}
+
 static void print_statement_indent(struct Statement *stmt, int indent)
 {
     left_pad(indent);
@@ -301,25 +327,10 @@ static void print_statement_indent(struct Statement *stmt, int indent)
             print_set(stmt->set);
             break;
         case STMT_IF:
-            printf("if ");
-            print_value(stmt->if_stmt->condition);
-            printf(" {\n");
-            print_statements_indent(stmt->if_stmt->if_stmts, indent + TAB_WIDTH);
-            if (stmt->if_stmt->else_stmts) {
-                left_pad(indent);
-                printf("} else {\n");
-                print_statements_indent(stmt->if_stmt->else_stmts, indent + TAB_WIDTH);
-            }
-            left_pad(indent);
-            printf("}");
+            print_if(stmt->if_stmt, indent);
             break;
         case STMT_WHILE:
-            printf("while ");
-            print_value(stmt->while_stmt->condition);
-            printf(" {\n");
-            print_statements_indent(stmt->while_stmt->stmts, indent + TAB_WIDTH);
-            left_pad(indent);
-            printf("}");
+            print_while(stmt->while_stmt, indent);
             break;
         case STMT_RETURN:
             printf("return ");
