@@ -6,25 +6,19 @@
 //
 // Some function
 
-// class Stuff {
-//     property: int;
-//     otherprop: string;
-//     function dostuff(thing: int) {
-//         inner = thing(4);
-//     }
-// }
+class Stuff {
+    property: int;
+    otherprop: int;
+    // function dostuff(thing: int) {
+    //     inner = thing(4);
+    // }
+}
 
-// function add(a: int, b: int) {
-//     return b - a;
+// function Stuff(a: int, b: int, c: int, d: int) {
+//     return a - b;
 // }
 
 // Entrypoint
 function main(thing: int) {
-    while x == 4 {
-        a = 2;
-    }
-    b.blorp = 8;
-    b[5] = "hi";
-    x = b - a;
-    x = add(2, 8);
+    s = Stuff(111, 222);
 }

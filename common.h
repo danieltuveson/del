@@ -44,7 +44,7 @@ char *lookup_symbol(uint64_t symbol);
 /* List functions */
 struct List *new_list(void *value);
 struct List *append(struct List *list, void *value);
-struct List *reset_list_head(struct List *list);
+struct List *seek_end(struct List *list);
 
 #endif
 

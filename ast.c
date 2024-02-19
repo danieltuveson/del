@@ -9,8 +9,8 @@ struct TopLevelDecl *new_class(Symbol symbol, Definitions *definitions, Methods 
     tld->type = TLD_TYPE_CLASS;
     tld->cls = malloc(sizeof(struct Class));
     tld->cls->name = symbol;
-    tld->cls->definitions = definitions == NULL ? NULL : reset_list_head(definitions);
-    tld->cls->methods = methods == NULL ? NULL : reset_list_head(methods);
+    tld->cls->definitions = definitions == NULL ? NULL : definitions;
+    tld->cls->methods = methods == NULL ? NULL : methods;
     return tld;
 }
 
@@ -19,7 +19,7 @@ struct FunDef *new_fundef(Symbol symbol, Definitions *args, Statements *stmts)
     struct FunDef *fundef = malloc(sizeof(struct FunDef));
     fundef->name = symbol;
     fundef->args = args;
-    fundef->stmts = reset_list_head(stmts);
+    fundef->stmts = stmts;
     return fundef;
 }
 
@@ -48,9 +48,9 @@ struct Statement *new_if(struct Value *condition, Statements *if_stmts, Statemen
     stmt->type = STMT_IF;
     stmt->if_stmt = malloc(sizeof(struct IfStatement));
     stmt->if_stmt->condition = condition;
-    stmt->if_stmt->if_stmts = reset_list_head(if_stmts);
+    stmt->if_stmt->if_stmts = if_stmts;
     if (else_stmts) {
-        stmt->if_stmt->else_stmts = reset_list_head(else_stmts);
+        stmt->if_stmt->else_stmts = else_stmts;
     } else {
         stmt->if_stmt->else_stmts = NULL;
     }
@@ -63,7 +63,7 @@ struct Statement *new_while(struct Value *condition, Statements *stmts)
     stmt->type = STMT_WHILE;
     stmt->while_stmt = malloc(sizeof(struct While));
     stmt->while_stmt->condition = condition;
-    stmt->while_stmt->stmts = reset_list_head(stmts);
+    stmt->while_stmt->stmts = stmts;
     return stmt;
 }
 
@@ -71,7 +71,7 @@ struct Statement *new_let(Let *let)
 {
     struct Statement *stmt = malloc(sizeof(struct Statement));
     stmt->type = STMT_LET;
-    stmt->let = reset_list_head(let);
+    stmt->let = let;
     return stmt;
 }
  

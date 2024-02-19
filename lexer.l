@@ -20,6 +20,7 @@ comment    \/\/[^\n]*
 "while"     { return ST_WHILE; }
 "function"  { return ST_FUNCTION; }
 "let"       { return ST_LET; }
+"new"       { return ST_NEW; }
 "string"    { return ST_STRING; }
 "int"       { return ST_INT; }
 "float"     { return ST_FLOAT; }

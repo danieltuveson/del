@@ -433,8 +433,9 @@ void print_tlds(TopLevelDecls *tlds)
 
 void print_ft_node(struct FunctionTableNode *fn)
 {
+    if (fn->function == NULL) return;
     printf("%s: ", lookup_symbol(fn->function));
-    for (struct List *calls = reset_list_head(fn->callsites); calls != NULL; calls = calls->next) {
+    for (struct List *calls = fn->callsites; calls != NULL; calls = calls->next) {
         printf("%llu", *((uint64_t *) calls->value));
         if (calls->next != NULL) printf(", ");
     }

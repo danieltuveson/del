@@ -32,11 +32,8 @@ struct List *append(struct List *list, void *value)
     return list->prev;
 }
 
-/* Our parser walks the list while building it, so we want to move the
- * pointer to the start of the list when we're finished. */
-struct List *reset_list_head(struct List *list)
+struct List *seek_end(struct List *list)
 {
-    while (list->prev != NULL) list = list->prev;
+    for (; list->next != NULL; list = list->next);
     return list;
 }
-

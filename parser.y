@@ -9,7 +9,7 @@ int yyerror(const char *s);
 
 %token ST_IF ST_ELSE
 %token ST_FOR ST_IN
-%token ST_WHILE ST_FUNCTION ST_LET
+%token ST_WHILE ST_FUNCTION ST_LET ST_NEW
 %token ST_STRING ST_INT ST_FLOAT ST_BOOL ST_NULL
 %token ST_AND ST_OR ST_NOT
 %token ST_PLUS ST_MINUS ST_STAR ST_SLASH
@@ -80,7 +80,7 @@ int yyerror(const char *s);
 %require "3.8.2"
 %%
 
-program: tlds { ast.ast = reset_list_head($1); };
+program: tlds { ast.ast = $1; };
 
 tlds: tld { $$ = new_list($1); }
     | tld tlds { $$ = append($2, $1); }
@@ -150,6 +150,7 @@ expr: T_INT { $$ = new_integer($1); }
     | T_STRING { $$ = new_string($1); }
     | ST_OPEN_PAREN subexpr ST_CLOSE_PAREN { $$ = $2; }
     | T_SYMBOL ST_OPEN_PAREN args ST_CLOSE_PAREN { $$ = new_vfuncall($1, $3); }
+    | ST_NEW T_SYMBOL ST_OPEN_PAREN args ST_CLOSE_PAREN { $$ = new_vfuncall($2, $4); }
     | subexpr
 ;
 

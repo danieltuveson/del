@@ -79,9 +79,9 @@ static void compile_unary_op(struct CompilerContext *cc, struct Value *val, enum
     load(cc, op);
 }
 
-static void compile_funargs(struct CompilerContext *cc, struct FunDef *fundef)
+static void compile_funargs(struct CompilerContext *cc, Definitions *defs)
 {
-    for (Definitions *defs = fundef->args; defs != NULL; defs = defs->prev) {
+    for (; defs != NULL; defs = defs->next) {
         struct Definition *def = (struct Definition *) defs->value;
         load(cc, PUSH);
         load(cc, def->name);
@@ -99,15 +99,31 @@ static void compile_funargs(struct CompilerContext *cc, struct FunDef *fundef)
 static void compile_fundef(struct CompilerContext *cc, struct FunDef *fundef)
 {
     add_function(cc->ft, fundef->name, cc->offset);
-    compile_funargs(cc, fundef);
+    compile_funargs(cc, fundef->args);
     compile_statements(cc, fundef->stmts);
+}
+
+static void compile_constructor(struct CompilerContext *cc, struct Class *cls)
+{
+    // Will rewrite the later to allow users to make their own constructors
+    // For now, just creates an object based on whatever arguments it's passed
+    add_function(cc->ft, cls->name, cc->offset);
+    uint64_t count = 0;
+    for (Definitions *defs = cls->definitions; defs != NULL; defs = defs->next) {
+        count++;
+    }
+    load(cc, PUSH);
+    load(cc, count);
+    load(cc, PUSH_HEAP);
+    load(cc, SWAP);
+    load(cc, JMP);
 }
 
 static void compile_funcall(struct CompilerContext *cc, struct FunCall *funcall)
 {
     load(cc, PUSH);
     int bookmark = next(cc);
-    for (Values *args = funcall->args; args != NULL; args = args->prev) {
+    for (Values *args = seek_end(funcall->args); args != NULL; args = args->prev) {
         compile_value(cc, args->value);
     }
     load(cc, PUSH);
@@ -156,9 +172,26 @@ static void compile_expr(struct CompilerContext *cc, struct Expr *expr)
 static void compile_set(struct CompilerContext *cc, struct Set *set)
 {
     compile_value(cc, set->val);
-    load(cc, PUSH);
-    load(cc, set->symbol);
-    load(cc, SET_LOCAL);
+    if (set->lvalues == NULL) {
+        load(cc, PUSH);
+        load(cc, set->symbol);
+        load(cc, SET_LOCAL);
+        return;
+    } else {
+        printf("Error cannot compile property access / index\n");
+        return;
+    }
+    // Symbol property;
+    // struct Value *index;
+    // compile_loadsym(set->symbol);
+    // for (LValues *lvalues = set->lvalues; lvalues != NULL; lvalues = lvalues->next) {
+    //     struct LValue *lvalue = (struct LValue *) lvalues->value;
+    //     if (lvalue->type == LV_PROPERTY) {
+    //         load(cc, 
+    //     } else {
+    //         // handle this later
+    //     }
+    // }
 }
 
 static void compile_return(struct CompilerContext *cc, struct Value *ret)
@@ -279,9 +312,9 @@ static void compile_statements(struct CompilerContext *cc, Statements *stmts)
 // }
 // 
 
-static int compile_class(struct CompilerContext *cc, struct Class *cls)
+static void compile_class(struct CompilerContext *cc, struct Class *cls)
 {
-    return -1;
+    compile_constructor(cc, cls);
 }
 
 static void compile_entrypoint(struct CompilerContext *cc, TopLevelDecls *tlds)
@@ -299,7 +332,9 @@ static void compile_entrypoint(struct CompilerContext *cc, TopLevelDecls *tlds)
 static void compile_tld(struct CompilerContext *cc, struct TopLevelDecl *tld)
 {
     switch (tld->type) {
-        case TLD_TYPE_CLASS: compile_class(cc, tld->cls); break;
+        case TLD_TYPE_CLASS:
+            compile_class(cc, tld->cls);
+            break;
         case TLD_TYPE_FUNDEF:
             if (tld->fundef->name != ast.entrypoint) {
                 compile_fundef(cc, tld->fundef);
@@ -337,15 +372,15 @@ static void resolve_function_declarations(uint64_t *instructions, struct Functio
     return;
 }
 
-#include "test_compile.c"
+// #include "test_compile.c"
 
 int compile(struct CompilerContext *cc, TopLevelDecls *tlds)
 {
-    // compile_tlds(cc, tlds);
-    // resolve_function_declarations(cc->instructions, cc->ft);
-    // return cc->offset;
-    run_tests();
-    printf("compiler under construction. come back later.\n");
-    exit(0);
+    compile_tlds(cc, tlds);
+    resolve_function_declarations(cc->instructions, cc->ft);
+    return cc->offset;
+    // run_tests();
+    // printf("compiler under construction. come back later.\n");
+    // exit(0);
 }
 
