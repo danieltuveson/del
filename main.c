@@ -145,6 +145,8 @@ int main(void)
             printf("program failed to typecheck\n");
             return EXIT_FAILURE;
         }
+        // Temporarily returing here while we work on the typechecker
+        return EXIT_SUCCESS;
         // struct Statement *stmt = ast->value;
         // assert(stmt->type == STMT_SET);
         compile(&cc, ast.ast);

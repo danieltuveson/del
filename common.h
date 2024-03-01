@@ -20,6 +20,7 @@ typedef uint64_t Symbol;
  * Should always point to elements of the same type. */
 struct List {
     void *value;
+    uint64_t length; // number of "next" elements
     struct List *prev;
     struct List *next;
 };
@@ -27,11 +28,29 @@ struct List {
 struct Ast {
     // Used to store strings for each symbol
     struct List *symbol_table; 
+    // Keep track of number of functions and classes parsed
+    uint64_t class_count;
+    uint64_t function_count;
     // Stores the symbol for "main"
     Symbol entrypoint;
     // Stores actual ast content (a list of top level definitions)
     struct List *ast;
 };
+
+/* Types that objects can have */
+typedef uint64_t Type;
+extern uint64_t TYPE_NIL;
+extern uint64_t TYPE_INT;
+extern uint64_t TYPE_FLOAT;
+extern uint64_t TYPE_BOOL;
+extern uint64_t TYPE_STRING;
+
+#define IS_NIL(val) ((val) == TYPE_NIL)
+#define IS_INT(val) ((val) == TYPE_INT)
+#define IS_FLOAT(val) ((val) == TYPE_FLOAT)
+#define IS_BOOL(val) ((val) == TYPE_BOOL)
+#define IS_STRING(val) ((val) == TYPE_STRING)
+#define IS_OBJECT(val) ((val) > TYPE_STRING)
 
 /* Global variable to hold ast of currently parsed ast
  * I would prefer to avoid globals, but I'm not sure how
@@ -39,12 +58,13 @@ struct Ast {
  */
 extern struct Ast ast;
 
-char *lookup_symbol(uint64_t symbol);
-
 /* List functions */
+void init_symbol_table(void);
 struct List *new_list(void *value);
 struct List *append(struct List *list, void *value);
 struct List *seek_end(struct List *list);
+char *lookup_symbol(uint64_t symbol);
+
 
 #endif
 

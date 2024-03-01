@@ -57,16 +57,11 @@ comment    \/\/[^\n]*
 {spaces}     /* Ignore insignificant whitespace */
 
 {letter}+ {
+    if (ast.symbol_table == NULL) init_symbol_table();
     /* Adds symbols to symbol table */
-    uint64_t cnt = 0;
     struct List *symbol_table = ast.symbol_table;
+    uint64_t cnt = 0;
     char *symbol;
-    if (ast.symbol_table == NULL) {
-        symbol = malloc((yyleng + 1) * sizeof(char));
-        strcpy(symbol, yytext);
-        ast.symbol_table = new_list(symbol);
-        goto addsymbol;
-    }
     while (1) {
         if (strcmp(symbol_table->value, yytext) == 0) {
             goto addsymbol;

@@ -22,7 +22,7 @@ struct FunctionTableNode {
 };
 
 struct FunctionTable *new_ft(uint64_t function);
-struct FunctionTableNode *add_function(struct FunctionTable *ft, Symbol function, uint64_t loc);
+struct FunctionTableNode *add_ft_node(struct FunctionTable *ft, Symbol function, uint64_t loc);
 void add_callsite(struct FunctionTable *ft, Symbol function, uint64_t callsite);
 
 #endif

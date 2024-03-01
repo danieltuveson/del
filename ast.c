@@ -5,6 +5,7 @@
 /* Functions to create top level definitions */
 struct TopLevelDecl *new_class(Symbol symbol, Definitions *definitions, Methods *methods)
 {
+    ast.class_count++;
     struct TopLevelDecl *tld = malloc(sizeof(struct TopLevelDecl));
     tld->type = TLD_TYPE_CLASS;
     tld->cls = malloc(sizeof(struct Class));
@@ -25,6 +26,7 @@ struct FunDef *new_fundef(Symbol symbol, Definitions *args, Statements *stmts)
 
 struct TopLevelDecl *new_tld_fundef(Symbol symbol, Definitions *args, Statements *stmts)
 {
+    ast.function_count++;
     struct TopLevelDecl *tld = malloc(sizeof(struct TopLevelDecl));
     tld->type = TLD_TYPE_FUNDEF;
     tld->fundef = new_fundef(symbol, args, stmts);
@@ -75,7 +77,7 @@ struct Statement *new_let(Let *let)
     return stmt;
 }
  
-struct Definition *new_define(Symbol name, enum Type type)
+struct Definition *new_define(Symbol name, Type type)
 {
     struct Definition *def = malloc(sizeof(struct Definition));
     def->name = name;

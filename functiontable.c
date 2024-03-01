@@ -49,7 +49,7 @@ static inline struct FunctionTableNode *add_function_internal(struct FunctionTab
 #define add_function_noloc(ft, function) add_function_internal(ft, function, 0, 1)
 
 // Adds function to table, *does* set the location of the function call
-struct FunctionTableNode *add_function(struct FunctionTable *ft, Symbol function, uint64_t loc)
+struct FunctionTableNode *add_ft_node(struct FunctionTable *ft, Symbol function, uint64_t loc)
 {
     return add_function_internal(ft, function, loc, 0);
 }

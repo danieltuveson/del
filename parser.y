@@ -48,7 +48,7 @@ int yyerror(const char *s);
     struct Definition *definition;
     struct Statement *stmt;
     struct TopLevelDecl *tld;
-    enum Type type;
+    Type type;
     struct List *lvalues;
     struct LValue *lvalue;
 }
@@ -143,7 +143,10 @@ definition: T_SYMBOL ST_COLON type { $$ = new_define($1, $3); };
 type: ST_INT { $$ = TYPE_INT; }
     | ST_FLOAT { $$ = TYPE_FLOAT; }
     | ST_BOOL { $$ = TYPE_BOOL; }
-    | ST_STRING { $$ = TYPE_STRING; };
+    | ST_STRING { $$ = TYPE_STRING; }
+    | T_SYMBOL { $$ = $1; }
+;
+
 
 expr: T_INT { $$ = new_integer($1); }
     | T_SYMBOL { $$ = new_symbol($1); }

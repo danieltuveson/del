@@ -7,6 +7,7 @@ struct Expr;
 struct Value;
 struct Statement;
 
+/* Typedefs for void* lists, to keep track of their contents */
 typedef struct List TopLevelDecls;
 typedef struct List Values;
 typedef struct List Statements;
@@ -40,13 +41,6 @@ enum OperatorType {
     OP_SLASH,
     OP_UNARY_PLUS,
     OP_UNARY_MINUS
-};
-
-enum Type {
-    TYPE_INT,
-    TYPE_FLOAT,
-    TYPE_BOOL,
-    TYPE_STRING
 };
 
 enum TLDType {
@@ -111,7 +105,7 @@ struct LValue {
 
 struct Definition {
     Symbol name;
-    enum Type type;
+    Type type;
 };
 
 struct Set {
@@ -150,10 +144,6 @@ enum StatementType {
     STMT_WHILE,
     STMT_FOR,
     STMT_FOREACH,
-    STMT_FUNCTION_DEF,
-    STMT_EXIT_FOR,
-    STMT_EXIT_WHILE,
-    STMT_EXIT_FUNCTION,
     STMT_FUNCALL,
     STMT_RETURN
 };
@@ -182,7 +172,7 @@ struct Statement *new_set(Symbol symbol, struct Value *val, LValues *lvalues);
 struct Statement *new_if(struct Value *condition, Statements *if_stmts, Statements *else_stmts);
 struct Statement *new_while(struct Value *condition, Statements *stmts);
 struct Statement *new_let(Let *let);
-struct Definition *new_define(Symbol name, enum Type type);
+struct Definition *new_define(Symbol name, Type type);
 struct Statement *new_sfuncall(Symbol funname, Values *args);
 struct Statement *new_return(struct Value *val);
 

@@ -98,7 +98,7 @@ static void compile_funargs(struct CompilerContext *cc, Definitions *defs)
  */
 static void compile_fundef(struct CompilerContext *cc, struct FunDef *fundef)
 {
-    add_function(cc->ft, fundef->name, cc->offset);
+    add_ft_node(cc->ft, fundef->name, cc->offset);
     compile_funargs(cc, fundef->args);
     compile_statements(cc, fundef->stmts);
 }
@@ -107,7 +107,7 @@ static void compile_constructor(struct CompilerContext *cc, struct Class *cls)
 {
     // Will rewrite the later to allow users to make their own constructors
     // For now, just creates an object based on whatever arguments it's passed
-    add_function(cc->ft, cls->name, cc->offset);
+    add_ft_node(cc->ft, cls->name, cc->offset);
     uint64_t count = 0;
     for (Definitions *defs = cls->definitions; defs != NULL; defs = defs->next) {
         count++;

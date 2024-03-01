@@ -7,16 +7,44 @@
 // Some function
 
 class Stuff {
-    property: int;
-    otherprop: int;
+    property: bool;
+    otherpropA: int;
+    otherpropB: float;
+    otherpropC: string;
     // function dostuff(thing: int) {
     //     inner = thing(4);
     // }
 }
 
-// function Stuff(a: int, b: int, c: int, d: int) {
-//     return a - b;
-// }
+class OtherStuff {
+    prop: string;
+    otherpropA: Stuff;
+    otherpropH: float;
+    otherpropC: bool;
+    // function dostuff(thing: int) {
+    //     inner = thing(4);
+    // }
+}
+
+function stuffa(a: bool, b: float, c: string, d: int) {
+    return a - b;
+}
+
+function stuffb(a: bool, b: float, c: string, d: int) {
+    return a - b;
+}
+
+function stuffc(a: bool, b: float, c: string, d: int) {
+    return a - b;
+}
+
+function stuffd(a: bool, b: float, c: string, d: int) {
+    return a - b;
+}
+
+function stuffe(a: bool, b: float, c: string, d: int) {
+    return a - b;
+}
 
 // Entrypoint
 function main(thing: int) {
