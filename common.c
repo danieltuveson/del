@@ -2,11 +2,12 @@
 
 struct Ast ast = { NULL, 0, 0, 0, NULL };
 
-uint64_t TYPE_NIL    = 0;
-uint64_t TYPE_BOOL   = 1;
-uint64_t TYPE_INT    = 2;
-uint64_t TYPE_FLOAT  = 3;
-uint64_t TYPE_STRING = 4;
+uint64_t TYPE_UNDEFINED = 0;
+uint64_t TYPE_NIL       = 1;
+uint64_t TYPE_BOOL      = 2;
+uint64_t TYPE_INT       = 3;
+uint64_t TYPE_FLOAT     = 4;
+uint64_t TYPE_STRING    = 5;
 
 static void add_symbol_helper(char *sym, size_t size)
 {
@@ -31,7 +32,8 @@ void init_symbol_table(void)
     add_symbol("float");
     add_symbol("int");
     add_symbol("bool");
-    add_symbol("nil");
+    add_symbol("null");
+    add_symbol("**UNDEFINED**");
 }
 #undef add_symbol
 

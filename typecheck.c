@@ -8,22 +8,24 @@
 #define find_open_loc(i, table, length, symbol)\
     for (i = symbol % length; table[i].name != 0; i = i == length - 1 ? 0 : i + 1)
 
-// struct ClassType {
-//     Symbol name;
-//     uint64_t count;
-//     Type *types;
-// };
-// 
-// struct FunctionType {
-//     Symbol name;
-//     uint64_t count;
-//     Type *types;
-// };
-// 
-// struct Scope {
-//     Definitions *definitions;
-//     struct Scope *parent;
-// };
+struct Class *lookup_class(struct Class *table, Symbol symbol)
+{
+    uint64_t i = symbol % ast.class_count;
+    for (; table[i].name != symbol; i = i == ast.class_count - 1 ? 0 : i + 1);
+    return &(table[i]);
+}
+
+struct FunDef *lookup(struct FunDef *table, uint64_t length, Symbol symbol)
+{
+    uint64_t i = symbol % length;
+    for (; table[i].name != symbol; i = i == length - 1 ? 0 : i + 1);
+    return &(table[i]);
+}
+
+struct Scope {
+    Definitions *definitions;
+    struct Scope *parent;
+};
 
 static void enter_scope(struct Scope **current)
 {
@@ -46,85 +48,68 @@ static void add_var(struct Scope *current, struct Definition *def)
         current->definitions = append(current->definitions, def);
     }
 }
-static void add_class(struct ClassType *table, struct Class *cls)
+
+static struct Definition *lookup_var(struct Scope *scope, Symbol name)
+{
+    Definitions *defs = scope->definitions;
+    for (; defs != NULL; defs = defs->next) {
+        struct Definition *def = (struct Definition *) defs->value;
+        if (def->name == name) {
+            return def;
+        }
+    }
+    return NULL;
+}
+
+static void add_class(struct Class *table, struct Class *cls)
 {
     uint64_t loc;
     find_open_loc(loc, table, ast.class_count, cls->name);
-    struct ClassType *clst = &table[loc];
+    struct Class *clst = &table[loc];
     clst->name = cls->name;
-    clst->count = cls->definitions->length;
-    clst->types = calloc(clst->count, sizeof(Type));
-    for (uint64_t i = 0; i < clst->count; i++) {
-        clst->types[i] = ((struct Definition *) cls->definitions->value)->type;
-        cls->definitions = cls->definitions->next;
-    }
+    clst->definitions = cls->definitions;
     // Eventually we'll need to figure out what to do with methods... maybe a table for each?
 }
 
-static void add_function(struct FunctionType *table, struct FunDef *fundef)
+static void add_function(struct FunDef *table, struct FunDef *fundef)
 {
     uint64_t loc;
     find_open_loc(loc, table, ast.function_count, fundef->name);
-    struct FunctionType *ft = &table[loc];
+    struct FunDef *ft = &table[loc];
     ft->name = fundef->name;
-    ft->count = fundef->args->length;
-    ft->types = calloc(ft->count, sizeof(Type));
-    for (uint64_t i = 0; i < ft->count; i++) {
-        ft->types[i] = ((struct Definition *) fundef->args->value)->type;
-        fundef->args = fundef->args->next;
-    }
+    ft->args = fundef->args;
 }
 
 // Add declared types to ast without typechecking
-static void add_types(TopLevelDecls *tlds, struct ClassType *class_table,
-        struct FunctionType *function_table)
+static void add_types(TopLevelDecls *tlds, struct Class *clst, struct FunDef *ft)
 {
     for (; tlds != NULL; tlds = tlds->next) {
         struct TopLevelDecl *tld = tlds->value;
         if (tld->type == TLD_TYPE_FUNDEF) {
-            add_function(function_table, tld->fundef);
+            add_function(ft, tld->fundef);
         } else {
-            add_class(class_table, tld->cls);
+            add_class(clst, tld->cls);
         }
     }
 }
 
-static int typecheck_expression(struct Expr *expr);
+static Type typecheck_value(struct Scope *scope, struct Value *val);
 
-static int typecheck_value(struct Value *val)
+static int typecheck_expression(struct Scope *scope, struct Expr *expr)
 {
-    switch (val->type) {
-        case VTYPE_STRING:
-        case VTYPE_INT:
-        case VTYPE_FLOAT:
-        case VTYPE_BOOL:
-            return 1;
-        case VTYPE_SYMBOL:
-            printf("unknown type\n");
-            return 0;
-        case VTYPE_EXPR:
-            return typecheck_expression(val->expr);
-        case VTYPE_FUNCALL:
-            printf("unknown type\n");
-            return 0;
-    }
-}
-
-static int typecheck_expression(struct Expr *expr)
-{
-    const int left_is_int     = expr->val1->type == TYPE_INT;
-    const int right_is_int    = expr->val2->type == TYPE_INT;
-    const int left_is_float   = expr->val1->type == TYPE_FLOAT;
-    const int right_is_float  = expr->val2->type == TYPE_FLOAT;
-    const int left_is_bool    = expr->val1->type == TYPE_BOOL;
-    const int right_is_bool   = expr->val2->type == TYPE_BOOL;
-    const int left_is_string  = expr->val1->type == TYPE_STRING;
-    const int right_is_string = expr->val2->type == TYPE_STRING;
-    const int right_is_null   = expr->val2 == NULL;
-    const int are_both_int    = left_is_int    && right_is_int;
-    const int are_both_float  = left_is_float  && right_is_float;
-    const int are_both_bool   = left_is_bool   && right_is_bool;
-    const int are_both_string = left_is_string && right_is_string;
+    const Type type_left      = typecheck_value(scope, expr->val1);
+    const Type type_right = (expr->val2 == NULL)
+                          ? TYPE_UNDEFINED
+                          : typecheck_value(scope, expr->val1);
+    const int left_is_int     = type_left  == TYPE_INT;
+    const int right_is_int    = type_right == TYPE_INT;
+    const int left_is_float   = type_left  == TYPE_FLOAT;
+    const int right_is_float  = type_right == TYPE_FLOAT;
+    const int right_is_null   = type_right == TYPE_UNDEFINED;
+    const int are_both_int    = left_is_int   && right_is_int;
+    const int are_both_float  = left_is_float && right_is_float;
+    const int are_both_bool   = (type_left  == TYPE_BOOL) && (type_right == TYPE_BOOL);
+    const int are_both_string = (type_left  == TYPE_STRING) && (type_right == TYPE_STRING);
     // const int are_both_other  = expr->val1 right_is_string;
     // have to find a way to handle non-primitives
     switch (expr->op) {
@@ -149,6 +134,32 @@ static int typecheck_expression(struct Expr *expr)
     };
 }
 
+static Type typecheck_value(struct Scope *scope, struct Value *val)
+{
+    struct Definition *def = NULL;
+    switch (val->type) {
+        case VTYPE_STRING:
+            return TYPE_STRING;
+        case VTYPE_INT:
+            return TYPE_INT;
+        case VTYPE_FLOAT:
+            return TYPE_FLOAT;
+        case VTYPE_BOOL:
+            return TYPE_BOOL;
+        case VTYPE_SYMBOL:
+            def = lookup_var(scope, val->symbol);
+            if (def == NULL) {
+                return TYPE_UNDEFINED;
+            } else {
+                return def->type;
+            }
+        case VTYPE_EXPR:
+            return typecheck_expression(scope, val->expr);
+        case VTYPE_FUNCALL:
+            printf("unknown type\n");
+            return 0;
+    }
+}
 static int typecheck_statement(struct Statement *stmt)
 {
     // switch (stmt->type) {
@@ -175,31 +186,35 @@ static int typecheck_statement(struct Statement *stmt)
 
 static int typecheck_functioncall(struct FunCall *funcall)
 {
+    return 0;
 }
 
-static void typecheck_tlds(TopLevelDecls *tlds, struct ClassType *class_table, 
-        struct FunctionType *function_table)
+static int typecheck_statements(struct Scope *scope, Statements *stmts)
 {
-    for (; tlds != NULL; tlds = tlds->next) {
-        struct TopLevelDecl *tld = tlds->value;
-        if (tld->type == TLD_TYPE_FUNDEF) {
-            if (typecheck_functioncall(tld
-        } else {
-            // add_class(class_table, tld->cls);
-        }
+    for (; stmts != NULL; stmts = stmts->next) {
+        struct Statement *stmt = (struct Statement *) stmts->value;
     }
-    return 1;
+    return 0;
 }
 
-int typecheck(void)
+int typecheck(struct Ast *ast, struct Class *clst, struct FunDef *ft)
 {
-    struct ClassType *class_table = calloc(ast.class_count, sizeof(struct ClassType));
-    struct FunctionType *function_table = calloc(ast.function_count, sizeof(struct FunctionType));
-    add_types(ast.ast, class_table, function_table);
-    print_function_table(function_table, ast.function_count);
-    print_class_table(class_table, ast.class_count);
-    typecheck_tlds(ast.ast, class_table, function_table);
-    return ALL_GOOD;
+    add_types(ast->ast, clst, ft);
+    // for (uint64_t i = 0; i < ast.class_count; i++) {
+    //     print_class(&(clst[i]), 0);
+    //     printf("\n");
+    // }
+    // for (uint64_t i = 0; i < ast.function_count; i++) {
+    //     print_fundef(&(ft[i]), 0, 0);
+    //     printf("\n");
+    // }
+    int ret = 1;
+    struct Scope *scope = NULL;
+    enter_scope(&scope);
+    struct FunDef *main = lookup(ft, ast->function_count, ast->entrypoint);
+    typecheck_statements(scope, main->stmts);
+    exit_scope(&scope);
+    return ret;
 }
 
 #undef find_open_loc

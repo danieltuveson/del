@@ -19,6 +19,7 @@ struct FunDef *new_fundef(Symbol symbol, Definitions *args, Statements *stmts)
 {
     struct FunDef *fundef = malloc(sizeof(struct FunDef));
     fundef->name = symbol;
+    fundef->rettype = TYPE_UNDEFINED;
     fundef->args = args;
     fundef->stmts = stmts;
     return fundef;

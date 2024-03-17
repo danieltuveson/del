@@ -13,10 +13,8 @@ void print_value(struct Value *val);
 void print_statement(struct Statement *stmt);
 void print_statements(Statements *stmts);
 void print_tlds(TopLevelDecls *tlds);
-
-/* Typechecking printers */
-void print_class_table(struct ClassType *table, uint64_t length);
-void print_function_table(struct FunctionType *table, uint64_t length);
+void print_fundef(struct FunDef *fundef, int indent, int ismethod);
+void print_class(struct Class *cls, int indent);
 
 /* Compiler printers */
 void print_ft_node(struct FunctionTableNode *fn);

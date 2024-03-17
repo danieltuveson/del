@@ -131,24 +131,22 @@ int main(void)
     if (ret != 0) {
         printf("parse error\n");
     } else {
+        struct Class  *class_table    = calloc(ast.class_count, sizeof(struct Class));
+        struct FunDef *function_table = calloc(ast.function_count, sizeof(struct FunDef));
         uint64_t instructions[INSTRUCTIONS_SIZE];
-        struct CompilerContext cc = { instructions, 0, NULL };
+        struct CompilerContext cc = { instructions, 0, NULL, class_table };
         printf("````````````````` CODE `````````````````\n");
         assert(ast.ast != NULL);
         print_tlds(ast.ast);
         printf("\n");
 
         printf("`````````````` TYPECHECK ```````````````\n");
-        if (typecheck()) {
+        if (typecheck(&ast, class_table, function_table)) {
             printf("program has typechecked\n");
         } else {
             printf("program failed to typecheck\n");
             return EXIT_FAILURE;
         }
-        // Temporarily returing here while we work on the typechecker
-        return EXIT_SUCCESS;
-        // struct Statement *stmt = ast->value;
-        // assert(stmt->type == STMT_SET);
         compile(&cc, ast.ast);
         printf("\n");
         printf("````````````` INSTRUCTIONS `````````````\n");

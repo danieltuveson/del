@@ -49,13 +49,14 @@ enum TLDType {
 };
 
 struct Class {
-    Symbol name;
+    Symbol name; // Name is same as type
     Definitions *definitions;
     Methods *methods;
 };
 
 struct FunDef {
     Symbol name;
+    Type rettype;
     Definitions *args;
     Statements *stmts;
 };

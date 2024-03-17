@@ -8,6 +8,7 @@ struct CompilerContext {
     uint64_t *instructions;
     int offset;
     struct FunctionTable *ft;
+    struct Class *class_table;
 };
 
 enum Code {

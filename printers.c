@@ -1,6 +1,9 @@
 #include "common.h"
 #include "printers.h"
 
+static void print_statements_indent(Statements *stmts, int indent);
+static void print_definitions(struct List *lst, char sep, int indent);
+
 static const int TAB_WIDTH = 4;
 
 void print_instructions(struct CompilerContext *cc)
@@ -125,31 +128,49 @@ void print_heap(struct Heap *heap)
     printf(" } ]\n");
 }
 
-/* Typechecking related printers */
-void print_class_table(struct ClassType *table, uint64_t length)
-{
-    for (uint64_t i = 0; i < length; i++) {
-        struct ClassType clst = table[i];
-        printf("%llu: class %s {\n", i, lookup_symbol(clst.name));
-        for (uint64_t j = 0; j < clst.count; j++) {
-            printf("    %s;\n", lookup_symbol(clst.types[j]));
-        }
-        printf("}\n");
-    }
-}
-
-void print_function_table(struct FunctionType *table, uint64_t length)
-{
-    for (uint64_t i = 0; i < length; i++) {
-        struct FunctionType ft = table[i];
-        printf("%llu: function %s(", i, lookup_symbol(ft.name));
-        for (uint64_t j = 0; j < ft.count; j++) {
-            printf("%s", lookup_symbol(ft.types[j]));
-            if (j != ft.count - 1) printf(", ");
-        }
-        printf(")\n");
-    }
-}
+// /* Typechecking related printers */
+// void print_class_table(struct ClassType *table, uint64_t length)
+// {
+//     for (uint64_t i = 0; i < length; i++) {
+//         struct ClassType clst = table[i];
+//         printf("class %s {\n", lookup_symbol(clst.name));
+//         print_definitions(clst.definitions, ';', TAB_WIDTH);
+//         // for (Methods *methods = cls->methods; methods != NULL; methods = methods->next) {
+//         //     struct FunDef *method = (struct FunDef *) methods->value;
+//         //     print_fundef(method, indent + TAB_WIDTH, 1);
+//         //     printf("\n");
+//         // }
+//         printf("}");
+//         // struct ClassType clst = table[i];
+//         // printf("%llu: class %s {\n", i, lookup_symbol(clst.name));
+//         // print_definitions(lst, sep, )
+//         // for (uint64_t j = 0; j < clst.count; j++) {
+//         //     printf("    %s;\n", lookup_symbol(clst.types[j]));
+//         // }
+//         // printf("}\n");
+//     }
+// }
+// 
+// void print_function_table(struct FunctionType *table, uint64_t length)
+// {
+//     for (uint64_t i = 0; i < length; i++) {
+//         struct FunctionType ft = table[i];
+//         printf("function %s(", lookup_symbol(ft.name));
+//         print_definitions(ft.definitions, ',', 0);
+//         printf(") {\n");
+//         // print_statements_indent(ft.stmts, TAB_WIDTH);
+//         printf("}");
+//     }
+//     //for (uint64_t i = 0; i < length; i++) {
+//     //    struct FunctionType ft = table[i];
+//     //    printf("%llu: function %s(", i, lookup_symbol(ft.name));
+//     //    for (uint64_t j = 0; j < ft.count; j++) {
+//     //        printf("%s", lookup_symbol(ft.types[j]));
+//     //        if (j != ft.count - 1) printf(", ");
+//     //    }
+//     //    printf(")\n");
+//     //}
+// }
 
 
 /* AST printers. Currently used for debugging purposes but could be used for 
@@ -264,8 +285,6 @@ void print_value(struct Value *val)
     }
 }
 
-static void print_statements_indent(Statements *stmts, int indent);
-
 /* :) */
 static void left_pad(int indent) {
     for (int i = 0; i < indent; i++) putchar(' ');
@@ -278,19 +297,12 @@ static void print_definitions(struct List *lst, char sep, int indent)
         def = (struct Definition *) lst->value;
         if (sep == ';') left_pad(indent);
         printf("%s: ", lookup_symbol(def->name));
-        if (def->type == TYPE_NIL) {
-            printf("nil");
-        } else if (def->type == TYPE_INT) {
-            printf("int");
-        } else if (def->type == TYPE_FLOAT) {
-            printf("float");
-        } else if (def->type == TYPE_BOOL) {
-            printf("bool");
-        } else if (def->type == TYPE_STRING) {
-            printf("string");
+        printf("%s", lookup_symbol(def->type));
+        if (sep == ';') {
+            printf(";\n");
+        } else if (lst->next && sep == ',') {
+            printf(", ");
         }
-        if (lst->next && sep == ',') printf(", ");
-        if (sep == ';') printf(";\n");
         lst = lst->next;
     }
 }
@@ -398,7 +410,7 @@ void print_statements(Statements *stmts)
     print_statements_indent(stmts, 0);
 }
 
-static void print_fundef(struct FunDef *fundef, int indent, int ismethod)
+void print_fundef(struct FunDef *fundef, int indent, int ismethod)
 {
     left_pad(indent);
     if (!ismethod) {
@@ -412,7 +424,7 @@ static void print_fundef(struct FunDef *fundef, int indent, int ismethod)
     printf("}");
 }
 
-static void print_class(struct Class *cls, int indent)
+void print_class(struct Class *cls, int indent)
 {
     printf("class %s {\n", lookup_symbol(cls->name));
     print_definitions(cls->definitions, ';', indent + TAB_WIDTH);

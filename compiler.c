@@ -1,5 +1,6 @@
 #include "common.h"
 #include "ast.h"
+#include "typecheck.h"
 #include "compiler.h"
 
 static void compile_value(struct CompilerContext *cc, struct Value *val);
@@ -103,20 +104,32 @@ static void compile_fundef(struct CompilerContext *cc, struct FunDef *fundef)
     compile_statements(cc, fundef->stmts);
 }
 
-static void compile_constructor(struct CompilerContext *cc, struct Class *cls)
+//static void compile_constructor(struct CompilerContext *cc, struct Class *cls)
+static void compile_constructor(struct CompilerContext *cc, Symbol symbol)
 {
-    // Will rewrite the later to allow users to make their own constructors
-    // For now, just creates an object based on whatever arguments it's passed
-    add_ft_node(cc->ft, cls->name, cc->offset);
-    uint64_t count = 0;
+    struct Class *cls = lookup_class(cc->class_table, symbol);
+    const uint64_t PUSH_CONSTRUCTOR = 0;
+    load(cc, PUSH_CONSTRUCTOR);
+    load(cc, cls->definitions->length);
     for (Definitions *defs = cls->definitions; defs != NULL; defs = defs->next) {
-        count++;
+        struct Definition *def = (struct Definition *) defs->value;
+        load(cc, def->name);
     }
-    load(cc, PUSH);
-    load(cc, count);
-    load(cc, PUSH_HEAP);
-    load(cc, SWAP);
-    load(cc, JMP);
+    // // Will rewrite the later to allow users to make their own constructors
+    // // For now, just creates an object based on whatever arguments it's passed
+    // add_ft_node(cc->ft, cls->name, cc->offset);
+    // uint64_t count = 0;
+    // for (Definitions *defs = cls->definitions; defs != NULL; defs = defs->next) {
+    //     // struct Definition *def = (struct Definition *) defs->value;
+    //     // load(cc, PUSH);
+    //     // load(cc, def->name);
+    //     count++;
+    // }
+    // load(cc, PUSH);
+    // load(cc, count);
+    // load(cc, PUSH_HEAP);
+    // load(cc, SWAP);
+    // load(cc, JMP);
 }
 
 static void compile_funcall(struct CompilerContext *cc, struct FunCall *funcall)
@@ -135,10 +148,10 @@ static void compile_funcall(struct CompilerContext *cc, struct FunCall *funcall)
 static void compile_value(struct CompilerContext *cc, struct Value *val)
 {
     switch (val->type) {
-        case VTYPE_STRING:  compile_string(cc, val->string);   break;
-        case VTYPE_INT:     compile_int(cc, val->integer);     break;
+        case VTYPE_STRING:  compile_string(cc,  val->string);  break;
+        case VTYPE_INT:     compile_int(cc,     val->integer); break;
         case VTYPE_SYMBOL:  compile_loadsym(cc, val->symbol);  break;
-        case VTYPE_EXPR:    compile_expr(cc, val->expr);       break;
+        case VTYPE_EXPR:    compile_expr(cc,    val->expr);    break;
         case VTYPE_FUNCALL: compile_funcall(cc, val->funcall); break;
         default: printf("compile not implemented yet\n"); assert(0);
     }
@@ -312,10 +325,10 @@ static void compile_statements(struct CompilerContext *cc, Statements *stmts)
 // }
 // 
 
-static void compile_class(struct CompilerContext *cc, struct Class *cls)
-{
-    compile_constructor(cc, cls);
-}
+// static void compile_class(struct CompilerContext *cc, struct Class *cls)
+// {
+//     compile_constructor(cc, cls);
+// }
 
 static void compile_entrypoint(struct CompilerContext *cc, TopLevelDecls *tlds)
 {
@@ -333,7 +346,7 @@ static void compile_tld(struct CompilerContext *cc, struct TopLevelDecl *tld)
 {
     switch (tld->type) {
         case TLD_TYPE_CLASS:
-            compile_class(cc, tld->cls);
+            // compile_class(cc, tld->cls);
             break;
         case TLD_TYPE_FUNDEF:
             if (tld->fundef->name != ast.entrypoint) {

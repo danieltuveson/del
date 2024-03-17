@@ -39,6 +39,7 @@ struct Ast {
 
 /* Types that objects can have */
 typedef uint64_t Type;
+extern uint64_t TYPE_UNDEFINED;
 extern uint64_t TYPE_NIL;
 extern uint64_t TYPE_INT;
 extern uint64_t TYPE_FLOAT;
