@@ -8,12 +8,12 @@ The language is **not done**. It will hopefully be done in a few months.
 ## Things I've done right
 
 ### VM implementation
-The VM is less than 300 lines of code (as of writing this). Everything in there does something that's absolutely necessary and uses a memory / speed efficient implmentation to do so. Calculations are done on the stack, local variables are stored in locals, and longer duration variables are stored in the heap. Most of the code is just a loop and a big switch statement on the opcodes. Accesses to the stack, heap, and locals only will involve indexing into their respective arrays and bumping a few counters. It's still not completely finished, but I think the overall design is really solid.
+The VM is less than 300 lines of code (as of writing this). Everything in there does something that's absolutely necessary and uses a memory / speed efficient implementation to do so. Calculations are done on the stack, local variables are stored in locals, and longer duration variables are stored in the heap. Most of the code is just a loop and a big switch statement on the opcodes. Accesses to the stack, heap, and locals only will involve indexing into their respective arrays and bumping a few counters. It's still not completely finished, but I think the overall design is really solid.
 
 ## A brief summary of my crimes
 
 ### Overuse of linked lists
-I'm using linked lists basically everywhere in the parser, even though an array based list would likely be faster. My (maybe bad) justification for this is that at some point I want to switch the parser to use an bump allocator, and the reallocation that happens in an array list would gobble up memory. I also probably could be using a singlely linked list that just stores its head to avoid doing the weird "reset head" thing. But it works, so I'm leaving it for now.
+I'm using linked lists basically everywhere in the parser, even though an array based list would likely be faster. My (maybe bad) justification for this is that at some point I want to switch the parser to use an bump allocator, and the reallocation that happens in an array list would gobble up memory. I also probably could be using a singly linked list that just stores its head to avoid doing the weird "reset head" thing. But it works, so I'm leaving it for now.
 
 ### Global variable for the AST
 I don't really like that I'm using a global variable for the AST, but I couldn't figure out how to return something from yyparse in bison. I have spent far more of my life trying to learn flex / bison than I would like, so until I decide to waste more of my time reading the terrible bison documentation, I'm leaving it this way. I hate bison, but I have realized that I hate hand-writing a parser much more.
@@ -29,8 +29,8 @@ I feel like there should be a more elegant way of representing the AST than the 
 ### Not freeing memory...
 I intend to move all of the AST / compiler code to use a big bump allocator. The only allocations needed for the VM are for Heap and maybe for Locals / Stack. Locals and Stack probably will never be allowed to grow too large, so it might be okay to stack allocate them. I'll also need to copy the debug symbols. 
 
-### Not typechecking code...
-Currently there is no typechecker. This is obviously something I need to do.
+### Not type-checking code...
+Currently there is no type-checker. This is obviously something I need to do.
 
 ### Not freeing memory (again)...
 I need to add a garbage collector to the VM. I don't think this will be that hard. Each value in the heap is prefixed by its length in uint64s. Since there should never realistically be more than 2^32 objects in the heap, I'm going to use the first bit of the length value to "mark" each object during mark and sweep garbage collection. That's my plan, anyway.

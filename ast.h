@@ -11,7 +11,6 @@ struct Statement;
 typedef struct List TopLevelDecls;
 typedef struct List Values;
 typedef struct List Statements;
-typedef struct List Let;
 typedef struct List Definitions;
 typedef struct List Methods;
 typedef struct List LValues;
@@ -111,6 +110,7 @@ struct Definition {
 
 struct Set {
     Symbol symbol;
+    int is_define;
     LValues *lvalues; // May be null
     struct Value *val;
 };
@@ -152,7 +152,7 @@ enum StatementType {
 struct Statement {
     enum StatementType type;
     union {
-        Let *let;
+        Definitions *let;
         struct Set *set;
         struct IfStatement *if_stmt;
         struct While *while_stmt;
@@ -169,10 +169,10 @@ struct TopLevelDecl *new_tld_fundef(Symbol symbol, Definitions *args, Statements
 struct FunDef *new_fundef(Symbol symbol, Definitions *args, Statements *stmts);
 
 /* Statement constructors */
-struct Statement *new_set(Symbol symbol, struct Value *val, LValues *lvalues);
+struct Statement *new_set(Symbol symbol, struct Value *val, LValues *lvalues, int is_define);
 struct Statement *new_if(struct Value *condition, Statements *if_stmts, Statements *else_stmts);
 struct Statement *new_while(struct Value *condition, Statements *stmts);
-struct Statement *new_let(Let *let);
+struct Statement *new_let(Definitions *let);
 struct Definition *new_define(Symbol name, Type type);
 struct Statement *new_sfuncall(Symbol funname, Values *args);
 struct Statement *new_return(struct Value *val);

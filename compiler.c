@@ -251,10 +251,11 @@ static void compile_while(struct CompilerContext *cc, struct While *stmt)
 static void compile_statement(struct CompilerContext *cc, struct Statement *stmt)
 {
     switch (stmt->type) {
-        case STMT_SET:    compile_set(cc, stmt->set);          break;
-        case STMT_RETURN: compile_return(cc, stmt->ret);       break;
-        case STMT_IF:     compile_if(cc, stmt->if_stmt);       break;
-        case STMT_WHILE:  compile_while(cc, stmt->while_stmt); break;
+        case STMT_SET:    compile_set(cc, stmt->set);             break;
+        case STMT_RETURN: compile_return(cc, stmt->ret);          break;
+        case STMT_IF:     compile_if(cc, stmt->if_stmt);          break;
+        case STMT_WHILE:  compile_while(cc, stmt->while_stmt);    break;
+        case STMT_LET: /* Currently just used for typechecking */ break;
         default: printf("Error cannot compile statement type: not implemented\n"); break;
     }
 }

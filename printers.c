@@ -309,6 +309,7 @@ static void print_definitions(struct List *lst, char sep, int indent)
 
 static void print_set(struct Set *set)
 {
+    if (set->is_define) printf("let ");
     printf("%s", lookup_symbol(set->symbol));
     for (LValues *lvalues = set->lvalues; lvalues != NULL; lvalues = lvalues->next) {
         struct LValue *lvalue = lvalues->value;

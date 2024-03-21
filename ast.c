@@ -35,12 +35,13 @@ struct TopLevelDecl *new_tld_fundef(Symbol symbol, Definitions *args, Statements
 }
 
 /* Functions to create Statements */
-struct Statement *new_set(Symbol symbol, struct Value *val, LValues *lvalues)
+struct Statement *new_set(Symbol symbol, struct Value *val, LValues *lvalues, int is_define)
 {
     struct Statement *stmt = malloc(sizeof(struct Statement));
     stmt->type = STMT_SET;
     stmt->set = malloc(sizeof(struct Set));
     stmt->set->symbol = symbol;
+    stmt->set->is_define = is_define;
     stmt->set->lvalues = lvalues;
     stmt->set->val = val;
     return stmt;
@@ -70,7 +71,7 @@ struct Statement *new_while(struct Value *condition, Statements *stmts)
     return stmt;
 }
 
-struct Statement *new_let(Let *let)
+struct Statement *new_let(Definitions *let)
 {
     struct Statement *stmt = malloc(sizeof(struct Statement));
     stmt->type = STMT_LET;

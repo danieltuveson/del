@@ -27,9 +27,27 @@ struct Scope {
     struct Scope *parent;
 };
 
+void print_scope(struct Scope *scope)
+{
+    if (scope->parent != NULL) {
+        print_scope(scope->parent);
+    } else {
+        printf("(Top Level)");
+    }
+    printf("<- { ");
+    for (Definitions *defs = scope->definitions; defs != NULL; defs = defs->next) {
+        struct Definition *def = defs->value;
+        printf("%s: %s", lookup_symbol(def->name), lookup_symbol(def->type));
+        if (defs->next != NULL) {
+            printf(", ");
+        }
+    }
+    printf(" }\n");
+}
+
 static void enter_scope(struct Scope **current)
 {
-    struct Scope *scope = malloc(sizeof(struct Scope));
+    struct Scope *scope = malloc(sizeof(*scope));
     scope->definitions = NULL;
     scope->parent = *current;
     *current = scope;
@@ -49,11 +67,26 @@ static void add_var(struct Scope *current, struct Definition *def)
     }
 }
 
+static int add_type(struct Scope *current, struct Definition *def)
+{
+    for (Definitions *defs = current->definitions; defs != NULL; defs = defs->next) {
+        struct Definition *lookup_def = defs->value;
+        if (lookup_def->name == def->name) {
+            lookup_def->type = def->type;
+            return 1;
+        }
+    }
+    if (current->parent == NULL) {
+        return 0;
+    } else {
+        return add_type(current->parent, def);
+    }
+}
+
 static struct Definition *lookup_var(struct Scope *scope, Symbol name)
 {
-    Definitions *defs = scope->definitions;
-    for (; defs != NULL; defs = defs->next) {
-        struct Definition *def = (struct Definition *) defs->value;
+    for (Definitions *defs = scope->definitions; defs != NULL; defs = defs->next) {
+        struct Definition *def = defs->value;
         if (def->name == name) {
             return def;
         }
@@ -77,7 +110,9 @@ static void add_function(struct FunDef *table, struct FunDef *fundef)
     find_open_loc(loc, table, ast.function_count, fundef->name);
     struct FunDef *ft = &table[loc];
     ft->name = fundef->name;
+    ft->rettype = TYPE_UNDEFINED;
     ft->args = fundef->args;
+    ft->stmts = fundef->stmts;
 }
 
 // Add declared types to ast without typechecking
@@ -95,12 +130,12 @@ static void add_types(TopLevelDecls *tlds, struct Class *clst, struct FunDef *ft
 
 static Type typecheck_value(struct Scope *scope, struct Value *val);
 
-static int typecheck_expression(struct Scope *scope, struct Expr *expr)
+static Type typecheck_expression(struct Scope *scope, struct Expr *expr)
 {
     const Type type_left      = typecheck_value(scope, expr->val1);
     const Type type_right = (expr->val2 == NULL)
                           ? TYPE_UNDEFINED
-                          : typecheck_value(scope, expr->val1);
+                          : typecheck_value(scope, expr->val2);
     const int left_is_int     = type_left  == TYPE_INT;
     const int right_is_int    = type_right == TYPE_INT;
     const int left_is_float   = type_left  == TYPE_FLOAT;
@@ -115,10 +150,20 @@ static int typecheck_expression(struct Scope *scope, struct Expr *expr)
     switch (expr->op) {
         case OP_OR:
         case OP_AND:
-            return are_both_bool;
+            return are_both_bool ? TYPE_BOOL : TYPE_UNDEFINED;
         case OP_EQEQ:
         case OP_NOT_EQ:
-            return are_both_int || are_both_float || are_both_bool || are_both_string;
+            if (are_both_int) {
+                return TYPE_INT;
+            } else if (are_both_float) {
+                return TYPE_FLOAT;
+            } else if (are_both_bool) {
+                return TYPE_BOOL;
+            } else if (are_both_string) {
+                return TYPE_STRING;
+            } else {
+                return TYPE_UNDEFINED;
+            }
         case OP_GREATER_EQ:
         case OP_GREATER:
         case OP_LESS_EQ:
@@ -127,10 +172,22 @@ static int typecheck_expression(struct Scope *scope, struct Expr *expr)
         case OP_MINUS:
         case OP_STAR:
         case OP_SLASH:
-            return are_both_int || are_both_float;
+            if (are_both_int) {
+                return TYPE_INT;
+            } else if (are_both_float) {
+                return TYPE_FLOAT;
+            } else {
+                return TYPE_UNDEFINED;
+            }
         case OP_UNARY_PLUS:
         case OP_UNARY_MINUS:
-            return (left_is_int && right_is_null) || (left_is_float && right_is_null);
+            if (left_is_int && right_is_null) {
+                return TYPE_INT;
+            } else if (left_is_float && right_is_null) {
+                return TYPE_FLOAT;
+            } else {
+                return TYPE_UNDEFINED;
+            }
     };
 }
 
@@ -138,17 +195,14 @@ static Type typecheck_value(struct Scope *scope, struct Value *val)
 {
     struct Definition *def = NULL;
     switch (val->type) {
-        case VTYPE_STRING:
-            return TYPE_STRING;
-        case VTYPE_INT:
-            return TYPE_INT;
-        case VTYPE_FLOAT:
-            return TYPE_FLOAT;
-        case VTYPE_BOOL:
-            return TYPE_BOOL;
+        case VTYPE_STRING: return TYPE_STRING;
+        case VTYPE_INT:    return TYPE_INT;
+        case VTYPE_FLOAT:  return TYPE_FLOAT;
+        case VTYPE_BOOL:   return TYPE_BOOL;
         case VTYPE_SYMBOL:
             def = lookup_var(scope, val->symbol);
-            if (def == NULL) {
+            if (def == NULL || def->type == TYPE_UNDEFINED) {
+                printf("Error: '%s' is not defined\n", lookup_symbol(val->symbol));
                 return TYPE_UNDEFINED;
             } else {
                 return def->type;
@@ -160,7 +214,35 @@ static Type typecheck_value(struct Scope *scope, struct Value *val)
             return 0;
     }
 }
-static int typecheck_statement(struct Statement *stmt)
+
+static int typecheck_set(struct Scope *scope, struct Statement *stmt)
+{
+    Type type;
+    if (stmt->set->is_define) {
+        //struct Definition def = { .name = stmt->set->symbol, .type = TYPE_UNDEFINED };
+        struct Definition *def = malloc(sizeof(*def));
+        def->name = stmt->set->symbol;
+        def->type = TYPE_UNDEFINED;
+        add_var(scope, def);
+    }
+    if (!lookup_var(scope, stmt->set->symbol)) {
+        printf("Symbol '%s' is used before it is declared\n", lookup_symbol(stmt->set->symbol));
+        return 0;
+    }
+    type = typecheck_value(scope, stmt->set->val);
+    if (type == TYPE_UNDEFINED) {
+        return 0;
+    } else {
+        //struct Definition def = { .name = stmt->set->symbol, .type = type };
+        struct Definition *def = malloc(sizeof(*def));
+        def->name = stmt->set->symbol;
+        def->type = type;
+        add_type(scope, def);
+    }
+    return 1;
+}
+
+static int typecheck_statement(struct Scope *scope, struct Statement *stmt)
 {
     // switch (stmt->type) {
     //     case STMT_SET:    compile_set(cc, stmt->set);          break;
@@ -170,10 +252,14 @@ static int typecheck_statement(struct Statement *stmt)
     //     default: printf("Error cannot compile statement type: not implemented\n"); break;
     // }
     switch (stmt->type) {
-        case STMT_SET:
-        case STMT_RETURN:
-            return 0;
+        case STMT_SET:    return typecheck_set(scope, stmt);
+        case STMT_RETURN: return 0;
         case STMT_LET:
+            for (Definitions *defs = stmt->let; defs != NULL; defs = defs->next) {
+                struct Definition *def = defs->value;
+                add_var(scope, def);
+            }
+            return 1;
         case STMT_IF:
         case STMT_WHILE:
         case STMT_FOR:
@@ -193,26 +279,29 @@ static int typecheck_statements(struct Scope *scope, Statements *stmts)
 {
     for (; stmts != NULL; stmts = stmts->next) {
         struct Statement *stmt = (struct Statement *) stmts->value;
+        if (!typecheck_statement(scope, stmt)) {
+            return 0;
+        }
     }
-    return 0;
+    return 1;
 }
 
 int typecheck(struct Ast *ast, struct Class *clst, struct FunDef *ft)
 {
     add_types(ast->ast, clst, ft);
-    // for (uint64_t i = 0; i < ast.class_count; i++) {
-    //     print_class(&(clst[i]), 0);
-    //     printf("\n");
-    // }
-    // for (uint64_t i = 0; i < ast.function_count; i++) {
-    //     print_fundef(&(ft[i]), 0, 0);
-    //     printf("\n");
-    // }
+    for (uint64_t i = 0; i < ast->class_count; i++) {
+        print_class(&(clst[i]), 0);
+        printf("\n");
+    }
+    for (uint64_t i = 0; i < ast->function_count; i++) {
+        print_fundef(&(ft[i]), 0, 0);
+        printf("\n");
+    }
     int ret = 1;
     struct Scope *scope = NULL;
     enter_scope(&scope);
     struct FunDef *main = lookup(ft, ast->function_count, ast->entrypoint);
-    typecheck_statements(scope, main->stmts);
+    ret = typecheck_statements(scope, main->stmts);
     exit_scope(&scope);
     return ret;
 }

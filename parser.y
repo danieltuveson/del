@@ -43,6 +43,7 @@ int yyerror(const char *s);
     struct List *tlds;
     struct List *methods;
     struct List *definitions;
+    struct List *symbols;
     struct List *args;
     struct FunDef *method;
     struct Definition *definition;
@@ -68,7 +69,8 @@ int yyerror(const char *s);
 %type <stmt> statement
 %type <type> type
 %type <definitions> class_definitions
-%type <definitions> definitions
+%type <definitions> symbols
+%type <symbols> definitions
 %type <definition> definition
 %type <val> expr
 %type <args> args
@@ -118,9 +120,11 @@ statements: statement { $$ = new_list($1); }
 
 block: ST_OPEN_BRACE statements ST_CLOSE_BRACE { $$ = $2; };
 
-statement: T_SYMBOL ST_EQ expr ST_SEMICOLON { $$ = new_set($1, $3, NULL); }
-         | T_SYMBOL accessors expr ST_SEMICOLON { $$ = new_set($1, $3, $2); }
-         | ST_LET definitions ST_SEMICOLON { $$ = new_let($2); }
+statement: T_SYMBOL ST_EQ expr ST_SEMICOLON { $$ = new_set($1, $3, NULL, 0); }
+         | T_SYMBOL accessors expr ST_SEMICOLON { $$ = new_set($1, $3, $2, 0); }
+         | ST_LET T_SYMBOL ST_EQ expr ST_SEMICOLON { $$ = new_set($2, $4, NULL, 1); }
+         | ST_LET T_SYMBOL accessors expr ST_SEMICOLON { $$ = new_set($2, $4, $3, 1); }
+         | ST_LET symbols ST_SEMICOLON { $$ = new_let($2); }
          | T_SYMBOL ST_OPEN_PAREN args ST_CLOSE_PAREN ST_SEMICOLON { $$ = new_sfuncall($1, $3); }
          | ST_RETURN expr ST_SEMICOLON { $$ = new_return($2); }
          | ST_IF expr block { $$ = new_if($2, $3, NULL); }
@@ -133,6 +137,10 @@ accessors: accessor accessors { $$ = append($2, $1); }
 
 accessor: ST_DOT T_SYMBOL { $$ = new_property($2); }
         | ST_OPEN_BRACKET T_INT ST_CLOSE_BRACKET { $$ = new_index(new_integer($2)); }
+
+symbols: T_SYMBOL { $$ = new_list(new_define($1, TYPE_UNDEFINED)); }
+       | T_SYMBOL ST_COMMA symbols { $$ = append($3, new_define($1, TYPE_UNDEFINED)); }
+;
 
 definitions: definition { $$ = new_list($1); }
            | definition ST_COMMA definitions { $$ = append($3, $1); }

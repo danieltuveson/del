@@ -6,15 +6,15 @@
 //
 // Some function
 
-class Stuff {
-    property: int;
-    otherpropA: int;
+// jclass Stuff {
+// j    property: int;
+// j    otherpropA: int;
 //     otherpropB: float;
 //     otherpropC: string;
     // function dostuff(thing: int) {
     //     inner = thing(4);
     // }
-}
+// }
 
 // class OtherStuff {
 //     prop: string;
@@ -26,11 +26,15 @@ class Stuff {
 //     // }
 // }
 
-function stuffa(a: bool, b: float, c: string, d: int) {
-    return a - b;
-}
+// function stuffa(a: bool, b: float, c: string, d: int) {
+//     return a - b;
+// }
 
 // Entrypoint
 function main(thing: int) {
-    s = new Stuff(666, 222);
+    //s = new Stuff(666, 222);
+    let z;
+    let y = 6;
+    let x = "hi";
+    x = y + 5;
 }
