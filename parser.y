@@ -21,6 +21,7 @@ int yyerror(const char *s);
 %token ST_CLASS ST_RETURN
 %token ST_COLON ST_OPEN_BRACE ST_CLOSE_BRACE ST_OPEN_BRACKET ST_CLOSE_BRACKET
 %token ST_DOT
+%token ST_TRUE ST_FALSE
 
 %left ST_OR
 %left ST_AND
@@ -159,6 +160,8 @@ type: ST_INT { $$ = TYPE_INT; }
 expr: T_INT { $$ = new_integer($1); }
     | T_SYMBOL { $$ = new_symbol($1); }
     | T_STRING { $$ = new_string($1); }
+    | ST_TRUE { $$ = new_boolean(1); }
+    | ST_FALSE { $$ = new_boolean(0); }
     | ST_OPEN_PAREN subexpr ST_CLOSE_PAREN { $$ = $2; }
     | T_SYMBOL ST_OPEN_PAREN args ST_CLOSE_PAREN { $$ = new_vfuncall($1, $3); }
     | ST_NEW T_SYMBOL ST_OPEN_PAREN args ST_CLOSE_PAREN { $$ = new_vfuncall($2, $4); }

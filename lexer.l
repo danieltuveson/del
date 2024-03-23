@@ -24,7 +24,7 @@ comment    \/\/[^\n]*
 "string"    { return ST_STRING; }
 "int"       { return ST_INT; }
 "float"     { return ST_FLOAT; }
-"bool"      { return ST_BOOL; }
+"boolean"   { return ST_BOOL; }
 "&&"        { return ST_AND; }
 "||"        { return ST_OR; }
 "!"         { return ST_NOT; }
@@ -55,6 +55,9 @@ comment    \/\/[^\n]*
 ":"         { return ST_COLON; }
 "."         { return ST_DOT; }
 {spaces}     /* Ignore insignificant whitespace */
+
+"true"      { return ST_TRUE; }
+"false"     { return ST_FALSE; }
 
 {letter}+ {
     if (ast.symbol_table == NULL) init_symbol_table();

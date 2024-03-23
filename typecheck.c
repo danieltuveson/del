@@ -27,6 +27,8 @@ struct Scope {
     struct Scope *parent;
 };
 
+static int typecheck_statements(struct Scope *scope, Statements *stmts);
+
 void print_scope(struct Scope *scope)
 {
     if (scope->parent != NULL) {
@@ -150,25 +152,41 @@ static Type typecheck_expression(struct Scope *scope, struct Expr *expr)
     switch (expr->op) {
         case OP_OR:
         case OP_AND:
-            return are_both_bool ? TYPE_BOOL : TYPE_UNDEFINED;
+            if (are_both_bool) {
+                return TYPE_BOOL;
+            } else {
+                printf("Error: boolean operator has non-boolean operands\n");
+                return TYPE_UNDEFINED;
+            }
         case OP_EQEQ:
         case OP_NOT_EQ:
-            if (are_both_int) {
-                return TYPE_INT;
-            } else if (are_both_float) {
-                return TYPE_FLOAT;
-            } else if (are_both_bool) {
+            if (are_both_int || are_both_float || are_both_bool || are_both_string) {
                 return TYPE_BOOL;
-            } else if (are_both_string) {
-                return TYPE_STRING;
             } else {
+                printf("Error: mismatched types on equality operands\n");
                 return TYPE_UNDEFINED;
             }
         case OP_GREATER_EQ:
         case OP_GREATER:
         case OP_LESS_EQ:
         case OP_LESS:
+            if (are_both_int || are_both_float) {
+                return TYPE_BOOL;
+            } else {
+                printf("Error: mismatched types on comparison operands\n");
+                return TYPE_UNDEFINED;
+            }
         case OP_PLUS:
+            if (are_both_int) {
+                return TYPE_INT;
+            } else if (are_both_float) {
+                return TYPE_FLOAT;
+            } else if (are_both_string) {
+                return TYPE_STRING;
+            } else {
+                printf("Error: mismatched types for '+' operands\n");
+                return TYPE_UNDEFINED;
+            }
         case OP_MINUS:
         case OP_STAR:
         case OP_SLASH:
@@ -177,6 +195,7 @@ static Type typecheck_expression(struct Scope *scope, struct Expr *expr)
             } else if (are_both_float) {
                 return TYPE_FLOAT;
             } else {
+                printf("Error: mismatched types for numeric operator's operands\n");
                 return TYPE_UNDEFINED;
             }
         case OP_UNARY_PLUS:
@@ -242,6 +261,30 @@ static int typecheck_set(struct Scope *scope, struct Statement *stmt)
     return 1;
 }
 
+static void scope_let_vars(struct Scope *scope, Definitions *defs)
+{
+    for (; defs != NULL; defs = defs->next) {
+        struct Definition *def = defs->value;
+        add_var(scope, def);
+    }
+}
+
+// struct IfStatement {
+//     struct Value *condition;
+//     Statements *if_stmts;
+//     Statements *else_stmts;
+// };
+static int typecheck_if(struct Scope *scope, struct IfStatement *if_stmt)
+{
+    Type t0 = typecheck_value(scope, if_stmt->condition);
+    if (t0 == TYPE_UNDEFINED) return 0;
+    int ret = typecheck_statements(scope, if_stmt->if_stmts);
+    if (if_stmt->else_stmts == NULL) {
+        ret = ret && typecheck_statements(scope, if_stmt->else_stmts);
+    }
+    return ret;
+}
+
 static int typecheck_statement(struct Scope *scope, struct Statement *stmt)
 {
     // switch (stmt->type) {
@@ -254,13 +297,8 @@ static int typecheck_statement(struct Scope *scope, struct Statement *stmt)
     switch (stmt->type) {
         case STMT_SET:    return typecheck_set(scope, stmt);
         case STMT_RETURN: return 0;
-        case STMT_LET:
-            for (Definitions *defs = stmt->let; defs != NULL; defs = defs->next) {
-                struct Definition *def = defs->value;
-                add_var(scope, def);
-            }
-            return 1;
-        case STMT_IF:
+        case STMT_LET:    scope_let_vars(scope, stmt->let); return 1;
+        case STMT_IF:     return typecheck_if(scope, stmt->if_stmt);
         case STMT_WHILE:
         case STMT_FOR:
         case STMT_FOREACH:

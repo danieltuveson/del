@@ -36,5 +36,10 @@ function main(thing: int) {
     let z;
     let y = 6;
     let x = "hi";
+    if true && false {
+        x = "hello" + ", hi?";
+        y = 5;
+    }
     x = y + 5;
 }
+
