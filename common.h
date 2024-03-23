@@ -45,13 +45,7 @@ extern uint64_t TYPE_INT;
 extern uint64_t TYPE_FLOAT;
 extern uint64_t TYPE_BOOL;
 extern uint64_t TYPE_STRING;
-
-#define IS_NIL(val) ((val) == TYPE_NIL)
-#define IS_INT(val) ((val) == TYPE_INT)
-#define IS_FLOAT(val) ((val) == TYPE_FLOAT)
-#define IS_BOOL(val) ((val) == TYPE_BOOL)
-#define IS_STRING(val) ((val) == TYPE_STRING)
-#define IS_OBJECT(val) ((val) > TYPE_STRING)
+static inline int is_object(Type val) { return val > TYPE_STRING; }
 
 /* Global variable to hold ast of currently parsed ast
  * I would prefer to avoid globals, but I'm not sure how

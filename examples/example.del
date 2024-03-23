@@ -33,13 +33,9 @@
 // Entrypoint
 function main(thing: int) {
     //s = new Stuff(666, 222);
-    let z;
-    let y = 6;
-    let x = "hi";
-    if true && false {
-        x = "hello" + ", hi?";
-        y = 5;
+    let x = 0;
+    while x < 4 {
+        x = x + 1;
     }
-    x = y + 5;
 }
 

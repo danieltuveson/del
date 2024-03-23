@@ -25,6 +25,11 @@ static void compile_int(struct CompilerContext *cc, uint64_t integer)
     load(cc, integer);
 }
 
+static inline void compile_bool(struct CompilerContext *cc, uint64_t boolean)
+{
+    return compile_int(cc, boolean);
+}
+
 static void compile_loadsym(struct CompilerContext *cc, Symbol symbol)
 {
     load(cc, GET_LOCAL);
@@ -150,6 +155,7 @@ static void compile_value(struct CompilerContext *cc, struct Value *val)
     switch (val->type) {
         case VTYPE_STRING:  compile_string(cc,  val->string);  break;
         case VTYPE_INT:     compile_int(cc,     val->integer); break;
+        case VTYPE_BOOL:    compile_bool(cc,    val->boolean); break;
         case VTYPE_SYMBOL:  compile_loadsym(cc, val->symbol);  break;
         case VTYPE_EXPR:    compile_expr(cc,    val->expr);    break;
         case VTYPE_FUNCALL: compile_funcall(cc, val->funcall); break;

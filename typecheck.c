@@ -269,19 +269,29 @@ static void scope_let_vars(struct Scope *scope, Definitions *defs)
     }
 }
 
-// struct IfStatement {
-//     struct Value *condition;
-//     Statements *if_stmts;
-//     Statements *else_stmts;
-// };
 static int typecheck_if(struct Scope *scope, struct IfStatement *if_stmt)
 {
     Type t0 = typecheck_value(scope, if_stmt->condition);
-    if (t0 == TYPE_UNDEFINED) return 0;
+    if (t0 == TYPE_UNDEFINED) {
+        return 0;
+    } else if (t0 != TYPE_BOOL) {
+        printf("Error: expected boolean in if condition\n");
+        return 0;
+    }
     int ret = typecheck_statements(scope, if_stmt->if_stmts);
     if (if_stmt->else_stmts == NULL) {
         ret = ret && typecheck_statements(scope, if_stmt->else_stmts);
     }
+    return ret;
+}
+
+// struct Value *condition;
+// Statements *stmts;
+static int typecheck_while(struct Scope *scope, struct While *while_stmt)
+{
+    Type t0 = typecheck_value(scope, while_stmt->condition);
+    if (t0 == TYPE_UNDEFINED) return 0;
+    int ret = typecheck_statements(scope, while_stmt->stmts);
     return ret;
 }
 
@@ -299,7 +309,7 @@ static int typecheck_statement(struct Scope *scope, struct Statement *stmt)
         case STMT_RETURN: return 0;
         case STMT_LET:    scope_let_vars(scope, stmt->let); return 1;
         case STMT_IF:     return typecheck_if(scope, stmt->if_stmt);
-        case STMT_WHILE:
+        case STMT_WHILE:  return typecheck_while(scope, stmt->while_stmt);
         case STMT_FOR:
         case STMT_FOREACH:
         case STMT_FUNCALL:

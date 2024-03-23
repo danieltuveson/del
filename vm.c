@@ -259,7 +259,7 @@ long vm_execute(uint64_t *instructions)
         ip++;
         i++;
         print_stack(&stack);
-        if (i > 30) {
+        if (i > 100) {
             printf("infinite loop detected, ending execution\n");
             break;
         }
