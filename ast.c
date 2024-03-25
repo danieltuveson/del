@@ -71,6 +71,19 @@ struct Statement *new_while(struct Value *condition, Statements *stmts)
     return stmt;
 }
 
+struct Statement *new_for(struct Statement *init, struct Value *condition,
+        struct Statement *increment, Statements *stmts)
+{
+    struct Statement *stmt = malloc(sizeof(struct Statement));
+    stmt->type = STMT_FOR;
+    stmt->for_stmt = malloc(sizeof(struct For));
+    stmt->for_stmt->init = init;
+    stmt->for_stmt->condition = condition;
+    stmt->for_stmt->increment = increment;
+    stmt->for_stmt->stmts = stmts;
+    return stmt;
+}
+
 struct Statement *new_let(Definitions *let)
 {
     struct Statement *stmt = malloc(sizeof(struct Statement));

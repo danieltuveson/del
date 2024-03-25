@@ -28,6 +28,7 @@ struct Scope {
 };
 
 static int typecheck_statements(struct Scope *scope, Statements *stmts);
+static int typecheck_statement(struct Scope *scope, struct Statement *stmt);
 
 void print_scope(struct Scope *scope)
 {
@@ -244,12 +245,21 @@ static int typecheck_set(struct Scope *scope, struct Statement *stmt)
         def->type = TYPE_UNDEFINED;
         add_var(scope, def);
     }
-    if (!lookup_var(scope, stmt->set->symbol)) {
+    struct Definition *def = lookup_var(scope, stmt->set->symbol);
+    if (def == NULL) {
+    //if (lookup_var(scope, stmt->set->symbol)) {
         printf("Symbol '%s' is used before it is declared\n", lookup_symbol(stmt->set->symbol));
         return 0;
     }
     type = typecheck_value(scope, stmt->set->val);
     if (type == TYPE_UNDEFINED) {
+        return 0;
+    } else if (type != def->type && def->type != TYPE_UNDEFINED) {
+        char *name = lookup_symbol(stmt->set->symbol);
+        char *variable_type = lookup_symbol(def->type);
+        char *value_type = lookup_symbol(type);
+        char *err = "Error: %s is of type %s, cannot set to type %s\n";
+        printf(err, name, variable_type, value_type);
         return 0;
     } else {
         //struct Definition def = { .name = stmt->set->symbol, .type = type };
@@ -279,7 +289,7 @@ static int typecheck_if(struct Scope *scope, struct IfStatement *if_stmt)
         return 0;
     }
     int ret = typecheck_statements(scope, if_stmt->if_stmts);
-    if (if_stmt->else_stmts == NULL) {
+    if (if_stmt->else_stmts != NULL) {
         ret = ret && typecheck_statements(scope, if_stmt->else_stmts);
     }
     return ret;
@@ -290,8 +300,34 @@ static int typecheck_if(struct Scope *scope, struct IfStatement *if_stmt)
 static int typecheck_while(struct Scope *scope, struct While *while_stmt)
 {
     Type t0 = typecheck_value(scope, while_stmt->condition);
-    if (t0 == TYPE_UNDEFINED) return 0;
+    if (t0 == TYPE_UNDEFINED) {
+        return 0;
+    } else if (t0 != TYPE_BOOL) {
+        printf("Error: expected boolean in while condition\n");
+        return 0;
+    }
     int ret = typecheck_statements(scope, while_stmt->stmts);
+    return ret;
+}
+
+// struct Statement *init;
+// struct Value *condition;
+// struct Statement *increment;
+// Statements *stmts;
+static int typecheck_for(struct Scope *scope, struct For *for_stmt)
+{
+    int ret = typecheck_statement(scope, for_stmt->init);
+    if (!ret) return 0;
+    Type t0 = typecheck_value(scope, for_stmt->condition);
+    if (t0 == TYPE_UNDEFINED) {
+        return 0;
+    } else if (t0 != TYPE_BOOL) {
+        printf("Error: expected boolean as second parameter as for loop condition\n");
+        return 0;
+    }
+    ret = typecheck_statement(scope, for_stmt->increment);
+    if (!ret) return 0;
+    ret = typecheck_statements(scope, for_stmt->stmts);
     return ret;
 }
 
@@ -310,7 +346,7 @@ static int typecheck_statement(struct Scope *scope, struct Statement *stmt)
         case STMT_LET:    scope_let_vars(scope, stmt->let); return 1;
         case STMT_IF:     return typecheck_if(scope, stmt->if_stmt);
         case STMT_WHILE:  return typecheck_while(scope, stmt->while_stmt);
-        case STMT_FOR:
+        case STMT_FOR:    return typecheck_for(scope, stmt->for_stmt);
         case STMT_FOREACH:
         case STMT_FUNCALL:
             printf("cannot typecheck statement of this type\n");

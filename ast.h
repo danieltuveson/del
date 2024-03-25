@@ -127,8 +127,9 @@ struct While {
 };
 
 struct For {
-    struct Set *start;
-    struct Value *stop;
+    struct Statement *init;
+    struct Value *condition;
+    struct Statement *increment;
     Statements *stmts;
 };
 
@@ -172,6 +173,8 @@ struct FunDef *new_fundef(Symbol symbol, Definitions *args, Statements *stmts);
 struct Statement *new_set(Symbol symbol, struct Value *val, LValues *lvalues, int is_define);
 struct Statement *new_if(struct Value *condition, Statements *if_stmts, Statements *else_stmts);
 struct Statement *new_while(struct Value *condition, Statements *stmts);
+struct Statement *new_for(struct Statement *init, struct Value *condition,
+        struct Statement *increment, Statements *stmts);
 struct Statement *new_let(Definitions *let);
 struct Definition *new_define(Symbol name, Type type);
 struct Statement *new_sfuncall(Symbol funname, Values *args);

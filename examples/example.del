@@ -6,9 +6,9 @@
 //
 // Some function
 
-// jclass Stuff {
-// j    property: int;
-// j    otherpropA: int;
+// class Stuff {
+//     property: int;
+//     otherpropA: int;
 //     otherpropB: float;
 //     otherpropC: string;
     // function dostuff(thing: int) {
@@ -33,9 +33,23 @@
 // Entrypoint
 function main(thing: int) {
     //s = new Stuff(666, 222);
-    let x = 0;
-    while x < 4 {
-        x = x + 1;
+    //let x = 0;
+    //while x == 4 {
+    //    x = x + 1;
+    //}
+    let y = 10;
+    let x;
+    for x = 0; x < 4; x = x + 1 {
+        y = y - 1;
+    }
+    if y == 10 {
+        x = 4;
+    } else {
+        if (x == 2) {
+            x = 444;
+        } else {
+            x = 1023;
+        }
     }
 }
 

@@ -3,6 +3,7 @@
 
 static void print_statements_indent(Statements *stmts, int indent);
 static void print_definitions(struct List *lst, char sep, int indent);
+static void print_statement_indent(struct Statement *stmt, int indent);
 
 static const int TAB_WIDTH = 4;
 
@@ -342,6 +343,25 @@ static void print_if(struct IfStatement *if_stmt, int indent)
 
 }
 
+// struct Statement *init;
+// struct Value *condition;
+// struct Statement *increment;
+// Statements *stmts;
+static void print_for(struct For *for_stmt, int indent)
+{
+    printf("for (\n");
+    print_statement_indent(for_stmt->init, indent + TAB_WIDTH);
+    left_pad(indent + TAB_WIDTH);
+    print_value(for_stmt->condition);
+    printf(";\n");
+    print_statement_indent(for_stmt->increment, indent + TAB_WIDTH);
+    left_pad(indent);
+    printf(") {\n");
+    print_statements_indent(for_stmt->stmts, indent + TAB_WIDTH);
+    left_pad(indent);
+    printf("}");
+}
+
 static void print_while(struct While *while_stmt, int indent)
 {
     printf("while ");
@@ -375,6 +395,8 @@ static void print_statement_indent(struct Statement *stmt, int indent)
             printf(";");
             break;
         case STMT_FOR:
+            print_for(stmt->for_stmt, indent);
+            break;
         case STMT_FOREACH:
             printf("print_statement not yet implemented for this type");
             break;

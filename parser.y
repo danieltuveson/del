@@ -68,6 +68,7 @@ int yyerror(const char *s);
 %type <stmts> statements
 %type <stmts> block
 %type <stmt> statement
+%type <stmt> line
 %type <type> type
 %type <definitions> class_definitions
 %type <definitions> symbols
@@ -121,16 +122,27 @@ statements: statement { $$ = new_list($1); }
 
 block: ST_OPEN_BRACE statements ST_CLOSE_BRACE { $$ = $2; };
 
-statement: T_SYMBOL ST_EQ expr ST_SEMICOLON { $$ = new_set($1, $3, NULL, 0); }
-         | T_SYMBOL accessors expr ST_SEMICOLON { $$ = new_set($1, $3, $2, 0); }
-         | ST_LET T_SYMBOL ST_EQ expr ST_SEMICOLON { $$ = new_set($2, $4, NULL, 1); }
-         | ST_LET T_SYMBOL accessors expr ST_SEMICOLON { $$ = new_set($2, $4, $3, 1); }
-         | ST_LET symbols ST_SEMICOLON { $$ = new_let($2); }
-         | T_SYMBOL ST_OPEN_PAREN args ST_CLOSE_PAREN ST_SEMICOLON { $$ = new_sfuncall($1, $3); }
-         | ST_RETURN expr ST_SEMICOLON { $$ = new_return($2); }
+line: T_SYMBOL ST_EQ expr { $$ = new_set($1, $3, NULL, 0); }
+    | T_SYMBOL accessors expr { $$ = new_set($1, $3, $2, 0); }
+    | ST_LET T_SYMBOL ST_EQ expr { $$ = new_set($2, $4, NULL, 1); }
+    | ST_LET T_SYMBOL accessors expr { $$ = new_set($2, $4, $3, 1); }
+    | ST_LET symbols { $$ = new_let($2); }
+    | T_SYMBOL ST_OPEN_PAREN args ST_CLOSE_PAREN { $$ = new_sfuncall($1, $3); }
+    | ST_RETURN expr { $$ = new_return($2); }
+;
+
+statement: line ST_SEMICOLON { $$ = $1; }
+        //    T_SYMBOL ST_EQ expr ST_SEMICOLON { $$ = new_set($1, $3, NULL, 0); }
+        //  | T_SYMBOL accessors expr ST_SEMICOLON { $$ = new_set($1, $3, $2, 0); }
+        //  | ST_LET T_SYMBOL ST_EQ expr ST_SEMICOLON { $$ = new_set($2, $4, NULL, 1); }
+        //  | ST_LET T_SYMBOL accessors expr ST_SEMICOLON { $$ = new_set($2, $4, $3, 1); }
+        //  | ST_LET symbols ST_SEMICOLON { $$ = new_let($2); }
+        //  | T_SYMBOL ST_OPEN_PAREN args ST_CLOSE_PAREN ST_SEMICOLON { $$ = new_sfuncall($1, $3); }
+        //  | ST_RETURN expr ST_SEMICOLON { $$ = new_return($2); }
          | ST_IF expr block { $$ = new_if($2, $3, NULL); }
          | ST_IF expr block ST_ELSE block { $$ = new_if($2, $3, $5); }
          | ST_WHILE expr block { $$ = new_while($2, $3); }
+         | ST_FOR statement expr ST_SEMICOLON line block { $$ = new_for($2, $3, $5, $6); }
 ;
 
 accessors: accessor accessors { $$ = append($2, $1); }

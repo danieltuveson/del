@@ -5,6 +5,7 @@
 
 static void compile_value(struct CompilerContext *cc, struct Value *val);
 static void compile_expr(struct CompilerContext *cc, struct Expr *expr);
+static void compile_statement(struct CompilerContext *cc, struct Statement *stmt);
 static void compile_statements(struct CompilerContext *cc, Statements *stmts);
 
 /* Move offset pointer to the empty element. Return the offset of the last element added */
@@ -239,28 +240,42 @@ static void compile_if(struct CompilerContext *cc, struct IfStatement *stmt)
     }
 }
 
-static void compile_while(struct CompilerContext *cc, struct While *stmt)
+static void compile_loop(struct CompilerContext *cc, struct Value *cond,
+        Statements *stmts, struct Statement *increment)
 {
     int top_of_loop, old_offset;
     top_of_loop = cc->offset;
     load(cc, PUSH);
     old_offset = next(cc);
-    compile_value(cc, stmt->condition);
+    compile_value(cc, cond);
     load(cc, JNE);
-    compile_statements(cc, stmt->stmts);
+    compile_statements(cc, stmts);
+    if (increment != NULL) compile_statement(cc, increment);
     load(cc, PUSH);
     load(cc, top_of_loop);
     load(cc, JMP);
     cc->instructions[old_offset] = (uint64_t) cc->offset; // set JNE jump to go to end of loop
 }
 
+static void compile_while(struct CompilerContext *cc, struct While *while_stmt)
+{
+    compile_loop(cc, while_stmt->condition, while_stmt->stmts, NULL);
+}
+
+static void compile_for(struct CompilerContext *cc, struct For *for_stmt)
+{
+    compile_statement(cc, for_stmt->init);
+    compile_loop(cc, for_stmt->condition, for_stmt->stmts, for_stmt->increment);
+}
+
 static void compile_statement(struct CompilerContext *cc, struct Statement *stmt)
 {
     switch (stmt->type) {
-        case STMT_SET:    compile_set(cc, stmt->set);             break;
+        case STMT_SET:    compile_set(cc,    stmt->set);          break;
         case STMT_RETURN: compile_return(cc, stmt->ret);          break;
-        case STMT_IF:     compile_if(cc, stmt->if_stmt);          break;
-        case STMT_WHILE:  compile_while(cc, stmt->while_stmt);    break;
+        case STMT_IF:     compile_if(cc,     stmt->if_stmt);      break;
+        case STMT_WHILE:  compile_while(cc,  stmt->while_stmt);   break;
+        case STMT_FOR:    compile_for(cc,    stmt->for_stmt);     break;
         case STMT_LET: /* Currently just used for typechecking */ break;
         default: printf("Error cannot compile statement type: not implemented\n"); break;
     }
