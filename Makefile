@@ -16,10 +16,10 @@ parser.o: parser.tab.c parser.tab.h lex.yy.c lex.yy.h parser.h
 	cc $(CFLAGS) -c parser.c
 
 parser.tab.o: parser.tab.c parser.tab.h
-	cc -c -o parser.tab.o parser.tab.c
+	cc $(CFLAGS) -c -o parser.tab.o parser.tab.c
 
 lex.yy.o: lex.yy.c lex.yy.h
-	cc -c -o lex.yy.o lex.yy.c
+	cc -g -c -o lex.yy.o lex.yy.c
 
 clean:
 	rm -f del test *.o *.yy.h *.tab.h *.yy.c *.tab.c *.output

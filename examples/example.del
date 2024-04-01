@@ -1,9 +1,3 @@
-// dim thing as int, y as int
-// 
-// y = 1
-// thing = 9 - 4 + 4 / 2  - 1
-// print("hello, w")
-//
 // Some function
 
 // class Stuff {
@@ -30,26 +24,20 @@
 //     return a - b;
 // }
 
+// function main(thing: int) {
+//     s = new Stuff(666, 222);
+// }
+
+function addFive(arg: int, argg: int): int {
+    return arg - argg;
+}
+
 // Entrypoint
-function main(thing: int) {
-    //s = new Stuff(666, 222);
-    //let x = 0;
-    //while x == 4 {
-    //    x = x + 1;
-    //}
-    let y = 10;
-    let x;
-    for x = 0; x < 4; x = x + 1 {
-        y = y - 1;
+function main() {
+    let x = 4;
+    if x == 3 {
+        let y = 5;
     }
-    if y == 10 {
-        x = 4;
-    } else {
-        if (x == 2) {
-            x = 444;
-        } else {
-            x = 1023;
-        }
-    }
+    addFive(5, 4);
 }
 

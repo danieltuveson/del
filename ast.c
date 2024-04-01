@@ -15,22 +15,23 @@ struct TopLevelDecl *new_class(Symbol symbol, Definitions *definitions, Methods 
     return tld;
 }
 
-struct FunDef *new_fundef(Symbol symbol, Definitions *args, Statements *stmts)
+struct FunDef *new_fundef(Symbol symbol, Type rettype, Definitions *args, Statements *stmts)
 {
     struct FunDef *fundef = malloc(sizeof(struct FunDef));
     fundef->name = symbol;
-    fundef->rettype = TYPE_UNDEFINED;
+    fundef->rettype = rettype;
     fundef->args = args;
     fundef->stmts = stmts;
     return fundef;
 }
 
-struct TopLevelDecl *new_tld_fundef(Symbol symbol, Definitions *args, Statements *stmts)
+struct TopLevelDecl *new_tld_fundef(Symbol symbol, Type rettype, Definitions *args,
+        Statements *stmts)
 {
     ast.function_count++;
     struct TopLevelDecl *tld = malloc(sizeof(struct TopLevelDecl));
     tld->type = TLD_TYPE_FUNDEF;
-    tld->fundef = new_fundef(symbol, args, stmts);
+    tld->fundef = new_fundef(symbol, rettype, args, stmts);
     return tld;
 }
 

@@ -1,6 +1,6 @@
 #include "typecheck.h"
 #include "ast.h"
-#include "printers.h"
+// #include "printers.h"
 
 #define ALL_GOOD 1
 #define BAD_STUFF 0
@@ -8,27 +8,53 @@
 #define find_open_loc(i, table, length, symbol)\
     for (i = symbol % length; table[i].name != 0; i = i == length - 1 ? 0 : i + 1)
 
-struct Class *lookup_class(struct Class *table, Symbol symbol)
-{
-    uint64_t i = symbol % ast.class_count;
-    for (; table[i].name != symbol; i = i == ast.class_count - 1 ? 0 : i + 1);
-    return &(table[i]);
-}
+struct ClassTable {
+    size_t size;
+    struct Class *table;
+};
 
-struct FunDef *lookup(struct FunDef *table, uint64_t length, Symbol symbol)
-{
-    uint64_t i = symbol % length;
-    for (; table[i].name != symbol; i = i == length - 1 ? 0 : i + 1);
-    return &(table[i]);
-}
+struct FunctionTable {
+    size_t size;
+    struct FunDef *table;
+};
 
 struct Scope {
     Definitions *definitions;
     struct Scope *parent;
 };
 
-static int typecheck_statements(struct Scope *scope, Statements *stmts);
-static int typecheck_statement(struct Scope *scope, struct Statement *stmt);
+struct TypeCheckerContext {
+    struct FunDef *enclosing_func;
+    struct FunctionTable *fun_table;
+    struct ClassTable *cls_table;
+    struct Scope *scope;
+};
+
+static int typecheck_statements(struct TypeCheckerContext *context, Statements *stmts);
+static int typecheck_statement(struct TypeCheckerContext *context, struct Statement *stmt);
+static int typecheck_funcall(struct TypeCheckerContext *context, struct FunCall *funcall);
+
+#define lookup(table, length, symbol)\
+    uint64_t i = symbol % length;\
+    for (uint64_t count = 0; count < length; count++) {\
+        if (table[i].name == symbol) {\
+            return &(table[i]);\
+        }\
+        i = i == length - 1 ? 0 : i + 1;\
+    }\
+    return NULL
+
+struct Class *lookup_class(struct Class *table, uint64_t length, Symbol symbol)
+{
+    lookup(table, length, symbol);
+}
+
+struct FunDef *lookup_fun(struct FunDef *table, uint64_t length, Symbol symbol)
+{
+    lookup(table, length, symbol);
+}
+
+#undef lookup
 
 void print_scope(struct Scope *scope)
 {
@@ -94,32 +120,36 @@ static struct Definition *lookup_var(struct Scope *scope, Symbol name)
             return def;
         }
     }
+    if (scope->parent != NULL) {
+        return lookup_var(scope->parent, name);
+    }
     return NULL;
 }
 
-static void add_class(struct Class *table, struct Class *cls)
+static void add_class(struct ClassTable *ct, struct Class *cls)
 {
     uint64_t loc;
-    find_open_loc(loc, table, ast.class_count, cls->name);
-    struct Class *clst = &table[loc];
+    find_open_loc(loc, ct->table, ct->size, cls->name);
+    struct Class *clst = &ct->table[loc];
     clst->name = cls->name;
     clst->definitions = cls->definitions;
     // Eventually we'll need to figure out what to do with methods... maybe a table for each?
 }
 
-static void add_function(struct FunDef *table, struct FunDef *fundef)
+static void add_function(struct FunctionTable *ft, struct FunDef *fundef)
 {
     uint64_t loc;
-    find_open_loc(loc, table, ast.function_count, fundef->name);
-    struct FunDef *ft = &table[loc];
-    ft->name = fundef->name;
-    ft->rettype = TYPE_UNDEFINED;
-    ft->args = fundef->args;
-    ft->stmts = fundef->stmts;
+    find_open_loc(loc, ft->table, ft->size, fundef->name);
+    struct FunDef *new_fundef = &ft->table[loc];
+    new_fundef->name = fundef->name;
+    // new_fundef->rettype = TYPE_UNDEFINED;
+    new_fundef->rettype = fundef->rettype;
+    new_fundef->args = fundef->args;
+    new_fundef->stmts = fundef->stmts;
 }
 
 // Add declared types to ast without typechecking
-static void add_types(TopLevelDecls *tlds, struct Class *clst, struct FunDef *ft)
+static void add_types(TopLevelDecls *tlds, struct ClassTable *clst, struct FunctionTable *ft)
 {
     for (; tlds != NULL; tlds = tlds->next) {
         struct TopLevelDecl *tld = tlds->value;
@@ -131,14 +161,14 @@ static void add_types(TopLevelDecls *tlds, struct Class *clst, struct FunDef *ft
     }
 }
 
-static Type typecheck_value(struct Scope *scope, struct Value *val);
+static Type typecheck_value(struct TypeCheckerContext *context, struct Value *val);
 
-static Type typecheck_expression(struct Scope *scope, struct Expr *expr)
+static Type typecheck_expression(struct TypeCheckerContext *context, struct Expr *expr)
 {
-    const Type type_left      = typecheck_value(scope, expr->val1);
+    const Type type_left      = typecheck_value(context, expr->val1);
     const Type type_right = (expr->val2 == NULL)
                           ? TYPE_UNDEFINED
-                          : typecheck_value(scope, expr->val2);
+                          : typecheck_value(context, expr->val2);
     const int left_is_int     = type_left  == TYPE_INT;
     const int right_is_int    = type_right == TYPE_INT;
     const int left_is_float   = type_left  == TYPE_FLOAT;
@@ -211,7 +241,7 @@ static Type typecheck_expression(struct Scope *scope, struct Expr *expr)
     };
 }
 
-static Type typecheck_value(struct Scope *scope, struct Value *val)
+static Type typecheck_value(struct TypeCheckerContext *context, struct Value *val)
 {
     struct Definition *def = NULL;
     switch (val->type) {
@@ -220,38 +250,33 @@ static Type typecheck_value(struct Scope *scope, struct Value *val)
         case VTYPE_FLOAT:  return TYPE_FLOAT;
         case VTYPE_BOOL:   return TYPE_BOOL;
         case VTYPE_SYMBOL:
-            def = lookup_var(scope, val->symbol);
+            def = lookup_var(context->scope, val->symbol);
             if (def == NULL || def->type == TYPE_UNDEFINED) {
                 printf("Error: '%s' is not defined\n", lookup_symbol(val->symbol));
                 return TYPE_UNDEFINED;
             } else {
                 return def->type;
             }
-        case VTYPE_EXPR:
-            return typecheck_expression(scope, val->expr);
-        case VTYPE_FUNCALL:
-            printf("unknown type\n");
-            return 0;
+        case VTYPE_EXPR: return typecheck_expression(context, val->expr);
+        case VTYPE_FUNCALL: return typecheck_funcall(context, val->funcall);
     }
 }
 
-static int typecheck_set(struct Scope *scope, struct Statement *stmt)
+static int typecheck_set(struct TypeCheckerContext *context, struct Statement *stmt)
 {
     Type type;
     if (stmt->set->is_define) {
-        //struct Definition def = { .name = stmt->set->symbol, .type = TYPE_UNDEFINED };
         struct Definition *def = malloc(sizeof(*def));
         def->name = stmt->set->symbol;
         def->type = TYPE_UNDEFINED;
-        add_var(scope, def);
+        add_var(context->scope, def);
     }
-    struct Definition *def = lookup_var(scope, stmt->set->symbol);
+    struct Definition *def = lookup_var(context->scope, stmt->set->symbol);
     if (def == NULL) {
-    //if (lookup_var(scope, stmt->set->symbol)) {
         printf("Symbol '%s' is used before it is declared\n", lookup_symbol(stmt->set->symbol));
         return 0;
     }
-    type = typecheck_value(scope, stmt->set->val);
+    type = typecheck_value(context, stmt->set->val);
     if (type == TYPE_UNDEFINED) {
         return 0;
     } else if (type != def->type && def->type != TYPE_UNDEFINED) {
@@ -261,17 +286,15 @@ static int typecheck_set(struct Scope *scope, struct Statement *stmt)
         char *err = "Error: %s is of type %s, cannot set to type %s\n";
         printf(err, name, variable_type, value_type);
         return 0;
-    } else {
-        //struct Definition def = { .name = stmt->set->symbol, .type = type };
-        struct Definition *def = malloc(sizeof(*def));
-        def->name = stmt->set->symbol;
-        def->type = type;
-        add_type(scope, def);
     }
+    def = malloc(sizeof(*def));
+    def->name = stmt->set->symbol;
+    def->type = type;
+    add_type(context->scope, def);
     return 1;
 }
 
-static void scope_let_vars(struct Scope *scope, Definitions *defs)
+static void scope_vars(struct Scope *scope, Definitions *defs)
 {
     for (; defs != NULL; defs = defs->next) {
         struct Definition *def = defs->value;
@@ -279,91 +302,165 @@ static void scope_let_vars(struct Scope *scope, Definitions *defs)
     }
 }
 
-static int typecheck_if(struct Scope *scope, struct IfStatement *if_stmt)
+static int typecheck_if(struct TypeCheckerContext *context, struct IfStatement *if_stmt)
 {
-    Type t0 = typecheck_value(scope, if_stmt->condition);
+    enter_scope(&context->scope);
+    Type t0 = typecheck_value(context, if_stmt->condition);
     if (t0 == TYPE_UNDEFINED) {
         return 0;
     } else if (t0 != TYPE_BOOL) {
         printf("Error: expected boolean in if condition\n");
         return 0;
     }
-    int ret = typecheck_statements(scope, if_stmt->if_stmts);
+    int ret = typecheck_statements(context, if_stmt->if_stmts);
     if (if_stmt->else_stmts != NULL) {
-        ret = ret && typecheck_statements(scope, if_stmt->else_stmts);
+        ret = ret && typecheck_statements(context, if_stmt->else_stmts);
     }
+    exit_scope(&context->scope);
     return ret;
 }
 
-// struct Value *condition;
-// Statements *stmts;
-static int typecheck_while(struct Scope *scope, struct While *while_stmt)
+static int typecheck_while(struct TypeCheckerContext *context, struct While *while_stmt)
 {
-    Type t0 = typecheck_value(scope, while_stmt->condition);
+    Type t0 = typecheck_value(context, while_stmt->condition);
     if (t0 == TYPE_UNDEFINED) {
         return 0;
     } else if (t0 != TYPE_BOOL) {
         printf("Error: expected boolean in while condition\n");
         return 0;
     }
-    int ret = typecheck_statements(scope, while_stmt->stmts);
+    int ret = typecheck_statements(context, while_stmt->stmts);
     return ret;
 }
 
-// struct Statement *init;
-// struct Value *condition;
-// struct Statement *increment;
-// Statements *stmts;
-static int typecheck_for(struct Scope *scope, struct For *for_stmt)
+static int typecheck_for(struct TypeCheckerContext *context, struct For *for_stmt)
 {
-    int ret = typecheck_statement(scope, for_stmt->init);
+    int ret = typecheck_statement(context, for_stmt->init);
     if (!ret) return 0;
-    Type t0 = typecheck_value(scope, for_stmt->condition);
+    Type t0 = typecheck_value(context, for_stmt->condition);
     if (t0 == TYPE_UNDEFINED) {
         return 0;
     } else if (t0 != TYPE_BOOL) {
         printf("Error: expected boolean as second parameter as for loop condition\n");
         return 0;
     }
-    ret = typecheck_statement(scope, for_stmt->increment);
+    ret = typecheck_statement(context, for_stmt->increment);
     if (!ret) return 0;
-    ret = typecheck_statements(scope, for_stmt->stmts);
+    ret = typecheck_statements(context, for_stmt->stmts);
     return ret;
 }
 
-static int typecheck_statement(struct Scope *scope, struct Statement *stmt)
+static int typecheck_return(struct TypeCheckerContext *context, struct Value *val)
 {
-    // switch (stmt->type) {
-    //     case STMT_SET:    compile_set(cc, stmt->set);          break;
-    //     case STMT_RETURN: compile_return(cc, stmt->ret);       break;
-    //     case STMT_IF:     compile_if(cc, stmt->if_stmt);       break;
-    //     case STMT_WHILE:  compile_while(cc, stmt->while_stmt); break;
-    //     default: printf("Error cannot compile statement type: not implemented\n"); break;
-    // }
-    switch (stmt->type) {
-        case STMT_SET:    return typecheck_set(scope, stmt);
-        case STMT_RETURN: return 0;
-        case STMT_LET:    scope_let_vars(scope, stmt->let); return 1;
-        case STMT_IF:     return typecheck_if(scope, stmt->if_stmt);
-        case STMT_WHILE:  return typecheck_while(scope, stmt->while_stmt);
-        case STMT_FOR:    return typecheck_for(scope, stmt->for_stmt);
-        case STMT_FOREACH:
-        case STMT_FUNCALL:
-            printf("cannot typecheck statement of this type\n");
+    char *errmsg = "Error: function return type is %s but returning value of type %s\n";
+    Type rettype = context->enclosing_func->rettype;
+    if (val == NULL) {
+        if (rettype == TYPE_UNDEFINED) {
+            return 1;
+        } else {
+            printf(errmsg, "void", lookup_symbol(rettype));
             return 0;
+        }
+    }
+    Type val_type = typecheck_value(context, val);
+    if (val_type == TYPE_UNDEFINED) {
+        return 0;
+    } else if (rettype != val_type) {
+        printf(errmsg, lookup_symbol(rettype), lookup_symbol(val_type));
+        return 0;
+    }
+    return 1;
+}
+
+static int typecheck_funcall(struct TypeCheckerContext *context, struct FunCall *funcall)
+{
+    struct FunctionTable *ft = context->fun_table;
+    struct FunDef *fundef = lookup_fun(ft->table, ft->size, funcall->funname);
+    if (fundef == NULL) {
+        printf("Error: no function named %s\n", lookup_symbol(funcall->funname));
+        return 0;
+    } else if (fundef->args->length != funcall->args->length) {
+        printf("Error: %s expects %llu arguments but got %llu\n", lookup_symbol(fundef->name),
+                fundef->args->length, funcall->args->length);
+        return 0;
+    }
+    Values *vals = funcall->args;
+    Definitions *defs = fundef->args;
+    for (uint64_t i = 0; i < funcall->args->length; i++) {
+        struct Value *val = vals->value;
+        struct Definition *fun_arg_def = defs->value;
+        Type val_type = typecheck_value(context, val);
+        if (val_type != fun_arg_def->type) {
+            printf("Error: expected argument %llu to %s to be of type %s, but got argument of "
+                    "type %s\n", i + 1, lookup_symbol(fundef->name),
+                    lookup_symbol(fun_arg_def->type),
+                    lookup_symbol(val_type));
+            return 0;
+        }
+        vals = vals->next;
+        defs = defs->next;
+    }
+    return 1;
+}
+
+static int typecheck_statement(struct TypeCheckerContext *context, struct Statement *stmt)
+{
+    switch (stmt->type) {
+        case STMT_SET:     return typecheck_set(context, stmt);
+        case STMT_LET:     scope_vars(context->scope, stmt->let); return 1;
+        case STMT_IF:      return typecheck_if(context, stmt->if_stmt);
+        case STMT_WHILE:   return typecheck_while(context, stmt->while_stmt);
+        case STMT_FOR:     return typecheck_for(context, stmt->for_stmt);
+        case STMT_FUNCALL: return typecheck_funcall(context, stmt->funcall);
+        case STMT_RETURN:  return typecheck_return(context, stmt->ret);
+        case STMT_FOREACH: printf("Error: not implemented\n");
+                           return 0;
     }
 }
 
-static int typecheck_functioncall(struct FunCall *funcall)
-{
-    return 0;
-}
-
-static int typecheck_statements(struct Scope *scope, Statements *stmts)
+static int typecheck_statements(struct TypeCheckerContext *context, Statements *stmts)
 {
     for (; stmts != NULL; stmts = stmts->next) {
-        struct Statement *stmt = (struct Statement *) stmts->value;
-        if (!typecheck_statement(scope, stmt)) {
+        struct Statement *stmt = stmts->value;
+        if (!typecheck_statement(context, stmt)) {
+            return 0;
+        }
+    }
+    return 1;
+}
+
+static int typecheck_fundef(struct TypeCheckerContext *context, struct FunDef *fundef)
+{
+    struct Scope *scope = NULL;
+    enter_scope(&scope);
+    context->enclosing_func = fundef;
+    context->scope = scope;
+    scope_vars(context->scope, fundef->args);
+    int ret = typecheck_statements(context, fundef->stmts);
+    exit_scope(&scope);
+    return ret;
+}
+
+static int typecheck_tld(struct TypeCheckerContext *context, struct TopLevelDecl *tld)
+{
+    switch (tld->type) {
+        case TLD_TYPE_CLASS:
+            // typecheck_class(context, tld->cls);
+            printf("Error: not implemented\n");
+            return 0;
+        case TLD_TYPE_FUNDEF:
+            if (!typecheck_fundef(context, tld->fundef)) {
+                return 0;
+            }
+            break;
+    }
+    return 1;
+}
+
+static int typecheck_tlds(struct TypeCheckerContext *context, TopLevelDecls *tlds)
+{
+    for (;tlds != NULL; tlds = tlds->next) {
+        if (!typecheck_tld(context, tlds->value)) {
             return 0;
         }
     }
@@ -372,22 +469,19 @@ static int typecheck_statements(struct Scope *scope, Statements *stmts)
 
 int typecheck(struct Ast *ast, struct Class *clst, struct FunDef *ft)
 {
-    add_types(ast->ast, clst, ft);
-    for (uint64_t i = 0; i < ast->class_count; i++) {
-        print_class(&(clst[i]), 0);
-        printf("\n");
-    }
-    for (uint64_t i = 0; i < ast->function_count; i++) {
-        print_fundef(&(ft[i]), 0, 0);
-        printf("\n");
-    }
-    int ret = 1;
-    struct Scope *scope = NULL;
-    enter_scope(&scope);
-    struct FunDef *main = lookup(ft, ast->function_count, ast->entrypoint);
-    ret = typecheck_statements(scope, main->stmts);
-    exit_scope(&scope);
-    return ret;
+    struct ClassTable class_table = { ast->class_count, clst };
+    struct FunctionTable function_table = { ast->function_count, ft };
+    add_types(ast->ast, &class_table, &function_table);
+    // for (uint64_t i = 0; i < ast->class_count; i++) {
+    //     print_class(&(clst[i]), 0);
+    //     printf("\n");
+    // }
+    // for (uint64_t i = 0; i < ast->function_count; i++) {
+    //     print_fundef(&(ft[i]), 0, 0);
+    //     printf("\n");
+    // }
+    struct TypeCheckerContext context = { NULL, &function_table, &class_table, NULL };
+    return typecheck_tlds(&context, ast->ast);
 }
 
 #undef find_open_loc

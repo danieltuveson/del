@@ -390,8 +390,11 @@ static void print_statement_indent(struct Statement *stmt, int indent)
             print_while(stmt->while_stmt, indent);
             break;
         case STMT_RETURN:
-            printf("return ");
-            print_value(stmt->ret);
+            printf("return");
+            if (stmt->ret != NULL) {
+                printf(" ");
+                print_value(stmt->ret);
+            }
             printf(";");
             break;
         case STMT_FOR:
@@ -441,7 +444,7 @@ void print_fundef(struct FunDef *fundef, int indent, int ismethod)
     }
     printf("%s(", lookup_symbol(fundef->name));
     print_definitions(fundef->args, ',', indent);
-    printf(") {\n");
+    printf("): %s {\n", lookup_symbol(fundef->rettype));
     print_statements_indent(fundef->stmts, TAB_WIDTH + indent);
     left_pad(indent);
     printf("}");

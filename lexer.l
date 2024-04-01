@@ -91,7 +91,7 @@ addsymbol:
 
 \"[^\"]*\" {
     yylval.string = malloc((yyleng - 1) * sizeof(char));
-    for (int i = 1; i < yyleng - 1; i++) {
+    for (unsigned long i = 1; i < yyleng - 1; i++) {
         yylval.string[i - 1] = yytext[i];
     }
     yylval.string[yyleng - 2] = '\0';

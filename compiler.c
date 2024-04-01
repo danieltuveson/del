@@ -113,7 +113,7 @@ static void compile_fundef(struct CompilerContext *cc, struct FunDef *fundef)
 //static void compile_constructor(struct CompilerContext *cc, struct Class *cls)
 static void compile_constructor(struct CompilerContext *cc, Symbol symbol)
 {
-    struct Class *cls = lookup_class(cc->class_table, symbol);
+    struct Class *cls = lookup_class(cc->class_table, ast.class_count, symbol);
     const uint64_t PUSH_CONSTRUCTOR = 0;
     load(cc, PUSH_CONSTRUCTOR);
     load(cc, cls->definitions->length);

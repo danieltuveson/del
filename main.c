@@ -147,6 +147,7 @@ int main(void)
             printf("program failed to typecheck\n");
             return EXIT_FAILURE;
         }
+        printf("`````````````` COMPILE ```````````````\n");
         compile(&cc, ast.ast);
         printf("\n");
         printf("````````````` INSTRUCTIONS `````````````\n");

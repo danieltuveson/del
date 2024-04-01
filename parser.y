@@ -64,6 +64,7 @@ int yyerror(const char *s);
 %type <tld> tld
 %type <tld> cls
 %type <tld> fundef
+%type <definitions> fundef_args
 %type <method> method
 %type <stmts> statements
 %type <stmts> block
@@ -92,8 +93,14 @@ tlds: tld { $$ = new_list($1); }
 
 tld: fundef { $$ = $1; } | cls { $$ = $1; };
 
-fundef: ST_FUNCTION T_SYMBOL ST_OPEN_PAREN definitions ST_CLOSE_PAREN ST_OPEN_BRACE
-        statements ST_CLOSE_BRACE { $$ = new_tld_fundef($2, $4, $7); }
+fundef: ST_FUNCTION T_SYMBOL fundef_args ST_COLON type
+        ST_OPEN_BRACE statements ST_CLOSE_BRACE { $$ = new_tld_fundef($2, $5, $3, $7); }
+      | ST_FUNCTION T_SYMBOL fundef_args ST_OPEN_BRACE
+        statements ST_CLOSE_BRACE { $$ = new_tld_fundef($2, TYPE_UNDEFINED, $3, $5); }
+;
+
+fundef_args: ST_OPEN_PAREN definitions ST_CLOSE_PAREN { $$ = $2; }
+           | ST_OPEN_PAREN ST_CLOSE_PAREN { $$ = NULL; }
 ;
 
 cls: ST_CLASS T_SYMBOL ST_OPEN_BRACE class_definitions methods ST_CLOSE_BRACE
@@ -112,8 +119,12 @@ methods: method { $$ = new_list($1); }
        | method methods { $$ = append($2, $1); }
 ;
 
+// method: ST_FUNCTION T_SYMBOL ST_OPEN_PAREN definitions ST_CLOSE_PAREN ST_OPEN_BRACE
+//         statements ST_CLOSE_BRACE { $$ = new_fundef($2, $4, $7); }
 method: ST_FUNCTION T_SYMBOL ST_OPEN_PAREN definitions ST_CLOSE_PAREN ST_OPEN_BRACE
-        statements ST_CLOSE_BRACE { $$ = new_fundef($2, $4, $7); }
+        statements ST_CLOSE_BRACE { $$ = new_fundef($2, TYPE_UNDEFINED, $4, $7); }
+      | ST_FUNCTION T_SYMBOL ST_OPEN_PAREN definitions ST_CLOSE_PAREN ST_COLON type
+        ST_OPEN_BRACE statements ST_CLOSE_BRACE { $$ = new_fundef($2, $7, $4, $9); }
 ;
 
 statements: statement { $$ = new_list($1); }
@@ -129,6 +140,7 @@ line: T_SYMBOL ST_EQ expr { $$ = new_set($1, $3, NULL, 0); }
     | ST_LET symbols { $$ = new_let($2); }
     | T_SYMBOL ST_OPEN_PAREN args ST_CLOSE_PAREN { $$ = new_sfuncall($1, $3); }
     | ST_RETURN expr { $$ = new_return($2); }
+    | ST_RETURN { $$ = new_return(NULL); }
 ;
 
 statement: line ST_SEMICOLON { $$ = $1; }

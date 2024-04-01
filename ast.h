@@ -166,8 +166,9 @@ struct Statement {
 
 /* TLD constructors */
 struct TopLevelDecl *new_class(Symbol symbol, Definitions *definitions, Methods *methods);
-struct TopLevelDecl *new_tld_fundef(Symbol symbol, Definitions *args, Statements *stmts);
-struct FunDef *new_fundef(Symbol symbol, Definitions *args, Statements *stmts);
+struct TopLevelDecl *new_tld_fundef(Symbol symbol, Type rettype, Definitions *args,
+        Statements *stmts);
+struct FunDef *new_fundef(Symbol symbol, Type rettype, Definitions *args, Statements *stmts);
 
 /* Statement constructors */
 struct Statement *new_set(Symbol symbol, struct Value *val, LValues *lvalues, int is_define);

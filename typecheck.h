@@ -44,7 +44,7 @@
 //     Definitions *definitions;
 // };
 
-struct Class *lookup_class(struct Class *table, Symbol symbol);
+struct Class *lookup_class(struct Class *table, uint64_t length, Symbol symbol);
 int typecheck(struct Ast *ast, struct Class *clst, struct FunDef *ft);
 
 #endif
