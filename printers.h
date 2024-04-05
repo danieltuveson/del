@@ -17,8 +17,8 @@ void print_fundef(struct FunDef *fundef, int indent, int ismethod);
 void print_class(struct Class *cls, int indent);
 
 /* Compiler printers */
-void print_ft_node(struct FunctionTableNode *fn);
-void print_ft(struct FunctionTable *ft);
+void print_ft_node(struct FunctionCallTableNode *fn);
+void print_ft(struct FunctionCallTable *ft);
 
 /* VM printers */
 void print_instructions(struct CompilerContext *cc);

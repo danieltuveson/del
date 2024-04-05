@@ -1,22 +1,11 @@
 #include "typecheck.h"
 #include "ast.h"
-// #include "printers.h"
 
 #define ALL_GOOD 1
 #define BAD_STUFF 0
 
 #define find_open_loc(i, table, length, symbol)\
     for (i = symbol % length; table[i].name != 0; i = i == length - 1 ? 0 : i + 1)
-
-struct ClassTable {
-    size_t size;
-    struct Class *table;
-};
-
-struct FunctionTable {
-    size_t size;
-    struct FunDef *table;
-};
 
 struct Scope {
     Definitions *definitions;
@@ -44,14 +33,14 @@ static int typecheck_funcall(struct TypeCheckerContext *context, struct FunCall 
     }\
     return NULL
 
-struct Class *lookup_class(struct Class *table, uint64_t length, Symbol symbol)
+struct Class *lookup_class(struct ClassTable *ct, Symbol symbol)
 {
-    lookup(table, length, symbol);
+    lookup(ct->table, ct->size, symbol);
 }
 
-struct FunDef *lookup_fun(struct FunDef *table, uint64_t length, Symbol symbol)
+struct FunDef *lookup_fun(struct FunctionTable *ft, Symbol symbol)
 {
-    lookup(table, length, symbol);
+    lookup(ft->table, ft->size, symbol);
 }
 
 #undef lookup
@@ -375,7 +364,7 @@ static int typecheck_return(struct TypeCheckerContext *context, struct Value *va
 static int typecheck_funcall(struct TypeCheckerContext *context, struct FunCall *funcall)
 {
     struct FunctionTable *ft = context->fun_table;
-    struct FunDef *fundef = lookup_fun(ft->table, ft->size, funcall->funname);
+    struct FunDef *fundef = lookup_fun(ft, funcall->funname);
     if (fundef == NULL) {
         printf("Error: no function named %s\n", lookup_symbol(funcall->funname));
         return 0;

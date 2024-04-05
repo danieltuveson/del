@@ -104,7 +104,12 @@ void print_stack(struct Stack *stack)
 {
     printf("[ ");
     for (uint64_t i = 0; i < stack->offset; i++) {
-        printf("%llu ", (uint64_t) stack->values[i]);
+        // If it would be interpreted as a huge number, it's probably a negative integer
+        if (stack->values[i] > INT64_MAX) {
+            printf("%lli ", (int64_t) stack->values[i]);
+        } else {
+            printf("%llu ", (uint64_t) stack->values[i]);
+        }
     }
     printf("]\n");
 }
@@ -491,7 +496,7 @@ void print_tlds(TopLevelDecls *tlds)
     print_tlds_indent(tlds, 0);
 }
 
-void print_ft_node(struct FunctionTableNode *fn)
+void print_ft_node(struct FunctionCallTableNode *fn)
 {
     printf("%s: ", lookup_symbol(fn->function));
     for (struct List *calls = fn->callsites; calls != NULL; calls = calls->next) {
@@ -501,7 +506,7 @@ void print_ft_node(struct FunctionTableNode *fn)
     printf("\n");
 }
 
-void print_ft(struct FunctionTable *ft)
+void print_ft(struct FunctionCallTable *ft)
 {
     if (ft == NULL) return;
     print_ft_node(ft->node);

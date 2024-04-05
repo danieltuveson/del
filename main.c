@@ -152,7 +152,7 @@ int main(void)
         printf("\n");
         printf("````````````` INSTRUCTIONS `````````````\n");
         printf("function table:\n");
-        print_ft(cc.ft);
+        print_ft(cc.funcall_table);
         printf("\n");
         print_instructions(&cc);
         printf("\n");

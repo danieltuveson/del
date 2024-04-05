@@ -9,20 +9,21 @@
  *
  * Using a binary tree to store this information.
  */
-struct FunctionTable {
-    struct FunctionTableNode *node;
-    struct FunctionTable *left;
-    struct FunctionTable *right;
+struct FunctionCallTable {
+    struct FunctionCallTableNode *node;
+    struct FunctionCallTable *left;
+    struct FunctionCallTable *right;
 };
 
-struct FunctionTableNode {
+struct FunctionCallTableNode {
     Symbol function;
     uint64_t location;
     struct List *callsites;
 };
 
-struct FunctionTable *new_ft(uint64_t function);
-struct FunctionTableNode *add_ft_node(struct FunctionTable *ft, Symbol function, uint64_t loc);
-void add_callsite(struct FunctionTable *ft, Symbol function, uint64_t callsite);
+struct FunctionCallTable *new_ft(uint64_t function);
+struct FunctionCallTableNode *add_ft_node(struct FunctionCallTable *ft, Symbol function,
+        uint64_t loc);
+void add_callsite(struct FunctionCallTable *ft, Symbol function, uint64_t callsite);
 
 #endif

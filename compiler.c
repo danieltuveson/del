@@ -105,7 +105,7 @@ static void compile_funargs(struct CompilerContext *cc, Definitions *defs)
  */
 static void compile_fundef(struct CompilerContext *cc, struct FunDef *fundef)
 {
-    add_ft_node(cc->ft, fundef->name, cc->offset);
+    add_ft_node(cc->funcall_table, fundef->name, cc->offset);
     compile_funargs(cc, fundef->args);
     compile_statements(cc, fundef->stmts);
 }
@@ -113,7 +113,7 @@ static void compile_fundef(struct CompilerContext *cc, struct FunDef *fundef)
 //static void compile_constructor(struct CompilerContext *cc, struct Class *cls)
 static void compile_constructor(struct CompilerContext *cc, Symbol symbol)
 {
-    struct Class *cls = lookup_class(cc->class_table, ast.class_count, symbol);
+    struct Class *cls = lookup_class(cc->class_table, symbol);
     const uint64_t PUSH_CONSTRUCTOR = 0;
     load(cc, PUSH_CONSTRUCTOR);
     load(cc, cls->definitions->length);
@@ -123,7 +123,7 @@ static void compile_constructor(struct CompilerContext *cc, Symbol symbol)
     }
     // // Will rewrite the later to allow users to make their own constructors
     // // For now, just creates an object based on whatever arguments it's passed
-    // add_ft_node(cc->ft, cls->name, cc->offset);
+    // add_ft_node(cc->funcall_table, cls->name, cc->offset);
     // uint64_t count = 0;
     // for (Definitions *defs = cls->definitions; defs != NULL; defs = defs->next) {
     //     // struct Definition *def = (struct Definition *) defs->value;
@@ -146,7 +146,7 @@ static void compile_funcall(struct CompilerContext *cc, struct FunCall *funcall)
         compile_value(cc, args->value);
     }
     load(cc, PUSH);
-    add_callsite(cc->ft, funcall->funname, next(cc));
+    add_callsite(cc->funcall_table, funcall->funname, next(cc));
     load(cc, JMP);
     cc->instructions[bookmark] = cc->offset;
 }
@@ -380,7 +380,7 @@ static void compile_tld(struct CompilerContext *cc, struct TopLevelDecl *tld)
 
 static void compile_tlds(struct CompilerContext *cc, TopLevelDecls *tlds)
 {
-    cc->ft = new_ft(0);
+    cc->funcall_table = new_ft(0);
     compile_entrypoint(cc, tlds);
     for (;tlds != NULL; tlds = tlds->next) {
         compile_tld(cc, (struct TopLevelDecl *) tlds->value);
@@ -388,7 +388,7 @@ static void compile_tlds(struct CompilerContext *cc, TopLevelDecls *tlds)
 }
 
 // Looks through compiled bytecode and adds references to where function is defined
-static void resolve_function_declarations_help(uint64_t *instructions, struct FunctionTableNode *fn)
+static void resolve_function_declarations_help(uint64_t *instructions, struct FunctionCallTableNode *fn)
 {
     for (struct List *calls = fn->callsites; calls != NULL; calls = calls->prev) {
         uint64_t *callsite = (uint64_t *) calls->value;
@@ -398,12 +398,13 @@ static void resolve_function_declarations_help(uint64_t *instructions, struct Fu
     }
 }
 
-static void resolve_function_declarations(uint64_t *instructions, struct FunctionTable *ft)
+static void resolve_function_declarations(uint64_t *instructions,
+        struct FunctionCallTable *funcall_table)
 {
-    if (ft == NULL) return;
-    resolve_function_declarations_help(instructions, ft->node);
-    resolve_function_declarations(instructions, ft->left);
-    resolve_function_declarations(instructions, ft->right);
+    if (funcall_table == NULL) return;
+    resolve_function_declarations_help(instructions, funcall_table->node);
+    resolve_function_declarations(instructions, funcall_table->left);
+    resolve_function_declarations(instructions, funcall_table->right);
     return;
 }
 
@@ -412,7 +413,7 @@ static void resolve_function_declarations(uint64_t *instructions, struct Functio
 int compile(struct CompilerContext *cc, TopLevelDecls *tlds)
 {
     compile_tlds(cc, tlds);
-    resolve_function_declarations(cc->instructions, cc->ft);
+    resolve_function_declarations(cc->instructions, cc->funcall_table);
     return cc->offset;
     // run_tests();
     // printf("compiler under construction. come back later.\n");

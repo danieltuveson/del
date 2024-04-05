@@ -1,10 +1,10 @@
 #include "functiontable.h"
 #include "printers.h"
 
-struct FunctionTable *new_ft(uint64_t function)
+struct FunctionCallTable *new_ft(uint64_t function)
 {
-    struct FunctionTable *ft = malloc(sizeof(struct FunctionTable));
-    ft->node = malloc(sizeof(struct FunctionTableNode));
+    struct FunctionCallTable *ft = malloc(sizeof(struct FunctionCallTable));
+    ft->node = malloc(sizeof(struct FunctionCallTableNode));
     ft->node->function = function;
     ft->node->location = 0;
     ft->node->callsites = NULL;
@@ -13,11 +13,11 @@ struct FunctionTable *new_ft(uint64_t function)
     return ft;
 }
 
-static inline struct FunctionTableNode *add_function_internal(struct FunctionTable *ft, 
+static inline struct FunctionCallTableNode *add_function_internal(struct FunctionCallTable *ft, 
        Symbol function, uint64_t loc, int noloc)
 {
     int from_left = 0;
-    struct FunctionTable *prev = NULL;
+    struct FunctionCallTable *prev = NULL;
     for (;;) {
         if (ft == NULL) {
             ft = new_ft(function);
@@ -49,14 +49,14 @@ static inline struct FunctionTableNode *add_function_internal(struct FunctionTab
 #define add_function_noloc(ft, function) add_function_internal(ft, function, 0, 1)
 
 // Adds function to table, *does* set the location of the function call
-struct FunctionTableNode *add_ft_node(struct FunctionTable *ft, Symbol function, uint64_t loc)
+struct FunctionCallTableNode *add_ft_node(struct FunctionCallTable *ft, Symbol function, uint64_t loc)
 {
     return add_function_internal(ft, function, loc, 0);
 }
 
-void add_callsite(struct FunctionTable *ft, Symbol function, uint64_t callsite)
+void add_callsite(struct FunctionCallTable *ft, Symbol function, uint64_t callsite)
 {
-    struct FunctionTableNode *node = add_function_noloc(ft, function);
+    struct FunctionCallTableNode *node = add_function_noloc(ft, function);
     int *hcallsite = malloc(sizeof(uint64_t));
     *hcallsite = callsite;
     if (node->callsites == NULL) {

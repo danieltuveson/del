@@ -3,12 +3,13 @@
 
 #include "ast.h"
 #include "functiontable.h"
+#include "typecheck.h"
 
 struct CompilerContext {
     uint64_t *instructions;
     int offset;
-    struct FunctionTable *ft;
-    struct Class *class_table;
+    struct FunctionCallTable *funcall_table;
+    struct ClassTable *class_table;
 };
 
 enum Code {
