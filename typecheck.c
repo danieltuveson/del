@@ -369,7 +369,8 @@ static int typecheck_funcall(struct TypeCheckerContext *context, struct FunCall 
         printf("Error: no function named %s\n", lookup_symbol(funcall->funname));
         return 0;
     } else if (fundef->args->length != funcall->args->length) {
-        printf("Error: %s expects %llu arguments but got %llu\n", lookup_symbol(fundef->name),
+        printf("Error: %s expects %" PRIu64 " arguments but got %" PRIu64 "\n",
+                lookup_symbol(fundef->name),
                 fundef->args->length, funcall->args->length);
         return 0;
     }
@@ -380,8 +381,9 @@ static int typecheck_funcall(struct TypeCheckerContext *context, struct FunCall 
         struct Definition *fun_arg_def = defs->value;
         Type val_type = typecheck_value(context, val);
         if (val_type != fun_arg_def->type) {
-            printf("Error: expected argument %llu to %s to be of type %s, but got argument of "
-                    "type %s\n", i + 1, lookup_symbol(fundef->name),
+            printf("Error: expected argument %" PRIu64 " to %s to be of type %s, but got "
+                    "argument of type %s\n",
+                    i + 1, lookup_symbol(fundef->name),
                     lookup_symbol(fun_arg_def->type),
                     lookup_symbol(val_type));
             return 0;

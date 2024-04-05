@@ -67,13 +67,13 @@ static inline void push_heap(struct Heap *heap, struct Stack *stack)
     ptr = heap->offset;
     set_count(&ptr, count);
     // heap->values[heap->offset++] = count;
-    // printf("count: %llu\n", count);
-    // printf("location: %llu\n", location);
+    // printf("count: %" PRIu64 "\n", count);
+    // printf("location: %" PRIu64 "\n", location);
     for (uint64_t i = 0; i < count; i++) {
         value = pop(stack);
         // char str[9] = {0};
         // uint64_as_string(value, str, 0);
-        // printf("value: %llu\n", value);
+        // printf("value: %" PRIu64 "\n", value);
         heap->values[heap->offset++] = value;
     }
     // Store count in bits before location
@@ -253,7 +253,7 @@ long vm_execute(uint64_t *instructions)
                 swap(&stack);
                 break;
             default:
-                printf("unknown instruction encountered: '%llu'", instructions[ip]);
+                printf("unknown instruction encountered: '%" PRIu64 "'", instructions[ip]);
                 break;
         }
         ip++;

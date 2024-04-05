@@ -392,7 +392,7 @@ static void resolve_function_declarations_help(uint64_t *instructions, struct Fu
 {
     for (struct List *calls = fn->callsites; calls != NULL; calls = calls->prev) {
         uint64_t *callsite = (uint64_t *) calls->value;
-        printf("callsite %llu updated with function %s at location %llu",
+        printf("callsite %" PRIu64 " updated with function %s at location %" PRIu64,
                 *callsite, lookup_symbol(fn->function), fn->location);
         instructions[*callsite] = fn->location;
     }

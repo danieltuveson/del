@@ -16,7 +16,7 @@ void print_instructions(struct CompilerContext *cc)
         switch ((enum Code) instructions[i]) {
             case PUSH:
                 i++;
-                printf("PUSH %llu\n", (uint64_t) instructions[i]);
+                printf("PUSH %" PRIu64 "\n", (uint64_t) instructions[i]);
                 break;
             case PUSH_HEAP:
                 printf("PUSH_HEAP\n");
@@ -86,7 +86,7 @@ void print_instructions(struct CompilerContext *cc)
                 break;
             case GET_LOCAL:
                 i++;
-                printf("GET_LOCAL %llu\n", (uint64_t) instructions[i]);
+                printf("GET_LOCAL %" PRIu64 "\n", (uint64_t) instructions[i]);
                 break;
             case EXIT:
                 printf("EXIT\n");
@@ -106,9 +106,9 @@ void print_stack(struct Stack *stack)
     for (uint64_t i = 0; i < stack->offset; i++) {
         // If it would be interpreted as a huge number, it's probably a negative integer
         if (stack->values[i] > INT64_MAX) {
-            printf("%lli ", (int64_t) stack->values[i]);
+            printf("%" PRIi64 " ", (int64_t) stack->values[i]);
         } else {
-            printf("%llu ", (uint64_t) stack->values[i]);
+            printf("%" PRIu64 " ", (uint64_t) stack->values[i]);
         }
     }
     printf("]\n");
@@ -119,7 +119,7 @@ void print_locals(struct Locals *locals)
     printf("[");
     for (int i = 0; i < locals->count; i++) {
         printf(" { %s: ", lookup_symbol(locals->names[i]));
-        printf("%lli }, ", (int64_t) locals->values[i]);
+        printf("%" PRIi64 " }, ", (int64_t) locals->values[i]);
     }
     printf("]\n");
 }
@@ -128,7 +128,7 @@ void print_heap(struct Heap *heap)
 {
     printf("[ objcount: %d, offset: %d, values: { ", heap->objcount, heap->offset);
     for (int i = 0; i < heap->offset; i++) {
-        printf("%llu", heap->values[i]);
+        printf("%" PRIu64 "", heap->values[i]);
         if (i != heap->offset - 1) printf(", ");
     }
     printf(" } ]\n");
@@ -148,7 +148,7 @@ void print_heap(struct Heap *heap)
 //         // }
 //         printf("}");
 //         // struct ClassType clst = table[i];
-//         // printf("%llu: class %s {\n", i, lookup_symbol(clst.name));
+//         // printf("%" PRIu64 ": class %s {\n", i, lookup_symbol(clst.name));
 //         // print_definitions(lst, sep, )
 //         // for (uint64_t j = 0; j < clst.count; j++) {
 //         //     printf("    %s;\n", lookup_symbol(clst.types[j]));
@@ -169,7 +169,7 @@ void print_heap(struct Heap *heap)
 //     }
 //     //for (uint64_t i = 0; i < length; i++) {
 //     //    struct FunctionType ft = table[i];
-//     //    printf("%llu: function %s(", i, lookup_symbol(ft.name));
+//     //    printf("%" PRIu64 ": function %s(", i, lookup_symbol(ft.name));
 //     //    for (uint64_t j = 0; j < ft.count; j++) {
 //     //        printf("%s", lookup_symbol(ft.types[j]));
 //     //        if (j != ft.count - 1) printf(", ");
@@ -482,8 +482,8 @@ static void print_tld_indent(struct TopLevelDecl *tld, int indent)
 
 static void print_tlds_indent(TopLevelDecls *tlds, int indent)
 {
-    printf("%llu functions defined\n", ast.function_count);
-    printf("%llu classes defined\n", ast.class_count);
+    printf("%" PRIu64 " functions defined\n", ast.function_count);
+    printf("%" PRIu64 " classes defined\n", ast.class_count);
     while (tlds != NULL)
     {
         print_tld_indent(tlds->value, indent);
@@ -500,7 +500,7 @@ void print_ft_node(struct FunctionCallTableNode *fn)
 {
     printf("%s: ", lookup_symbol(fn->function));
     for (struct List *calls = fn->callsites; calls != NULL; calls = calls->next) {
-        printf("%llu", *((uint64_t *) calls->value));
+        printf("%" PRIu64 "", *((uint64_t *) calls->value));
         if (calls->next != NULL) printf(", ");
     }
     printf("\n");
