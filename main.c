@@ -131,8 +131,8 @@ int main(void)
     if (ret != 0) {
         printf("parse error\n");
     } else {
-        struct Class  *class_table    = calloc(ast.class_count, sizeof(struct Class));
-        struct FunDef *function_table = calloc(ast.function_count, sizeof(struct FunDef));
+        struct Class *class_table = calloc(ast.class_count, sizeof(*class_table));
+        struct FunDef *function_table = calloc(ast.function_count, sizeof(*function_table));
         uint64_t instructions[INSTRUCTIONS_SIZE];
         struct CompilerContext cc = { instructions, 0, NULL, class_table };
         printf("````````````````` CODE `````````````````\n");

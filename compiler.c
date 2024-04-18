@@ -153,7 +153,7 @@ static void compile_funcall(struct CompilerContext *cc, struct FunCall *funcall)
 
 static void compile_value(struct CompilerContext *cc, struct Value *val)
 {
-    switch (val->type) {
+    switch (val->vtype) {
         case VTYPE_STRING:  compile_string(cc,  val->string);  break;
         case VTYPE_INT:     compile_int(cc,     val->integer); break;
         case VTYPE_BOOL:    compile_bool(cc,    val->boolean); break;

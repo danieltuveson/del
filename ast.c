@@ -129,7 +129,8 @@ struct Statement *new_return(struct Value *val)
 struct Value *new_string(char *string)
 {
     struct Value *val = malloc(sizeof(struct Value));
-    val->type = VTYPE_STRING;
+    val->vtype = VTYPE_STRING;
+    val->type = TYPE_STRING;
     val->string = string;
     return val;
 }
@@ -137,7 +138,8 @@ struct Value *new_string(char *string)
 struct Value *new_symbol(uint64_t symbol)
 {
     struct Value *val = malloc(sizeof(struct Value));
-    val->type = VTYPE_SYMBOL;
+    val->vtype = VTYPE_SYMBOL;
+    val->type = TYPE_UNDEFINED;
     val->symbol = symbol;
     return val;
 }
@@ -145,7 +147,8 @@ struct Value *new_symbol(uint64_t symbol)
 struct Value *new_integer(long integer)
 {
     struct Value *val = malloc(sizeof(struct Value));
-    val->type = VTYPE_INT;
+    val->vtype = VTYPE_INT;
+    val->type = TYPE_INT;
     val->integer = integer;
     return val;
 }
@@ -153,7 +156,8 @@ struct Value *new_integer(long integer)
 struct Value *new_floating(double floating)
 {
     struct Value *val = malloc(sizeof(struct Value));
-    val->type = VTYPE_FLOAT;
+    val->vtype = VTYPE_FLOAT;
+    val->type = TYPE_FLOAT;
     val->floating = floating;
     return val;
 }
@@ -161,7 +165,8 @@ struct Value *new_floating(double floating)
 struct Value *new_boolean(int boolean)
 {
     struct Value *val = malloc(sizeof(struct Value));
-    val->type = VTYPE_BOOL;
+    val->vtype = VTYPE_BOOL;
+    val->type = TYPE_BOOL;
     val->boolean = boolean;
     return val;
 }
@@ -169,7 +174,17 @@ struct Value *new_boolean(int boolean)
 struct Value *new_vfuncall(Symbol funname, Values *args)
 {
     struct Value *val = malloc(sizeof(struct Value));
-    val->type = VTYPE_FUNCALL;
+    val->vtype = VTYPE_FUNCALL;
+    val->type = TYPE_UNDEFINED;
+    val->funcall = new_funcall(funname, args);
+    return val;
+}
+
+struct Value *new_constructor(Symbol funname, Values *args)
+{
+    struct Value *val = malloc(sizeof(struct Value));
+    val->vtype = VTYPE_CONSTRUCTOR;
+    val->type = funname; // constructor name should be same as classname
     val->funcall = new_funcall(funname, args);
     return val;
 }
@@ -177,7 +192,8 @@ struct Value *new_vfuncall(Symbol funname, Values *args)
 struct Value *new_expr(struct Expr *expr)
 {
     struct Value *val = malloc(sizeof(struct Value));
-    val->type = VTYPE_EXPR;
+    val->vtype = VTYPE_EXPR;
+    val->type = TYPE_UNDEFINED;
     val->expr = expr;
     return val;
 }
@@ -202,10 +218,10 @@ struct LValue *new_index(struct Value *index)
  * Unary and binary operators have the same structure, so this 
  * avoids us having to copy-paste the same snippets many times */
 
-#define define_unary_op(name,type) \
+#define define_unary_op(name, operator) \
 struct Expr *name(struct Value *val1) {\
     struct Expr *expr = malloc(sizeof(struct Expr));\
-    expr->op = type;\
+    expr->op = operator;\
     expr->val1 = val1;\
     expr->val2 = NULL;\
     return expr;\
@@ -216,10 +232,10 @@ define_unary_op(unary_minus, OP_UNARY_MINUS)
 
 #undef define_unary_op
 
-#define define_binary_op(name,type) \
+#define define_binary_op(name, operator) \
 struct Expr *name(struct Value *val1, struct Value *val2) {\
     struct Expr *expr = malloc(sizeof(struct Expr));\
-    expr->op = type;\
+    expr->op = operator;\
     expr->val1 = val1;\
     expr->val2 = val2;\
     return expr;\

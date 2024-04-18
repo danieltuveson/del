@@ -257,9 +257,20 @@ void print_expr(struct Expr *expr)
     printf(")");
 }
 
+static void print_funcall(Symbol funname, Values *vals)
+{
+    printf("%s", lookup_symbol(funname));
+    printf("(");
+    for (; vals != NULL; vals = vals->next) {
+        print_value(vals->value);
+        if (vals->next != NULL) printf(", ");
+    }
+    printf(")");
+}
+
 void print_value(struct Value *val)
 {
-    switch (val->type) {
+    switch (val->vtype) {
     case VTYPE_SYMBOL:
         printf("%s", lookup_symbol(val->symbol));
         break;
@@ -279,14 +290,11 @@ void print_value(struct Value *val)
         print_expr(val->expr);
         break;
     case VTYPE_FUNCALL:
-        printf("%s", lookup_symbol(val->funcall->funname));
-        printf("(");
-        for (Values *vals = val->funcall->args; vals != NULL;
-                vals = vals->next) {
-            print_value(vals->value);
-            if (vals->next != NULL) printf(", ");
-        }
-        printf(")");
+        print_funcall(val->funcall->funname, val->funcall->args);
+        break;
+    case VTYPE_CONSTRUCTOR:
+        printf("new ");
+        print_funcall(val->constructor->funname, val->constructor->args);
         break;
     }
 }

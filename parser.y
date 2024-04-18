@@ -93,10 +93,10 @@ tlds: tld { $$ = new_list($1); }
 
 tld: fundef { $$ = $1; } | cls { $$ = $1; };
 
-fundef: ST_FUNCTION T_SYMBOL fundef_args ST_COLON type
-        ST_OPEN_BRACE statements ST_CLOSE_BRACE { $$ = new_tld_fundef($2, $5, $3, $7); }
-      | ST_FUNCTION T_SYMBOL fundef_args ST_OPEN_BRACE
-        statements ST_CLOSE_BRACE { $$ = new_tld_fundef($2, TYPE_UNDEFINED, $3, $5); }
+fundef: ST_FUNCTION T_SYMBOL fundef_args ST_COLON type ST_OPEN_BRACE statements ST_CLOSE_BRACE
+      { $$ = new_tld_fundef($2, $5, $3, $7); }
+      | ST_FUNCTION T_SYMBOL fundef_args ST_OPEN_BRACE statements ST_CLOSE_BRACE
+{ $$ = new_tld_fundef($2, TYPE_UNDEFINED, $3, $5); }
 ;
 
 fundef_args: ST_OPEN_PAREN definitions ST_CLOSE_PAREN { $$ = $2; }
@@ -119,13 +119,18 @@ methods: method { $$ = new_list($1); }
        | method methods { $$ = append($2, $1); }
 ;
 
-// method: ST_FUNCTION T_SYMBOL ST_OPEN_PAREN definitions ST_CLOSE_PAREN ST_OPEN_BRACE
-//         statements ST_CLOSE_BRACE { $$ = new_fundef($2, $4, $7); }
-method: ST_FUNCTION T_SYMBOL ST_OPEN_PAREN definitions ST_CLOSE_PAREN ST_OPEN_BRACE
-        statements ST_CLOSE_BRACE { $$ = new_fundef($2, TYPE_UNDEFINED, $4, $7); }
-      | ST_FUNCTION T_SYMBOL ST_OPEN_PAREN definitions ST_CLOSE_PAREN ST_COLON type
-        ST_OPEN_BRACE statements ST_CLOSE_BRACE { $$ = new_fundef($2, $7, $4, $9); }
+method: ST_FUNCTION T_SYMBOL fundef_args ST_COLON type ST_OPEN_BRACE statements ST_CLOSE_BRACE
+      { $$ = new_fundef($2, $5, $3, $7); }
+      | ST_FUNCTION T_SYMBOL fundef_args ST_OPEN_BRACE statements ST_CLOSE_BRACE
+      { $$ = new_fundef($2, TYPE_UNDEFINED, $3, $5); }
 ;
+// // method: ST_FUNCTION T_SYMBOL ST_OPEN_PAREN definitions ST_CLOSE_PAREN ST_OPEN_BRACE
+// //         statements ST_CLOSE_BRACE { $$ = new_fundef($2, $4, $7); }
+// method: ST_FUNCTION T_SYMBOL ST_OPEN_PAREN definitions ST_CLOSE_PAREN ST_OPEN_BRACE
+//         statements ST_CLOSE_BRACE { $$ = new_fundef($2, TYPE_UNDEFINED, $4, $7); }
+//       | ST_FUNCTION T_SYMBOL ST_OPEN_PAREN definitions ST_CLOSE_PAREN ST_COLON type
+//         ST_OPEN_BRACE statements ST_CLOSE_BRACE { $$ = new_fundef($2, $7, $4, $9); }
+// ;
 
 statements: statement { $$ = new_list($1); }
           | statement statements { $$ = append($2, $1); }
@@ -136,7 +141,6 @@ block: ST_OPEN_BRACE statements ST_CLOSE_BRACE { $$ = $2; };
 line: T_SYMBOL ST_EQ expr { $$ = new_set($1, $3, NULL, 0); }
     | T_SYMBOL accessors expr { $$ = new_set($1, $3, $2, 0); }
     | ST_LET T_SYMBOL ST_EQ expr { $$ = new_set($2, $4, NULL, 1); }
-    | ST_LET T_SYMBOL accessors expr { $$ = new_set($2, $4, $3, 1); }
     | ST_LET symbols { $$ = new_let($2); }
     | T_SYMBOL ST_OPEN_PAREN args ST_CLOSE_PAREN { $$ = new_sfuncall($1, $3); }
     | ST_RETURN expr { $$ = new_return($2); }
@@ -188,7 +192,9 @@ expr: T_INT { $$ = new_integer($1); }
     | ST_FALSE { $$ = new_boolean(0); }
     | ST_OPEN_PAREN subexpr ST_CLOSE_PAREN { $$ = $2; }
     | T_SYMBOL ST_OPEN_PAREN args ST_CLOSE_PAREN { $$ = new_vfuncall($1, $3); }
-    | ST_NEW T_SYMBOL ST_OPEN_PAREN args ST_CLOSE_PAREN { $$ = new_vfuncall($2, $4); }
+    | T_SYMBOL ST_OPEN_PAREN ST_CLOSE_PAREN { $$ = new_vfuncall($1, NULL); }
+    | ST_NEW T_SYMBOL ST_OPEN_PAREN args ST_CLOSE_PAREN { $$ = new_constructor($2, $4); }
+    | ST_NEW T_SYMBOL ST_OPEN_PAREN ST_CLOSE_PAREN { $$ = new_constructor($2, NULL); }
     | subexpr
 ;
 

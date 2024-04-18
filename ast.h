@@ -22,7 +22,8 @@ enum ValueType {
     VTYPE_FLOAT,
     VTYPE_BOOL,
     VTYPE_EXPR,
-    VTYPE_FUNCALL
+    VTYPE_FUNCALL,
+    VTYPE_CONSTRUCTOR
 };
 
 enum OperatorType {
@@ -78,7 +79,8 @@ struct Expr {
 };
 
 struct Value {
-    enum ValueType type;
+    enum ValueType vtype;
+    Type type;
     union {
         char *string;
         Symbol symbol;
@@ -87,6 +89,7 @@ struct Value {
         long boolean;
         struct Expr *expr;
         struct FunCall *funcall;
+        struct FunCall *constructor;
     };
 };
 
@@ -188,6 +191,7 @@ struct Value *new_integer(long integer);
 struct Value *new_floating(double floating);
 struct Value *new_boolean(int boolean);
 struct Value *new_vfuncall(Symbol funname, Values *args);
+struct Value *new_constructor(Symbol funname, Values *args);
 struct Value *new_expr(struct Expr *expr);
 struct LValue *new_property(Symbol property);
 struct LValue *new_index(struct Value *index);

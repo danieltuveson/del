@@ -11,13 +11,9 @@
 // }
 
 // class OtherStuff {
-//     prop: string;
-//     otherpropA: Stuff;
-//     otherpropH: float;
-//     otherpropC: bool;
-//     // function dostuff(thing: int) {
-//     //     inner = thing(4);
-//     // }
+//     stringProp: string;
+//     boolProp: bool;
+//     intProp: int;
 // }
 
 // function stuffa(a: bool, b: float, c: string, d: int) {
@@ -28,8 +24,20 @@
 //     s = new Stuff(666, 222);
 // }
 
+class Thing {
+    stuff: int;
+    // function Thing(stuff: int) {
+    //     this.stuff = stuff;
+    //     return;
+    // }
+}
+
 function addFive(arg: int, argg: int): int {
     return arg - argg;
+}
+
+function addFive(arg: int, argg: int): int {
+    return arg + argg;
 }
 
 // Entrypoint
@@ -38,7 +46,7 @@ function main() {
     // if x == 3 {
     //     let y = 5;
     // }
-    // addFive(5, 4);
-    let x = (-1) * (-5 + 3);
+    let x = new Thing(4);
+    x.stuff = 3;
 }
 
