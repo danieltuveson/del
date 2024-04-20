@@ -167,6 +167,9 @@ struct Statement {
     };
 };
 
+/* Misc. helper functions */
+struct Definition *lookup_property(struct Class *cls, Symbol name);
+
 /* TLD constructors */
 struct TopLevelDecl *new_class(Symbol symbol, Definitions *definitions, Methods *methods);
 struct TopLevelDecl *new_tld_fundef(Symbol symbol, Type rettype, Definitions *args,

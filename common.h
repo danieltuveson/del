@@ -60,6 +60,5 @@ struct List *append(struct List *list, void *value);
 struct List *seek_end(struct List *list);
 char *lookup_symbol(uint64_t symbol);
 
-
 #endif
 

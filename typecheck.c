@@ -22,8 +22,8 @@ struct TypeCheckerContext {
 
 static int typecheck_statements(struct TypeCheckerContext *context, Statements *stmts);
 static int typecheck_statement(struct TypeCheckerContext *context, struct Statement *stmt);
-static int typecheck_funcall(struct TypeCheckerContext *context, struct FunCall *funcall);
-static int typecheck_constructor(struct TypeCheckerContext *context, struct FunCall *constructor);
+static Type typecheck_funcall(struct TypeCheckerContext *context, struct FunCall *funcall);
+static Type typecheck_constructor(struct TypeCheckerContext *context, struct FunCall *constructor);
 
 #define lookup(table, length, symbol)\
     uint64_t i = symbol % length;\
@@ -265,31 +265,6 @@ static Type typecheck_value(struct TypeCheckerContext *context, struct Value *va
     }
 }
 
-// enum LValueType {
-//     LV_PROPERTY,
-//     LV_INDEX
-// };
-// 
-// struct LValue {
-//     enum LValueType type;
-//     union {
-//         Symbol property;
-//         struct Value *index;
-//     };
-// };
-// 
-// struct Definition {
-//     Symbol name;
-//     Type type;
-// };
-// 
-// struct Set {
-//     Symbol symbol;
-//     int is_define;
-//     LValues *lvalues; // May be null
-//     struct Value *val;
-// };
-
 // Prints first n lvalues
 static void print_lhs(Symbol symbol, LValues *lvalues, int n)
 {
@@ -315,43 +290,66 @@ static void print_lhs(Symbol symbol, LValues *lvalues, int n)
     }
 }
 
+// enum LValueType {
+//     LV_PROPERTY,
+//     LV_INDEX
+// };
+// 
+// struct LValue {
+//     enum LValueType type;
+//     union {
+//         Symbol property;
+//         struct Value *index;
+//     };
+// };
+// 
+// struct Definition {
+//     Symbol name;
+//     Type type;
+// };
+// 
+// struct Set {
+//     Symbol symbol;
+//     int is_define;
+//     LValues *lvalues; // May be null
+//     struct Value *val;
+// };
+
 // TODO: finish making this work
-static Type typecheck_lvalue(struct TypeCheckerContext *context, struct Set *set, Type type)
+static Type typecheck_lvalue(struct TypeCheckerContext *context, struct Definition *def,
+        LValues *lvalues)
 {
-    struct LValue *lvalue = set->lvalues->value; 
-    Symbol property = set->symbol;
-    if (!is_object(type)) {
-        printf("Error: '");
-        print_lhs(set->symbol, set->lvalues, 0);
-        printf("' invalid property access\n");
+    if (!is_object(def->type)) {
+        struct LValue *lvalue = lvalues->value;
+        printf("Error: '%s' is not an object and does not have property '%s'\n",
+                lookup_symbol(def->name), lookup_symbol(lvalue->property));
         return TYPE_UNDEFINED;
     }
-    // Lookup if type has property (or if type has index)
-    for (struct List *lvalues = set->lvalues; lvalues != NULL; lvalues = lvalues->next) {
-        if (!is_object(type)) {
-            printf("Error: no property '%s' on type '%s'\n",
-                    lookup_symbol(set->symbol), lookup_symbol(type));
-            return TYPE_UNDEFINED;
-        }
+    for (; lvalues != NULL; lvalues = lvalues->next) {
         struct LValue *lvalue = lvalues->value;
-        struct Class *cls;
+        struct Class *cls = NULL;
         switch (lvalue->type) {
             case LV_PROPERTY:
-                cls = lookup_class(context->cls_table, lvalue->property);
+                cls = lookup_class(context->cls_table, def->type);
                 if (cls == NULL) {
-                    printf("Error: Symbol '%s' is used before it is declared\n",
-                            lookup_symbol(set->symbol));
+                    printf("Error: '%s' is not an object and does not have property '%s'\n",
+                            lookup_symbol(def->name), lookup_symbol(lvalue->property));
+                    return TYPE_UNDEFINED;
+                }
+                Type old_type = def->type;
+                def = lookup_property(cls, lvalue->property);
+                if (def == NULL) {
+                    printf("Error: %s instance has no property called '%s'\n",
+                            lookup_symbol(old_type), lookup_symbol(lvalue->property));
+                    return TYPE_UNDEFINED;
                 }
                 break;
             case LV_INDEX:
-                printf("Not implemented: typechecking for array indexing\n");
+                printf("Error, not implemented: typechecking for array indexing\n");
                 return TYPE_UNDEFINED;
         }
     }
-    // struct ClassTable *cls_table;
-    // struct Class *lookup_class(struct ClassTable *ct, Symbol symbol)
-    printf("Cannot typecheck lvalue\n");
-    return TYPE_UNDEFINED;
+    return def->type;
 }
 
 static int typecheck_set(struct TypeCheckerContext *context, struct Set *set)
@@ -373,7 +371,7 @@ static int typecheck_set(struct TypeCheckerContext *context, struct Set *set)
     }
     // Typecheck left side of set
     if (set->lvalues != NULL) {
-        lhs_type = typecheck_lvalue(context, set, def->type);
+        lhs_type = typecheck_lvalue(context, def, set->lvalues);
         if (lhs_type == TYPE_UNDEFINED) {
             return 0;
         }
@@ -476,12 +474,12 @@ static int typecheck_return(struct TypeCheckerContext *context, struct Value *va
     return 1;
 }
 
-static int typecheck_funcall(struct TypeCheckerContext *context, struct FunCall *funcall)
+static Type typecheck_funcall(struct TypeCheckerContext *context, struct FunCall *funcall)
 {
     struct FunDef *fundef = lookup_fun(context->fun_table, funcall->funname);
     if (fundef == NULL) {
         printf("Error: no function named %s\n", lookup_symbol(funcall->funname));
-        return 0;
+        return TYPE_UNDEFINED;
     } 
 
     uint64_t fundef_arg_count  = fundef->args  == NULL ? 0 : fundef->args->length;
@@ -492,7 +490,7 @@ static int typecheck_funcall(struct TypeCheckerContext *context, struct FunCall 
         printf("Error: %s expects %" PRIu64 " arguments but got %" PRIu64 "\n",
                 lookup_symbol(fundef->name),
                 fundef_arg_count, funcall_arg_count);
-        return 0;
+        return TYPE_UNDEFINED;
     }
 
     // Validate arguments
@@ -508,12 +506,12 @@ static int typecheck_funcall(struct TypeCheckerContext *context, struct FunCall 
                     i + 1, lookup_symbol(fundef->name),
                     lookup_symbol(fun_arg_def->type),
                     lookup_symbol(val_type));
-            return 0;
+            return TYPE_UNDEFINED;
         }
         vals = vals->next;
         defs = defs->next;
     }
-    return 1;
+    return fundef->rettype;
 }
 
 // struct Class {
@@ -522,12 +520,12 @@ static int typecheck_funcall(struct TypeCheckerContext *context, struct FunCall 
 //     Methods *methods;
 // };
 // TODO: make this handle non-trivial constructors
-static int typecheck_constructor(struct TypeCheckerContext *context, struct FunCall *constructor)
+static Type typecheck_constructor(struct TypeCheckerContext *context, struct FunCall *constructor)
 {
     struct Class *cls = lookup_class(context->cls_table, constructor->funname);
     if (cls == NULL) {
         printf("Error: no class named %s\n", lookup_symbol(constructor->funname));
-        return 0;
+        return TYPE_UNDEFINED;
     }
 
     uint64_t class_def_count       = cls->definitions  == NULL ? 0 : cls->definitions->length;
@@ -538,7 +536,7 @@ static int typecheck_constructor(struct TypeCheckerContext *context, struct FunC
         printf("Error: %s expects %" PRIu64 " arguments but got %" PRIu64 "\n",
                 lookup_symbol(cls->name),
                 class_def_count, constructor_arg_count);
-        return 0;
+        return TYPE_UNDEFINED;
     }
 
     // Validate arguments
@@ -554,12 +552,12 @@ static int typecheck_constructor(struct TypeCheckerContext *context, struct FunC
                     i + 1, lookup_symbol(cls->name),
                     lookup_symbol(fun_arg_def->type),
                     lookup_symbol(val_type));
-            return 0;
+            return TYPE_UNDEFINED;
         }
         vals = vals->next;
         defs = defs->next;
     }
-    return 1;
+    return cls->name;
 }
 
 static int typecheck_statement(struct TypeCheckerContext *context, struct Statement *stmt)
@@ -570,7 +568,7 @@ static int typecheck_statement(struct TypeCheckerContext *context, struct Statem
         case STMT_IF:      return typecheck_if(context, stmt->if_stmt);
         case STMT_WHILE:   return typecheck_while(context, stmt->while_stmt);
         case STMT_FOR:     return typecheck_for(context, stmt->for_stmt);
-        case STMT_FUNCALL: return typecheck_funcall(context, stmt->funcall);
+        case STMT_FUNCALL: return typecheck_funcall(context, stmt->funcall) != TYPE_UNDEFINED;
         case STMT_RETURN:  return typecheck_return(context, stmt->ret);
         case STMT_FOREACH: printf("Error: not implemented\n");
                            return 0;

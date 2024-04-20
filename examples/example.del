@@ -32,6 +32,10 @@ class Thing {
     // }
 }
 
+class ThingContainer {
+    thing: Thing;
+}
+
 function addFive(arg: int, argg: int): int {
     return arg - argg;
 }
@@ -46,7 +50,9 @@ function main() {
     // if x == 3 {
     //     let y = 5;
     // }
-    let x = new Thing(4);
-    x.stuff = 3;
+    let t = new Thing(4);
+    let ot = new ThingContainer(t);
+    ot.thing.stuff = 5;
+    t = new Thing(1);
 }
 

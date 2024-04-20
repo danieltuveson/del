@@ -15,6 +15,17 @@ struct TopLevelDecl *new_class(Symbol symbol, Definitions *definitions, Methods 
     return tld;
 }
 
+struct Definition *lookup_property(struct Class *cls, Symbol name)
+{
+    for (Definitions *defs = cls->definitions; defs != NULL; defs = defs->next) {
+        struct Definition *def = defs->value;
+        if (def->name == name) {
+            return def;
+        }
+    }
+    return NULL;
+}
+
 struct FunDef *new_fundef(Symbol symbol, Type rettype, Definitions *args, Statements *stmts)
 {
     struct FunDef *fundef = malloc(sizeof(struct FunDef));
