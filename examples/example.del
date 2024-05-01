@@ -1,31 +1,14 @@
-// Some function
-
-// class Stuff {
-//     property: int;
-//     otherpropA: int;
-//     otherpropB: float;
-//     otherpropC: string;
-    // function dostuff(thing: int) {
-    //     inner = thing(4);
-    // }
+// function addFive(arg: int, argg: int): int {
+//     return arg - argg;
 // }
-
-// class OtherStuff {
-//     stringProp: string;
-//     boolProp: bool;
-//     intProp: int;
-// }
-
-// function stuffa(a: bool, b: float, c: string, d: int) {
-//     return a - b;
-// }
-
-// function main(thing: int) {
-//     s = new Stuff(666, 222);
+// 
+// function addFive(arg: int, argg: int): int {
+//     return arg + argg;
 // }
 
 class Thing {
     stuff: int;
+    more: int;
     // function Thing(stuff: int) {
     //     this.stuff = stuff;
     //     return;
@@ -36,23 +19,10 @@ class ThingContainer {
     thing: Thing;
 }
 
-function addFive(arg: int, argg: int): int {
-    return arg - argg;
-}
-
-function addFive(arg: int, argg: int): int {
-    return arg + argg;
-}
-
 // Entrypoint
 function main() {
-    // let x = 4;
-    // if x == 3 {
-    //     let y = 5;
-    // }
-    let t = new Thing(4);
-    let ot = new ThingContainer(t);
-    ot.thing.stuff = 5;
-    t = new Thing(1);
+    let t = new Thing(123, 456);
+    let x = new Thing(101, 202);
+    let x = new Thing(303, 404);
 }
 

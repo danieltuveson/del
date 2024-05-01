@@ -1,3 +1,4 @@
+#include "printers.h"
 #include "common.h"
 #include "ast.h"
 #include "typecheck.h"
@@ -24,6 +25,13 @@ static void compile_int(struct CompilerContext *cc, uint64_t integer)
 {
     load(cc, PUSH);
     load(cc, integer);
+}
+
+static void compile_float(struct CompilerContext *cc, double floating)
+{
+    assert("floating point not implemented\n" && 0);
+    load(cc, PUSH);
+    load(cc, floating);
 }
 
 static inline void compile_bool(struct CompilerContext *cc, uint64_t boolean)
@@ -111,31 +119,17 @@ static void compile_fundef(struct CompilerContext *cc, struct FunDef *fundef)
 }
 
 //static void compile_constructor(struct CompilerContext *cc, struct Class *cls)
-static void compile_constructor(struct CompilerContext *cc, Symbol symbol)
+static void compile_constructor(struct CompilerContext *cc, struct FunCall *funcall)
 {
-    struct Class *cls = lookup_class(cc->class_table, symbol);
-    const uint64_t PUSH_CONSTRUCTOR = 0;
-    load(cc, PUSH_CONSTRUCTOR);
-    load(cc, cls->definitions->length);
-    for (Definitions *defs = cls->definitions; defs != NULL; defs = defs->next) {
-        struct Definition *def = (struct Definition *) defs->value;
-        load(cc, def->name);
+    for (Values *args = seek_end(funcall->args); args != NULL; args = args->prev) {
+        printf("...compiling constructor...\n");
+        print_value(args->value);
+        printf("\n");
+        compile_value(cc, args->value);
     }
-    // // Will rewrite the later to allow users to make their own constructors
-    // // For now, just creates an object based on whatever arguments it's passed
-    // add_ft_node(cc->funcall_table, cls->name, cc->offset);
-    // uint64_t count = 0;
-    // for (Definitions *defs = cls->definitions; defs != NULL; defs = defs->next) {
-    //     // struct Definition *def = (struct Definition *) defs->value;
-    //     // load(cc, PUSH);
-    //     // load(cc, def->name);
-    //     count++;
-    // }
-    // load(cc, PUSH);
-    // load(cc, count);
-    // load(cc, PUSH_HEAP);
-    // load(cc, SWAP);
-    // load(cc, JMP);
+    load(cc, PUSH);
+    load(cc, funcall->args->length);
+    load(cc, PUSH_HEAP);
 }
 
 static void compile_funcall(struct CompilerContext *cc, struct FunCall *funcall)
@@ -154,13 +148,15 @@ static void compile_funcall(struct CompilerContext *cc, struct FunCall *funcall)
 static void compile_value(struct CompilerContext *cc, struct Value *val)
 {
     switch (val->vtype) {
-        case VTYPE_STRING:  compile_string(cc,  val->string);  break;
-        case VTYPE_INT:     compile_int(cc,     val->integer); break;
-        case VTYPE_BOOL:    compile_bool(cc,    val->boolean); break;
-        case VTYPE_SYMBOL:  compile_loadsym(cc, val->symbol);  break;
-        case VTYPE_EXPR:    compile_expr(cc,    val->expr);    break;
-        case VTYPE_FUNCALL: compile_funcall(cc, val->funcall); break;
-        default: printf("compile not implemented yet\n"); assert(0);
+        case VTYPE_STRING:      compile_string(cc,      val->string);   break;
+        case VTYPE_INT:         compile_int(cc,         val->integer);  break;
+        case VTYPE_FLOAT:       compile_float(cc,       val->floating); break;
+        case VTYPE_BOOL:        compile_bool(cc,        val->boolean);  break;
+        case VTYPE_SYMBOL:      compile_loadsym(cc,     val->symbol);   break;
+        case VTYPE_EXPR:        compile_expr(cc,        val->expr);     break;
+        case VTYPE_FUNCALL:     compile_funcall(cc,     val->funcall);  break;
+        case VTYPE_CONSTRUCTOR: compile_constructor(cc, val->funcall);  break;
+        // default: printf("compile not implemented yet\n"); assert(0);
     }
 }
 

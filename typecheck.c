@@ -154,6 +154,7 @@ static int add_types(TopLevelDecls *tlds, struct ClassTable *clst, struct Functi
             add_class(clst, tld->cls);
         }
     }
+    return 1;
 }
 
 static Type typecheck_value(struct TypeCheckerContext *context, struct Value *val);
@@ -289,31 +290,6 @@ static void print_lhs(Symbol symbol, LValues *lvalues, int n)
         i++;
     }
 }
-
-// enum LValueType {
-//     LV_PROPERTY,
-//     LV_INDEX
-// };
-// 
-// struct LValue {
-//     enum LValueType type;
-//     union {
-//         Symbol property;
-//         struct Value *index;
-//     };
-// };
-// 
-// struct Definition {
-//     Symbol name;
-//     Type type;
-// };
-// 
-// struct Set {
-//     Symbol symbol;
-//     int is_define;
-//     LValues *lvalues; // May be null
-//     struct Value *val;
-// };
 
 // TODO: finish making this work
 static Type typecheck_lvalue(struct TypeCheckerContext *context, struct Definition *def,
@@ -624,11 +600,10 @@ static int typecheck_tlds(struct TypeCheckerContext *context, TopLevelDecls *tld
     return 1;
 }
 
-int typecheck(struct Ast *ast, struct Class *clst, struct FunDef *ft)
+int typecheck(struct Ast *ast, struct ClassTable *class_table,
+        struct FunctionTable *function_table)
 {
-    struct ClassTable class_table = { ast->class_count, clst };
-    struct FunctionTable function_table = { ast->function_count, ft };
-    if (!add_types(ast->ast, &class_table, &function_table)) {
+    if (!add_types(ast->ast, class_table, function_table)) {
         return 0;
     }
     // for (uint64_t i = 0; i < ast->class_count; i++) {
@@ -639,7 +614,7 @@ int typecheck(struct Ast *ast, struct Class *clst, struct FunDef *ft)
     //     print_fundef(&(ft[i]), 0, 0);
     //     printf("\n");
     // }
-    struct TypeCheckerContext context = { NULL, &function_table, &class_table, NULL };
+    struct TypeCheckerContext context = { NULL, function_table, class_table, NULL };
     return typecheck_tlds(&context, ast->ast);
 }
 

@@ -15,6 +15,7 @@ struct FunctionTable {
 };
 
 struct Class *lookup_class(struct ClassTable *ct, Symbol symbol);
-int typecheck(struct Ast *ast, struct Class *clst, struct FunDef *ft);
+int typecheck(struct Ast *ast, struct ClassTable *class_table,
+        struct FunctionTable *function_table);
 
 #endif

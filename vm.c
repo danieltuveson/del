@@ -163,7 +163,7 @@ static void def(struct Stack *stack, struct Locals *locals)
 //     return offset;
 // }
 
-long vm_execute(uint64_t *instructions)
+int vm_execute(uint64_t *instructions)
 {
     struct Locals locals = { {0}, {0}, 0, 0 };
     struct Stack stack = {0, {0}};

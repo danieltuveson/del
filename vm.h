@@ -62,6 +62,6 @@ struct Heap {
     uint64_t values[HEAP_SIZE];
 };
 
-long vm_execute(uint64_t *instructions);
+int vm_execute(uint64_t *instructions);
 
 #endif

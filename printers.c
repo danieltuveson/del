@@ -102,7 +102,7 @@ void print_instructions(struct CompilerContext *cc)
 
 void print_stack(struct Stack *stack)
 {
-    printf("[ ");
+    printf("stack:  [ ");
     for (uint64_t i = 0; i < stack->offset; i++) {
         // If it would be interpreted as a huge number, it's probably a negative integer
         if (stack->values[i] > INT64_MAX) {
@@ -116,7 +116,7 @@ void print_stack(struct Stack *stack)
 
 void print_locals(struct Locals *locals)
 {
-    printf("[");
+    printf("locals: [");
     for (int i = 0; i < locals->count; i++) {
         printf(" { %s: ", lookup_symbol(locals->names[i]));
         printf("%" PRIi64 " }, ", (int64_t) locals->values[i]);
@@ -126,7 +126,7 @@ void print_locals(struct Locals *locals)
 
 void print_heap(struct Heap *heap)
 {
-    printf("[ objcount: %d, offset: %d, values: { ", heap->objcount, heap->offset);
+    printf("heap:   [ objcount: %d, offset: %d, values: { ", heap->objcount, heap->offset);
     for (int i = 0; i < heap->offset; i++) {
         printf("%" PRIu64 "", heap->values[i]);
         if (i != heap->offset - 1) printf(", ");
