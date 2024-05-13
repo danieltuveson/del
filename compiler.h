@@ -46,11 +46,11 @@ enum Code {
     JMP,
     POP,
     EXIT,
-    SET_LOCAL,
-    SET,
     GET_LOCAL,
-    CALL,
+    SET_LOCAL,
     GET_HEAP,
+    SET_HEAP,
+    CALL,
     SWAP
 };
 

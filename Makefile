@@ -1,6 +1,6 @@
 # # CFLAGS = -g -Wall -Wextra -Wno-padded -Wno-poison-system-directories -Wno-void-pointer-to-enum-cast -Wno-int-to-void-pointer-cast
-cc=clang
-CFLAGS = -g -Wall -Wextra
+CC=gcc
+CFLAGS = -g -Wall -Wextra -Wno-return-type
 objects = main.o common.o compiler.o functiontable.o parser.o printers.o vm.o ast.o typecheck.o parser.tab.o lex.yy.o 
 
 del: $(objects)

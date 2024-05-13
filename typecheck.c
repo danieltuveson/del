@@ -25,7 +25,7 @@ static int typecheck_statement(struct TypeCheckerContext *context, struct Statem
 static Type typecheck_funcall(struct TypeCheckerContext *context, struct FunCall *funcall);
 static Type typecheck_constructor(struct TypeCheckerContext *context, struct FunCall *constructor);
 
-#define lookup(table, length, symbol)\
+#define table_lookup(table, length, symbol)\
     uint64_t i = symbol % length;\
     for (uint64_t count = 0; count < length; count++) {\
         if (table[i].name == symbol) {\
@@ -37,15 +37,15 @@ static Type typecheck_constructor(struct TypeCheckerContext *context, struct Fun
 
 struct Class *lookup_class(struct ClassTable *ct, Symbol symbol)
 {
-    lookup(ct->table, ct->size, symbol);
+    table_lookup(ct->table, ct->size, symbol);
 }
 
 struct FunDef *lookup_fun(struct FunctionTable *ft, Symbol symbol)
 {
-    lookup(ft->table, ft->size, symbol);
+    table_lookup(ft->table, ft->size, symbol);
 }
 
-#undef lookup
+#undef table_lookup
 
 void print_scope(struct Scope *scope)
 {
@@ -180,31 +180,45 @@ static Type typecheck_expression(struct TypeCheckerContext *context, struct Expr
     const int are_both_string = (type_left  == TYPE_STRING) && (type_right == TYPE_STRING);
     // const int are_both_other  = expr->val1 right_is_string;
     // have to find a way to handle non-primitives
+    char *op_str = NULL;
     switch (expr->op) {
         case OP_OR:
+            op_str = "||";
+            // fall through
         case OP_AND:
+            if (op_str == NULL) op_str = "&&";
             if (are_both_bool) {
                 return TYPE_BOOL;
             } else {
-                printf("Error: boolean operator has non-boolean operands\n");
+                printf("Error: '%s' has non-boolean operands\n", op_str);
                 return TYPE_UNDEFINED;
             }
         case OP_EQEQ:
+            op_str = "==";
+            // fall through
         case OP_NOT_EQ:
+            if (op_str == NULL) op_str = "!=";
             if (are_both_int || are_both_float || are_both_bool || are_both_string) {
                 return TYPE_BOOL;
             } else {
-                printf("Error: mismatched types on equality operands\n");
+                printf("Error: mismatched types on '%s' operands\n", op_str);
                 return TYPE_UNDEFINED;
             }
         case OP_GREATER_EQ:
+            op_str = ">=";
+            // fall through
         case OP_GREATER:
+            if (op_str == NULL) op_str = ">";
+            // fall through
         case OP_LESS_EQ:
+            if (op_str == NULL) op_str = "<=";
+            // fall through
         case OP_LESS:
+            if (op_str == NULL) op_str = "<";
             if (are_both_int || are_both_float) {
                 return TYPE_BOOL;
             } else {
-                printf("Error: mismatched types on comparison operands\n");
+                printf("Error: mismatched types on '%s' operands\n", op_str);
                 return TYPE_UNDEFINED;
             }
         case OP_PLUS:
@@ -219,23 +233,32 @@ static Type typecheck_expression(struct TypeCheckerContext *context, struct Expr
                 return TYPE_UNDEFINED;
             }
         case OP_MINUS:
+            op_str = "-";
+            // fall through
         case OP_STAR:
+            if (op_str == NULL) op_str = "*";
+            // fall through
         case OP_SLASH:
+            if (op_str == NULL) op_str = "/";
             if (are_both_int) {
                 return TYPE_INT;
             } else if (are_both_float) {
                 return TYPE_FLOAT;
             } else {
-                printf("Error: mismatched types for numeric operator's operands\n");
+                printf("Error: mismatched types for '%s' operands\n", op_str);
                 return TYPE_UNDEFINED;
             }
         case OP_UNARY_PLUS:
+            op_str = "+";
+            // fall through
         case OP_UNARY_MINUS:
+            if (op_str == NULL) op_str = "-";
             if (left_is_int && right_is_null) {
                 return TYPE_INT;
             } else if (left_is_float && right_is_null) {
                 return TYPE_FLOAT;
             } else {
+                printf("Error: expecting numeric operand for '%s'\n", op_str);
                 return TYPE_UNDEFINED;
             }
     };
@@ -276,7 +299,7 @@ static void print_lhs(Symbol symbol, LValues *lvalues, int n)
             return;
         }
         struct LValue *lvalue = lvalues->value;
-        switch (lvalue->type) {
+        switch (lvalue->lvtype) {
             case LV_PROPERTY:
                 printf(".");
                 printf("%s", lookup_symbol(lvalue->property));
@@ -319,6 +342,7 @@ static Type typecheck_lvalue(struct TypeCheckerContext *context, struct Definiti
                             lookup_symbol(old_type), lookup_symbol(lvalue->property));
                     return TYPE_UNDEFINED;
                 }
+                lvalue->type = def->type;
                 break;
             case LV_INDEX:
                 printf("Error, not implemented: typechecking for array indexing\n");
@@ -369,6 +393,7 @@ static int typecheck_set(struct TypeCheckerContext *context, struct Set *set)
         def->type = rhs_type;
         add_type(context->scope, def);
     }
+    set->type = def->type;
     return 1;
 }
 

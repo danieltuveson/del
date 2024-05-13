@@ -21,8 +21,12 @@ class ThingContainer {
 
 // Entrypoint
 function main() {
-    let t = new Thing(123, 456);
-    let x = new Thing(101, 202);
-    let x = new Thing(303, 404);
+    let ta = new Thing(123, 45);
+    let tb = new Thing(67, 89);
+    let tc = new ThingContainer(ta);
+    tc.thing.more = 111;
+    tc.thing = tb;
+    tc.thing.stuff = 222;
+    tc.thing.more = 666;
 }
 

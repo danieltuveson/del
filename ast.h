@@ -99,7 +99,8 @@ enum LValueType {
 };
 
 struct LValue {
-    enum LValueType type;
+    enum LValueType lvtype;
+    Type type;
     union {
         Symbol property;
         struct Value *index;
@@ -113,6 +114,7 @@ struct Definition {
 
 struct Set {
     Symbol symbol;
+    Type type;
     int is_define;
     LValues *lvalues; // May be null
     struct Value *val;
@@ -169,6 +171,7 @@ struct Statement {
 
 /* Misc. helper functions */
 struct Definition *lookup_property(struct Class *cls, Symbol name);
+uint64_t lookup_property_index(struct Class *cls, Symbol name);
 
 /* TLD constructors */
 struct TopLevelDecl *new_class(Symbol symbol, Definitions *definitions, Methods *methods);

@@ -42,9 +42,6 @@ void print_instructions(struct CompilerContext *cc)
             case JNE:
                 printf("JNE\n");
                 break;
-            case SET_LOCAL:
-                printf("SET_LOCAL\n");
-                break;
             case POP:
                 printf("POP\n");
                 break;
@@ -78,15 +75,21 @@ void print_instructions(struct CompilerContext *cc)
             case UNARY_MINUS:
                 printf("UNARY_MINUS\n");
                 break;
-            case SET:
-                printf("SET\n");
-                break;
             case CALL:
                 printf("CALL\n");
                 break;
             case GET_LOCAL:
                 i++;
-                printf("GET_LOCAL %" PRIu64 "\n", (uint64_t) instructions[i]);
+                printf("GET_LOCAL %" PRIu64 " (%s)\n", instructions[i], lookup_symbol(instructions[i]));
+                break;
+            case SET_LOCAL:
+                printf("SET_LOCAL\n");
+                break;
+            case GET_HEAP:
+                printf("GET_HEAP\n");
+                break;
+            case SET_HEAP:
+                printf("SET_HEAP\n");
                 break;
             case EXIT:
                 printf("EXIT\n");

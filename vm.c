@@ -93,15 +93,30 @@ static inline void push_heap(struct Heap *heap, struct Stack *stack)
 //     }
 // }
 
-static inline void get_heap(struct Heap *heap, struct Stack *stack, uint64_t index)
+static inline void get_heap(struct Heap *heap, struct Stack *stack)
 {
-    uint64_t ptr, count, location;
+    uint64_t index, ptr, location;
+    index = pop(stack);
     ptr = pop(stack);
     location = get_location(ptr);
     push(stack, heap->values[location + index]);
 }
 
-static int lookup(struct Locals *locals, Symbol lookup_val, uint64_t *val)
+static inline void set_heap(struct Heap *heap, struct Stack *stack)
+{
+    printf("setting heap\n");
+    uint64_t value, index, ptr, location;
+    index = pop(stack);
+    ptr = pop(stack);
+    value = pop(stack);
+    location = get_location(ptr);
+    heap->values[location + index] = value;
+    printf("value: %" PRIu64 ", ptr: %" PRIu64 ", index: %" PRIu64 ", location: %" PRIu64 "\n", 
+           value, ptr, index, location);
+    printf("done setting heap\n");
+}
+
+static int lookup_local(struct Locals *locals, Symbol lookup_val, uint64_t *val)
 {
     for (int i = 0; i < locals->count; i++) {
         if (lookup_val == locals->names[i]) {
@@ -183,6 +198,9 @@ int vm_execute(uint64_t *instructions)
                 push_heap(&heap, &stack);
                 print_heap(&heap);
                 break;
+            case SET_HEAP:
+                set_heap(&heap, &stack);
+                break;
             /* Grotesque lump of binary operators. Boring! */
             case AND: eval_binary_op(&stack, val1, val2, &&, int64_t); break;
             case OR:  eval_binary_op(&stack, val1, val2, ||, int64_t); break;
@@ -200,9 +218,6 @@ int vm_execute(uint64_t *instructions)
                 push(&stack, (uint64_t) val1); break;
             case UNARY_MINUS: val1 = (int64_t) pop(&stack);
                 push(&stack, (uint64_t) (-1 * val1)); break;
-            case SET:
-                assert("error SET is not yet implemented\n" && 0);
-                break;
             case SET_LOCAL:
                 def(&stack, &locals);
                 print_locals(&locals);
@@ -210,7 +225,7 @@ int vm_execute(uint64_t *instructions)
             case GET_LOCAL:
                 ip++;
                 symbol = (Symbol) instructions[ip];
-                if (lookup(&locals, symbol, &val1)) {
+                if (lookup_local(&locals, symbol, &val1)) {
                     push(&stack, (uint64_t) val1);
                 } else {
                     printf("variable '%s' is undefined\n", lookup_symbol(symbol));
@@ -236,8 +251,7 @@ int vm_execute(uint64_t *instructions)
                 ret = (uint64_t) pop(&stack);
                 break;
             case GET_HEAP:
-                val1 = (uint64_t) pop(&stack);
-                get_heap(&heap, &stack, val1);
+                get_heap(&heap, &stack);
                 break;
             case EXIT:
                 goto exit_loop;
@@ -266,6 +280,7 @@ int vm_execute(uint64_t *instructions)
     }
 exit_loop:
     print_locals(&locals);
+    print_heap(&heap);
     return ret;
 }
 

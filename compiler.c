@@ -118,7 +118,6 @@ static void compile_fundef(struct CompilerContext *cc, struct FunDef *fundef)
     compile_statements(cc, fundef->stmts);
 }
 
-//static void compile_constructor(struct CompilerContext *cc, struct Class *cls)
 static void compile_constructor(struct CompilerContext *cc, struct FunCall *funcall)
 {
     for (Values *args = seek_end(funcall->args); args != NULL; args = args->prev) {
@@ -193,21 +192,43 @@ static void compile_set(struct CompilerContext *cc, struct Set *set)
         load(cc, set->symbol);
         load(cc, SET_LOCAL);
         return;
-    } else {
-        printf("Error cannot compile property access / index\n");
-        return;
-    }
-    // Symbol property;
-    // struct Value *index;
-    // compile_loadsym(set->symbol);
-    // for (LValues *lvalues = set->lvalues; lvalues != NULL; lvalues = lvalues->next) {
-    //     struct LValue *lvalue = (struct LValue *) lvalues->value;
-    //     if (lvalue->type == LV_PROPERTY) {
-    //         load(cc, 
-    //     } else {
-    //         // handle this later
-    //     }
+    } 
+    // else {
+    //     printf("Error cannot compile property access / index\n");
+    //     return;
     // }
+    compile_loadsym(cc, set->symbol);
+    Type parent_value_type = set->type;
+    for (LValues *lvalues = set->lvalues; lvalues != NULL; lvalues = lvalues->next) {
+        printf("'%s'\n", lookup_symbol(set->type));
+        struct Class *cls = lookup_class(cc->class_table, parent_value_type);
+        print_class(cls, 0);
+        struct LValue *lvalue = lvalues->value;
+        switch (lvalue->lvtype) {
+            case LV_PROPERTY: {
+                printf("lvalue: %s\n", lookup_symbol(lvalue->property));
+                uint64_t index = lookup_property_index(cls, lvalue->property);
+                printf("index: %ld\n", index);
+                // NOTE: refactor to not have lookup_property on class, write a generic list lookup function
+                if (lvalues->next == NULL) {
+                    printf("lvalues->next is null\n");
+                    load(cc, PUSH);
+                    load(cc, index);
+                    load(cc, SET_HEAP);
+                } else {
+                    load(cc, PUSH);
+                    load(cc, index);
+                    load(cc, GET_HEAP);
+                }
+                parent_value_type = lvalue->type;
+                break;
+            } default:
+                // handle this later
+                // struct Value *index;
+                printf("Error cannot compile array indexing\n");
+                return;
+        }
+    }
 }
 
 static void compile_return(struct CompilerContext *cc, struct Value *ret)
@@ -219,9 +240,7 @@ static void compile_return(struct CompilerContext *cc, struct Value *ret)
 
 static void compile_if(struct CompilerContext *cc, struct IfStatement *stmt)
 {
-    int top_of_loop = 0;
     int old_offset = 0;
-    top_of_loop = cc->offset;
     load(cc, PUSH);
     old_offset = next(cc);
     compile_value(cc, stmt->condition);

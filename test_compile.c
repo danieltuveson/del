@@ -130,7 +130,7 @@ static void test_compile_set(void)
 {
     init_test_state();
     assert(cc->offset == 0);
-    compile_statement(cc, new_set(1000, new_integer(123), NULL));
+    compile_statement(cc, new_set(1000, new_integer(123), NULL, 0));
 
     assert(cc->instructions[0] == PUSH);
     assert(cc->instructions[1] == 123);

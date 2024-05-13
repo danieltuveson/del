@@ -26,6 +26,21 @@ struct Definition *lookup_property(struct Class *cls, Symbol name)
     return NULL;
 }
 
+// Code assumes that property name does exist
+uint64_t lookup_property_index(struct Class *cls, Symbol name)
+{
+    uint64_t cnt = 0;
+    for (Definitions *defs = cls->definitions; defs != NULL; defs = defs->next) {
+        struct Definition *def = defs->value;
+        if (def->name == name) {
+            return cnt;
+        }
+        cnt++;
+    }
+    assert("Error: lookup_property_index could not find element" && 0);
+    return 0;
+}
+
 struct FunDef *new_fundef(Symbol symbol, Type rettype, Definitions *args, Statements *stmts)
 {
     struct FunDef *fundef = malloc(sizeof(struct FunDef));
@@ -53,6 +68,7 @@ struct Statement *new_set(Symbol symbol, struct Value *val, LValues *lvalues, in
     stmt->type = STMT_SET;
     stmt->set = malloc(sizeof(struct Set));
     stmt->set->symbol = symbol;
+    stmt->set->type = TYPE_UNDEFINED;
     stmt->set->is_define = is_define;
     stmt->set->lvalues = lvalues;
     stmt->set->val = val;
@@ -213,6 +229,7 @@ struct LValue *new_property(Symbol property)
 {
     struct LValue *lvalue = malloc(sizeof(struct LValue));
     lvalue->type = LV_PROPERTY;
+    lvalue->type = TYPE_UNDEFINED;
     lvalue->property = property;
     return lvalue;
 }
@@ -221,6 +238,7 @@ struct LValue *new_index(struct Value *index)
 {
     struct LValue *lvalue = malloc(sizeof(struct LValue));
     lvalue->type = LV_INDEX;
+    lvalue->type = TYPE_UNDEFINED;
     lvalue->index = index;
     return lvalue;
 }
