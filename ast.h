@@ -23,7 +23,8 @@ enum ValueType {
     VTYPE_BOOL,
     VTYPE_EXPR,
     VTYPE_FUNCALL,
-    VTYPE_CONSTRUCTOR
+    VTYPE_CONSTRUCTOR,
+    VTYPE_GET
 };
 
 enum OperatorType {
@@ -78,21 +79,6 @@ struct Expr {
     struct Value *val2;
 };
 
-struct Value {
-    enum ValueType vtype;
-    Type type;
-    union {
-        char *string;
-        Symbol symbol;
-        long integer;
-        double floating;
-        long boolean;
-        struct Expr *expr;
-        struct FunCall *funcall;
-        struct FunCall *constructor;
-    };
-};
-
 enum LValueType {
     LV_PROPERTY,
     LV_INDEX
@@ -107,16 +93,39 @@ struct LValue {
     };
 };
 
+struct Accessor {
+    Symbol symbol;
+    Type type;
+    LValues *lvalues; // May be null
+};
+
+struct Value {
+    enum ValueType vtype;
+    Type type;
+    union {
+        char *string;
+        Symbol symbol;
+        long integer;
+        double floating;
+        long boolean;
+        struct Expr *expr;
+        struct FunCall *funcall;
+        struct FunCall *constructor;
+        struct Accessor *get;
+    };
+};
+
 struct Definition {
     Symbol name;
     Type type;
 };
 
 struct Set {
-    Symbol symbol;
-    Type type;
+    // Symbol symbol;
+    // Type type;
+    // LValues *lvalues; // May be null
     int is_define;
-    LValues *lvalues; // May be null
+    struct Accessor *to_set;
     struct Value *val;
 };
 
@@ -147,6 +156,7 @@ struct ForEach {
 enum StatementType {
     STMT_LET,
     STMT_SET,
+    STMT_GET,
     STMT_IF,
     STMT_WHILE,
     STMT_FOR,
@@ -198,6 +208,7 @@ struct Value *new_floating(double floating);
 struct Value *new_boolean(int boolean);
 struct Value *new_vfuncall(Symbol funname, Values *args);
 struct Value *new_constructor(Symbol funname, Values *args);
+struct Value *new_get(Symbol symbol, LValues *lvalues);
 struct Value *new_expr(struct Expr *expr);
 struct LValue *new_property(Symbol property);
 struct LValue *new_index(struct Value *index);

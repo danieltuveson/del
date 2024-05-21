@@ -121,14 +121,44 @@ static void compile_fundef(struct CompilerContext *cc, struct FunDef *fundef)
 static void compile_constructor(struct CompilerContext *cc, struct FunCall *funcall)
 {
     for (Values *args = seek_end(funcall->args); args != NULL; args = args->prev) {
-        printf("...compiling constructor...\n");
-        print_value(args->value);
-        printf("\n");
+        // printf("...compiling constructor...\n");
+        // print_value(args->value);
+        // printf("\n");
         compile_value(cc, args->value);
     }
     load(cc, PUSH);
     load(cc, funcall->args->length);
     load(cc, PUSH_HEAP);
+}
+
+static void compile_get(struct CompilerContext *cc, struct Accessor *get)
+{
+    if (get->lvalues == NULL) {
+        load(cc, PUSH);
+        load(cc, get->symbol);
+        load(cc, GET_LOCAL);
+        return;
+    } 
+    compile_loadsym(cc, get->symbol);
+    Type parent_value_type = get->type;
+    for (LValues *lvalues = get->lvalues; lvalues != NULL; lvalues = lvalues->next) {
+        struct Class *cls = lookup_class(cc->class_table, parent_value_type);
+        struct LValue *lvalue = lvalues->value;
+        switch (lvalue->lvtype) {
+            case LV_PROPERTY: {
+                uint64_t index = lookup_property_index(cls, lvalue->property);
+                load(cc, PUSH);
+                load(cc, index);
+                load(cc, GET_HEAP);
+                parent_value_type = lvalue->type;
+                break;
+            } default:
+                // handle this later
+                // struct Value *index;
+                printf("Error cannot compile array indexing\n");
+                return;
+        }
+    }
 }
 
 static void compile_funcall(struct CompilerContext *cc, struct FunCall *funcall)
@@ -155,6 +185,7 @@ static void compile_value(struct CompilerContext *cc, struct Value *val)
         case VTYPE_EXPR:        compile_expr(cc,        val->expr);     break;
         case VTYPE_FUNCALL:     compile_funcall(cc,     val->funcall);  break;
         case VTYPE_CONSTRUCTOR: compile_constructor(cc, val->funcall);  break;
+        case VTYPE_GET:         compile_get(cc,         val->get);      break;
         // default: printf("compile not implemented yet\n"); assert(0);
     }
 }
@@ -187,9 +218,9 @@ static void compile_expr(struct CompilerContext *cc, struct Expr *expr)
 static void compile_set(struct CompilerContext *cc, struct Set *set)
 {
     compile_value(cc, set->val);
-    if (set->lvalues == NULL) {
+    if (set->to_set->lvalues == NULL) {
         load(cc, PUSH);
-        load(cc, set->symbol);
+        load(cc, set->to_set->symbol);
         load(cc, SET_LOCAL);
         return;
     } 
@@ -197,21 +228,16 @@ static void compile_set(struct CompilerContext *cc, struct Set *set)
     //     printf("Error cannot compile property access / index\n");
     //     return;
     // }
-    compile_loadsym(cc, set->symbol);
-    Type parent_value_type = set->type;
-    for (LValues *lvalues = set->lvalues; lvalues != NULL; lvalues = lvalues->next) {
-        printf("'%s'\n", lookup_symbol(set->type));
+    compile_loadsym(cc, set->to_set->symbol);
+    Type parent_value_type = set->to_set->type;
+    for (LValues *lvalues = set->to_set->lvalues; lvalues != NULL; lvalues = lvalues->next) {
         struct Class *cls = lookup_class(cc->class_table, parent_value_type);
-        print_class(cls, 0);
         struct LValue *lvalue = lvalues->value;
         switch (lvalue->lvtype) {
             case LV_PROPERTY: {
-                printf("lvalue: %s\n", lookup_symbol(lvalue->property));
                 uint64_t index = lookup_property_index(cls, lvalue->property);
-                printf("index: %ld\n", index);
                 // NOTE: refactor to not have lookup_property on class, write a generic list lookup function
                 if (lvalues->next == NULL) {
-                    printf("lvalues->next is null\n");
                     load(cc, PUSH);
                     load(cc, index);
                     load(cc, SET_HEAP);

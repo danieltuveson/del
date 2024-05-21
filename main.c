@@ -1,3 +1,4 @@
+// #include <stdio.h>
 #include <assert.h>
 #include "common.h"
 #include "printers.h"
@@ -17,8 +18,22 @@
 //     struct FunDef *table;
 // };
 
-int main(void)
+
+int main(int argc, int *argv[])
 {
+    if (argc != 2) {
+        printf("Error: del expects argument of file name\n"
+               "Example: ./del my_script.del");
+        return EXIT_FAILURE;
+    }
+    char *filename = argv[1];
+    printf("````````````````` PARSE `````````````````\n");
+    FILE* ptr;
+    ptr = fopen(filename, "r");
+ 
+    if (NULL == ptr) {
+        printf("Cannot open file '%s'\n", filename);
+    }
     int ret = parse();
     if (ret != 0) {
         printf("parse error\n");

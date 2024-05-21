@@ -9,8 +9,12 @@
 class Thing {
     stuff: int;
     more: int;
+    method(stuff: int) {
+        return stuff + 1;
+    }
     // function Thing(stuff: int) {
     //     this.stuff = stuff;
+    //     this.more = stuff;
     //     return;
     // }
 }
@@ -21,12 +25,7 @@ class ThingContainer {
 
 // Entrypoint
 function main() {
-    let ta = new Thing(123, 45);
-    let tb = new Thing(67, 89);
-    let tc = new ThingContainer(ta);
-    tc.thing.more = 111;
-    tc.thing = tb;
-    tc.thing.stuff = 222;
-    tc.thing.more = 666;
+    let tc = new ThingContainer(new Thing(123));
+    tc.thing.more = 33;
 }
 

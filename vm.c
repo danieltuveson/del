@@ -224,13 +224,15 @@ int vm_execute(uint64_t *instructions)
                 break;
             case GET_LOCAL:
                 ip++;
-                symbol = (Symbol) instructions[ip];
-                if (lookup_local(&locals, symbol, &val1)) {
-                    push(&stack, (uint64_t) val1);
-                } else {
-                    printf("variable '%s' is undefined\n", lookup_symbol(symbol));
-                    goto exit_loop;
-                }
+                symbol = instructions[ip];
+                lookup_local(&locals, symbol, &val1);
+                push(&stack, (uint64_t) val1);
+                // if (lookup_local(&locals, symbol, &val1)) {
+                //     push(&stack, (uint64_t) val1);
+                // } else {
+                //     printf("variable '%s' is undefined\n", lookup_symbol(symbol));
+                //     goto exit_loop;
+                // }
                 break;
             case JE:
                 break;

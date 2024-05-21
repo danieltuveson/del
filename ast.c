@@ -41,6 +41,14 @@ uint64_t lookup_property_index(struct Class *cls, Symbol name)
     return 0;
 }
 
+static struct Accessor *new_accessor(Symbol symbol, LValues *lvalues)
+{
+    struct Accessor *accessor = malloc(sizeof(struct Accessor));
+    accessor->symbol = symbol;
+    accessor->type = TYPE_UNDEFINED;
+    accessor->lvalues = lvalues;
+}
+
 struct FunDef *new_fundef(Symbol symbol, Type rettype, Definitions *args, Statements *stmts)
 {
     struct FunDef *fundef = malloc(sizeof(struct FunDef));
@@ -67,10 +75,8 @@ struct Statement *new_set(Symbol symbol, struct Value *val, LValues *lvalues, in
     struct Statement *stmt = malloc(sizeof(struct Statement));
     stmt->type = STMT_SET;
     stmt->set = malloc(sizeof(struct Set));
-    stmt->set->symbol = symbol;
-    stmt->set->type = TYPE_UNDEFINED;
+    stmt->set->to_set = new_accessor(symbol, lvalues);
     stmt->set->is_define = is_define;
-    stmt->set->lvalues = lvalues;
     stmt->set->val = val;
     return stmt;
 }
@@ -213,6 +219,15 @@ struct Value *new_constructor(Symbol funname, Values *args)
     val->vtype = VTYPE_CONSTRUCTOR;
     val->type = funname; // constructor name should be same as classname
     val->funcall = new_funcall(funname, args);
+    return val;
+}
+
+struct Value *new_get(Symbol symbol, LValues *lvalues)
+{
+    struct Value *val = malloc(sizeof(struct Value));
+    val->vtype = VTYPE_GET;
+    val->type = TYPE_UNDEFINED;
+    val->get = new_accessor(symbol, lvalues);
     return val;
 }
 

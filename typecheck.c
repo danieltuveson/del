@@ -275,6 +275,8 @@ static Type typecheck_symbol(struct TypeCheckerContext *context, Symbol symbol)
     }
 }
 
+static Type typecheck_get(struct TypeCheckerContext *context, struct Accessor *get);
+
 static Type typecheck_value(struct TypeCheckerContext *context, struct Value *val)
 {
     switch (val->vtype) {
@@ -286,6 +288,7 @@ static Type typecheck_value(struct TypeCheckerContext *context, struct Value *va
         case VTYPE_EXPR:        return typecheck_expression(context, val->expr);
         case VTYPE_FUNCALL:     return typecheck_funcall(context, val->funcall);
         case VTYPE_CONSTRUCTOR: return typecheck_constructor(context, val->funcall);
+        case VTYPE_GET:         return typecheck_get(context, val->get);
     }
 }
 
@@ -357,21 +360,21 @@ static int typecheck_set(struct TypeCheckerContext *context, struct Set *set)
     Type lhs_type, rhs_type;
     // If this is a combo definition + set, add definition to scope
     if (set->is_define) {
-        assert(set->lvalues == NULL); // Not syntactically valid, should never happen
+        assert(set->to_set->lvalues == NULL); // Not syntactically valid, should never happen
         struct Definition *def = malloc(sizeof(*def));
-        def->name = set->symbol;
+        def->name = set->to_set->symbol;
         def->type = TYPE_UNDEFINED;
         add_var(context->scope, def);
     }
     // Make sure left side has been declared
-    struct Definition *def = lookup_var(context->scope, set->symbol);
+    struct Definition *def = lookup_var(context->scope, set->to_set->symbol);
     if (def == NULL) {
-        printf("Error: Symbol '%s' is used before it is declared\n", lookup_symbol(set->symbol));
+        printf("Error: Symbol '%s' is used before it is declared\n", lookup_symbol(set->to_set->symbol));
         return 0;
     }
     // Typecheck left side of set
-    if (set->lvalues != NULL) {
-        lhs_type = typecheck_lvalue(context, def, set->lvalues);
+    if (set->to_set->lvalues != NULL) {
+        lhs_type = typecheck_lvalue(context, def, set->to_set->lvalues);
         if (lhs_type == TYPE_UNDEFINED) {
             return 0;
         }
@@ -384,17 +387,36 @@ static int typecheck_set(struct TypeCheckerContext *context, struct Set *set)
     } else if (rhs_type != lhs_type && lhs_type != TYPE_UNDEFINED) {
         // Need to rewrite this slightly to account for lhs possibly having properties
         printf("Error: %s is of type %s, cannot set to type %s\n",
-                lookup_symbol(set->symbol),
+                lookup_symbol(set->to_set->symbol),
                 lookup_symbol(lhs_type),
                 lookup_symbol(rhs_type));
         return 0;
     }
-    if (set->lvalues == NULL) {
+    if (set->to_set->lvalues == NULL) {
         def->type = rhs_type;
         add_type(context->scope, def);
     }
-    set->type = def->type;
+    set->to_set->type = def->type;
     return 1;
+}
+
+// struct Accessor {
+//     Symbol symbol;
+//     Type type;
+//     LValues *lvalues;
+// };
+static Type typecheck_get(struct TypeCheckerContext *context, struct Accessor *get)
+{
+    struct Definition *def = lookup_var(context->scope, get->symbol);
+    if (def == NULL) {
+        printf("Error: Symbol '%s' is used before it is declared\n", lookup_symbol(get->symbol));
+        return 0;
+    }
+    Type type = (get->lvalues != NULL)
+        ? typecheck_lvalue(context, def, get->lvalues)
+        : def->type;
+    get->type = def->type;
+    return type;
 }
 
 static void scope_vars(struct Scope *scope, Definitions *defs)
