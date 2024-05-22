@@ -9,9 +9,9 @@
 class Thing {
     stuff: int;
     more: int;
-    method(stuff: int) {
-        return stuff + 1;
-    }
+    // method(stuff: int) {
+    //     return stuff + 1;
+    // }
     // function Thing(stuff: int) {
     //     this.stuff = stuff;
     //     this.more = stuff;
@@ -25,7 +25,7 @@ class ThingContainer {
 
 // Entrypoint
 function main() {
-    let tc = new ThingContainer(new Thing(123));
+    let tc = new ThingContainer(new Thing(123, 666));
     tc.thing.more = 33;
 }
 
