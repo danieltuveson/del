@@ -50,7 +50,6 @@ comment    \/\/[^\n]*
 "]"         { return ST_CLOSE_BRACKET; }
 ","         { return ST_COMMA; }
 "&"         { return ST_AMP; }
-"_"         { return ST_UNDERSCORE; }
 ";"         { return ST_SEMICOLON; }
 ":"         { return ST_COLON; }
 "."         { return ST_DOT; }

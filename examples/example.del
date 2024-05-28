@@ -27,5 +27,6 @@ class ThingContainer {
 function main() {
     let tc = new ThingContainer(new Thing(123, 666));
     tc.thing.more = 33;
+    let x = 1+2;
 }
 

@@ -19,7 +19,7 @@
 // };
 
 
-int main(int argc, int *argv[])
+int main(int argc, char *argv[])
 {
     int ret = parse();
     if (ret != 0) {
