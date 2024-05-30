@@ -14,3 +14,4 @@ parser.tab.h
 parser.tab.c
 *.output
 del
+np
