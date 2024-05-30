@@ -161,11 +161,12 @@ static int match(struct Lexer *lexer, char *str, bool require_terminal)
 
 static void tokenize_comment(struct Lexer *lexer)
 {
+    char c = '\0';
     int init_offset = lexer->offset;
     while (peek(lexer) != '\n' && peek(lexer) != '\0') {
-        next(lexer);
+        c = next(lexer);
     }
-    if (peek(lexer) == '\n') {
+    if (c == '\r') {
         add_token(lexer, new_token(init_offset, lexer->offset - 1, T_COMMENT));
     } else {
         add_token(lexer, new_token(init_offset, lexer->offset, T_COMMENT));
@@ -222,7 +223,7 @@ static int64_t str_to_int64(struct Lexer *lexer, int init_offset, int count)
     for (int i = init_offset; i < init_offset + count; i++) {
         int64_t digit = lexer->input[i] - '0';
         // If we're about to overflow, return with an error
-        if (num > INT64_MAX_HIGHPART || (num == INT64_MAX_HIGHPART && digit > INT64_MAX_LOWPART)){
+        if (num > INT64_MAX_HIGHPART || (num == INT64_MAX_HIGHPART && digit > INT64_MAX_LOWPART)) {
             lexer->error->message = "integer literal exceeds maximum allowed size of integer";
             return 0;
         }
