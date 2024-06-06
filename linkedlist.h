@@ -10,9 +10,13 @@ struct LinkedListNode {
 };
 
 struct LinkedList {
+    unsigned long length;
     struct LinkedListNode *head;
     struct LinkedListNode *tail;
 };
+
+#define linkedlist_foreach(lnode, start_node) \
+    for (struct LinkedListNode *lnode = start_node; lnode != NULL; lnode = lnode->next)
 
 struct LinkedList *linkedlist_new(void);
 void linkedlist_append(struct LinkedList *ll, void *value);

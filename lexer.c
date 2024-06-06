@@ -1,5 +1,6 @@
 #include "common.h"
 #include "lexer.h"
+#include "linkedlist.h"
 
 struct TokenMapping {
     char *string;
@@ -80,20 +81,18 @@ static struct Token *new_integer_token(int start, int end, uint64_t integer)
     return token;
 }
 
-static struct Token *new_floating_token(int start, int end, double floating)
-{
-    struct Token *token = new_token(start, end, T_FLOAT);
-    token->floating = floating;
-    return token;
-}
+// static struct Token *new_floating_token(int start, int end, double floating)
+// {
+//     struct Token *token = new_token(start, end, T_FLOAT);
+//     token->floating = floating;
+//     return token;
+// }
 
-static void add_token(struct Lexer *lexer, struct Token *token)
+static struct Token *new_string_token(int start, int end, char *str)
 {
-    if (lexer->tokens) {
-        lexer->tokens = append(lexer->tokens, token);
-    } else {
-        lexer->tokens = new_list(token);
-    }
+    struct Token *token = new_token(start, end, T_STRING);
+    token->string = str;
+    return token;
 }
 
 static inline bool is_symbol(char c)
@@ -167,12 +166,23 @@ static void tokenize_comment(struct Lexer *lexer)
         c = next(lexer);
     }
     if (c == '\r') {
-        add_token(lexer, new_token(init_offset, lexer->offset - 1, T_COMMENT));
+        linkedlist_append(lexer->tokens, new_token(init_offset, lexer->offset - 1, T_COMMENT));
     } else {
-        add_token(lexer, new_token(init_offset, lexer->offset, T_COMMENT));
+        linkedlist_append(lexer->tokens, new_token(init_offset, lexer->offset, T_COMMENT));
     }
 }
 
+static char *make_string(char *input, int start, int end)
+{
+    char *str = malloc(sizeof(char) * (end - start + 1));
+    for (int i = start; i < end; i++) {
+        str[i - start] = input[i];
+    }
+    str[end - start] = '\0';
+    return str;
+}
+
+// TODO: handle escape sequences
 static void tokenize_string(struct Lexer *lexer)
 {
     int init_offset = lexer->offset;
@@ -183,7 +193,8 @@ static void tokenize_string(struct Lexer *lexer)
         }
         next(lexer);
     }
-    add_token(lexer, new_token(init_offset, lexer->offset, T_STRING));
+    char *str = make_string(lexer->input, init_offset, lexer->offset);
+    linkedlist_append(lexer->tokens, new_string_token(init_offset, lexer->offset, str));
     next(lexer);
 }
 
@@ -194,7 +205,7 @@ static bool match_simple_token_list(struct Lexer *lexer, struct TokenMapping *tm
     for (size_t i = 0; i < length; i++) {
         struct TokenMapping tm = tm_list[i];
         if (match(lexer, tm.string, require_terminal)) {
-            add_token(lexer, new_token(init_offset, lexer->offset, tm.type));
+            linkedlist_append(lexer->tokens, new_token(init_offset, lexer->offset, tm.type));
             return true;
         }
     }
@@ -246,7 +257,7 @@ static void tokenize_number(struct Lexer *lexer)
     int count = lexer->offset - init_offset;
     int64_t num = str_to_int64(lexer, init_offset, count);
     if (!lexer->error->message) {
-        add_token(lexer, new_integer_token(init_offset, lexer->offset, num));
+        linkedlist_append(lexer->tokens, new_integer_token(init_offset, lexer->offset, num));
     }
 }
 
@@ -255,6 +266,7 @@ static bool is_symbol_token(char c)
     return (isalnum(c) || c == '_');
 }
 
+// TODO: rewrite this to use globals / not rely on old linked list structure
 static Symbol add_symbol(char *yytext, int yyleng)
 {
     if (ast.symbol_table == NULL) init_symbol_table();
@@ -298,27 +310,39 @@ static void tokenize_symbol(struct Lexer *lexer)
     memcpy(text, lexer->input + init_offset, count);
     text[count] = '\0';
     Symbol symbol = add_symbol(text, count);
-    add_token(lexer, new_symbol_token(init_offset, lexer->offset, symbol));
+    linkedlist_append(lexer->tokens, new_symbol_token(init_offset, lexer->offset, symbol));
     free(text);
+}
+
+void print_token(struct Lexer *lexer, struct Token *token)
+{
+    printf("Type: %d, Start: %d, End: %d, Content: '", token->type, token->start, token->end);
+    for (int i = token->start; i < token->end; i++) {
+        if (lexer->input[i] == '\0') printf("**NULL**");
+        if (lexer->input[i] == '\n') printf("**NEWLINE**");
+        printf("%c", lexer->input[i]);
+    }
+    printf("'");
+    switch (token->type) {
+        case T_INT:
+            printf(", Value: '%" PRIi64 "'", token->integer);
+            break;
+        case T_STRING:
+            printf(", Value: '%s'", token->string);
+            break;
+        default:
+            break;
+    }
+    printf("\n");
 }
 
 void print_lexer(struct Lexer *lexer)
 {
     printf("lexer {\n");
     printf("  [\n");
-    for (Tokens *tokens = seek_end(lexer->tokens); tokens != NULL; tokens = tokens->prev) {
-        struct Token *token = tokens->value;
-        printf("    Type: %d, Start: %d, End: %d, Content: '", token->type, token->start, token->end);
-        for (int i = token->start; i < token->end; i++) {
-            if (lexer->input[i] == '\0') printf("**NULL**");
-            if (lexer->input[i] == '\n') printf("**NEWLINE**");
-            printf("%c", lexer->input[i]);
-        }
-        printf("'");
-        if (token->type == T_INT) {
-            printf(", Value: '%" PRIi64 "'", token->integer);
-        }
-        printf("\n");
+    for (struct LinkedListNode *node = lexer->tokens->head; node != NULL; node = node->next) {
+        printf("    ");
+        print_token(lexer, node->value);
     }
     printf("  ]\n");
     printf("}\n");

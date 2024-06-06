@@ -8,12 +8,12 @@ struct Value;
 struct Statement;
 
 /* Typedefs for void* lists, to keep track of their contents */
-typedef struct List TopLevelDecls;
-typedef struct List Values;
-typedef struct List Statements;
-typedef struct List Definitions;
-typedef struct List Methods;
-typedef struct List LValues;
+typedef struct LinkedList TopLevelDecls;
+typedef struct LinkedList Values;
+typedef struct LinkedList Statements;
+typedef struct LinkedList Definitions;
+typedef struct LinkedList Methods;
+typedef struct LinkedList LValues;
 
 enum ValueType {
     VTYPE_SYMBOL,

@@ -10,11 +10,11 @@
 /* AST printers */
 void print_expr(struct Expr *expr);
 void print_value(struct Value *val);
-void print_statement(struct Statement *stmt);
-void print_statements(Statements *stmts);
-void print_tlds(TopLevelDecls *tlds);
-void print_fundef(struct FunDef *fundef, int indent, int ismethod);
-void print_class(struct Class *cls, int indent);
+// void print_statement(struct Statement *stmt);
+// void print_statements(Statements *stmts);
+// void print_tlds(TopLevelDecls *tlds);
+// void print_fundef(struct FunDef *fundef, int indent, int ismethod);
+// void print_class(struct Class *cls, int indent);
 
 /* Compiler printers */
 void print_ft_node(struct FunctionCallTableNode *fn);

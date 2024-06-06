@@ -48,7 +48,9 @@ enum TokenType {
     ST_COLON,
     ST_DOT,
     ST_TRUE,
-    ST_FALSE
+    ST_FALSE,
+    // Forces use of signed int, so we can do typesafe comparisons with MatchType in the parser
+    UNUSED_FORCE_NEGATIVE = -1
 };
 
 struct Token {
@@ -58,10 +60,11 @@ struct Token {
         Symbol symbol;
         uint64_t integer;
         double floating;
+        char *string;
     };
 };
 
-typedef struct List Tokens;
+typedef struct LinkedList Tokens;
 
 struct CompilerError {
     char *message;
@@ -79,6 +82,7 @@ struct Lexer {
 
 void tokenize(struct Lexer *lexer);
 void print_error(struct CompilerError *error); 
+void print_token(struct Lexer *lexer, struct Token *token);
 void print_lexer(struct Lexer *lexer);
 
 #endif

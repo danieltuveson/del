@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
+#include <limits.h>
 #include <ctype.h>
 #include <inttypes.h>
 #include <string.h>
@@ -35,7 +36,7 @@ struct Ast {
     // Stores the symbol for "main"
     Symbol entrypoint;
     // Stores actual ast content (a list of top level definitions)
-    struct List *ast;
+    struct LinkedList *ast;
 };
 
 /* Types that objects can have */

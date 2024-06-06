@@ -5,6 +5,7 @@
 struct LinkedList *linkedlist_new(void)
 {
     struct LinkedList *ll = malloc(sizeof(*ll));
+    ll->length = 0;
     ll->head = NULL;
     ll->tail = NULL;
 }
@@ -15,6 +16,7 @@ void linkedlist_append(struct LinkedList *ll, void *value)
     lnode->prev = NULL;
     lnode->next = NULL;
     lnode->value = value;
+    ll->length++;
     if (ll->head == NULL) {
         ll->head = lnode;
         ll->tail = lnode;
@@ -45,7 +47,7 @@ void linkedlist_reverse(struct LinkedList **ll_ptr)
 void linkedlist_print(struct LinkedList *ll, void (*printer)(void *))
 {
     printf("[ ");
-    for (struct LinkedListNode *lnode = ll->head; lnode != NULL; lnode = lnode->next) {
+    linkedlist_foreach(lnode, ll->head) {
         printer(lnode->value);
         if (lnode->next != NULL) printf(", ");
     }
