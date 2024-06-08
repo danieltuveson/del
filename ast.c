@@ -1,4 +1,5 @@
 #include "common.h"
+#include "allocator.h"
 #include "ast.h"
 #include "printers.h"
 
@@ -6,9 +7,9 @@
 struct TopLevelDecl *new_class(Symbol symbol, Definitions *definitions, Methods *methods)
 {
     ast.class_count++;
-    struct TopLevelDecl *tld = malloc(sizeof(struct TopLevelDecl));
+    struct TopLevelDecl *tld = allocator_malloc(sizeof(struct TopLevelDecl));
     tld->type = TLD_TYPE_CLASS;
-    tld->cls = malloc(sizeof(struct Class));
+    tld->cls = allocator_malloc(sizeof(struct Class));
     tld->cls->name = symbol;
     tld->cls->definitions = definitions == NULL ? NULL : definitions;
     tld->cls->methods = methods == NULL ? NULL : methods;
@@ -43,7 +44,7 @@ struct TopLevelDecl *new_class(Symbol symbol, Definitions *definitions, Methods 
 
 static struct Accessor *new_accessor(Symbol symbol, LValues *lvalues)
 {
-    struct Accessor *accessor = malloc(sizeof(struct Accessor));
+    struct Accessor *accessor = allocator_malloc(sizeof(struct Accessor));
     accessor->symbol = symbol;
     accessor->type = TYPE_UNDEFINED;
     accessor->lvalues = lvalues;
@@ -51,7 +52,7 @@ static struct Accessor *new_accessor(Symbol symbol, LValues *lvalues)
 
 struct FunDef *new_fundef(Symbol symbol, Type rettype, Definitions *args, Statements *stmts)
 {
-    struct FunDef *fundef = malloc(sizeof(struct FunDef));
+    struct FunDef *fundef = allocator_malloc(sizeof(struct FunDef));
     fundef->name = symbol;
     fundef->rettype = rettype;
     fundef->args = args;
@@ -63,7 +64,7 @@ struct TopLevelDecl *new_tld_fundef(Symbol symbol, Type rettype, Definitions *ar
         Statements *stmts)
 {
     ast.function_count++;
-    struct TopLevelDecl *tld = malloc(sizeof(struct TopLevelDecl));
+    struct TopLevelDecl *tld = allocator_malloc(sizeof(struct TopLevelDecl));
     tld->type = TLD_TYPE_FUNDEF;
     tld->fundef = new_fundef(symbol, rettype, args, stmts);
     return tld;
@@ -72,9 +73,9 @@ struct TopLevelDecl *new_tld_fundef(Symbol symbol, Type rettype, Definitions *ar
 /* Functions to create Statements */
 struct Statement *new_set(Symbol symbol, struct Value *val, LValues *lvalues, int is_define)
 {
-    struct Statement *stmt = malloc(sizeof(struct Statement));
+    struct Statement *stmt = allocator_malloc(sizeof(struct Statement));
     stmt->type = STMT_SET;
-    stmt->set = malloc(sizeof(struct Set));
+    stmt->set = allocator_malloc(sizeof(struct Set));
     stmt->set->to_set = new_accessor(symbol, lvalues);
     stmt->set->is_define = is_define;
     stmt->set->val = val;
@@ -82,9 +83,9 @@ struct Statement *new_set(Symbol symbol, struct Value *val, LValues *lvalues, in
 }
 
 struct Statement *new_if(struct Value *condition, Statements *if_stmts, Statements *else_stmts) {
-    struct Statement *stmt = malloc(sizeof(struct Statement));
+    struct Statement *stmt = allocator_malloc(sizeof(struct Statement));
     stmt->type = STMT_IF;
-    stmt->if_stmt = malloc(sizeof(struct IfStatement));
+    stmt->if_stmt = allocator_malloc(sizeof(struct IfStatement));
     stmt->if_stmt->condition = condition;
     stmt->if_stmt->if_stmts = if_stmts;
     if (else_stmts) {
@@ -97,9 +98,9 @@ struct Statement *new_if(struct Value *condition, Statements *if_stmts, Statemen
 
 struct Statement *new_while(struct Value *condition, Statements *stmts)
 {
-    struct Statement *stmt = malloc(sizeof(struct Statement));
+    struct Statement *stmt = allocator_malloc(sizeof(struct Statement));
     stmt->type = STMT_WHILE;
-    stmt->while_stmt = malloc(sizeof(struct While));
+    stmt->while_stmt = allocator_malloc(sizeof(struct While));
     stmt->while_stmt->condition = condition;
     stmt->while_stmt->stmts = stmts;
     return stmt;
@@ -108,9 +109,9 @@ struct Statement *new_while(struct Value *condition, Statements *stmts)
 struct Statement *new_for(struct Statement *init, struct Value *condition,
         struct Statement *increment, Statements *stmts)
 {
-    struct Statement *stmt = malloc(sizeof(struct Statement));
+    struct Statement *stmt = allocator_malloc(sizeof(struct Statement));
     stmt->type = STMT_FOR;
-    stmt->for_stmt = malloc(sizeof(struct For));
+    stmt->for_stmt = allocator_malloc(sizeof(struct For));
     stmt->for_stmt->init = init;
     stmt->for_stmt->condition = condition;
     stmt->for_stmt->increment = increment;
@@ -120,7 +121,7 @@ struct Statement *new_for(struct Statement *init, struct Value *condition,
 
 struct Statement *new_let(Definitions *let)
 {
-    struct Statement *stmt = malloc(sizeof(struct Statement));
+    struct Statement *stmt = allocator_malloc(sizeof(struct Statement));
     stmt->type = STMT_LET;
     stmt->let = let;
     return stmt;
@@ -128,7 +129,7 @@ struct Statement *new_let(Definitions *let)
  
 struct Definition *new_define(Symbol name, Type type)
 {
-    struct Definition *def = malloc(sizeof(struct Definition));
+    struct Definition *def = allocator_malloc(sizeof(struct Definition));
     def->name = name;
     def->type = type;
     return def;
@@ -136,7 +137,7 @@ struct Definition *new_define(Symbol name, Type type)
 
 static struct FunCall *new_funcall(Symbol funname, Values *args)
 {
-    struct FunCall *funcall = malloc(sizeof(struct FunCall));
+    struct FunCall *funcall = allocator_malloc(sizeof(struct FunCall));
     funcall->funname = funname;
     funcall->args = args;
     return funcall;
@@ -144,7 +145,7 @@ static struct FunCall *new_funcall(Symbol funname, Values *args)
 
 struct Statement *new_sfuncall(Symbol funname, Values *args)
 {
-    struct Statement *stmt = malloc(sizeof(struct Statement));
+    struct Statement *stmt = allocator_malloc(sizeof(struct Statement));
     stmt->type = STMT_FUNCALL;
     stmt->funcall = new_funcall(funname, args);
     return stmt;
@@ -152,7 +153,7 @@ struct Statement *new_sfuncall(Symbol funname, Values *args)
 
 struct Statement *new_return(struct Value *val)
 {
-    struct Statement *stmt = malloc(sizeof(struct Statement));
+    struct Statement *stmt = allocator_malloc(sizeof(struct Statement));
     stmt->type = STMT_RETURN;
     stmt->ret = val;
     return stmt;
@@ -161,7 +162,7 @@ struct Statement *new_return(struct Value *val)
 /* Functions for creating Values */
 struct Value *new_string(char *string)
 {
-    struct Value *val = malloc(sizeof(struct Value));
+    struct Value *val = allocator_malloc(sizeof(struct Value));
     val->vtype = VTYPE_STRING;
     val->type = TYPE_STRING;
     val->string = string;
@@ -170,7 +171,7 @@ struct Value *new_string(char *string)
 
 struct Value *new_symbol(uint64_t symbol)
 {
-    struct Value *val = malloc(sizeof(struct Value));
+    struct Value *val = allocator_malloc(sizeof(struct Value));
     val->vtype = VTYPE_SYMBOL;
     val->type = TYPE_UNDEFINED;
     val->symbol = symbol;
@@ -179,7 +180,7 @@ struct Value *new_symbol(uint64_t symbol)
 
 struct Value *new_integer(long integer)
 {
-    struct Value *val = malloc(sizeof(struct Value));
+    struct Value *val = allocator_malloc(sizeof(struct Value));
     val->vtype = VTYPE_INT;
     val->type = TYPE_INT;
     val->integer = integer;
@@ -188,7 +189,7 @@ struct Value *new_integer(long integer)
 
 struct Value *new_floating(double floating)
 {
-    struct Value *val = malloc(sizeof(struct Value));
+    struct Value *val = allocator_malloc(sizeof(struct Value));
     val->vtype = VTYPE_FLOAT;
     val->type = TYPE_FLOAT;
     val->floating = floating;
@@ -197,7 +198,7 @@ struct Value *new_floating(double floating)
 
 struct Value *new_boolean(int boolean)
 {
-    struct Value *val = malloc(sizeof(struct Value));
+    struct Value *val = allocator_malloc(sizeof(struct Value));
     val->vtype = VTYPE_BOOL;
     val->type = TYPE_BOOL;
     val->boolean = boolean;
@@ -206,7 +207,7 @@ struct Value *new_boolean(int boolean)
 
 struct Value *new_vfuncall(Symbol funname, Values *args)
 {
-    struct Value *val = malloc(sizeof(struct Value));
+    struct Value *val = allocator_malloc(sizeof(struct Value));
     val->vtype = VTYPE_FUNCALL;
     val->type = TYPE_UNDEFINED;
     val->funcall = new_funcall(funname, args);
@@ -215,7 +216,7 @@ struct Value *new_vfuncall(Symbol funname, Values *args)
 
 struct Value *new_constructor(Symbol funname, Values *args)
 {
-    struct Value *val = malloc(sizeof(struct Value));
+    struct Value *val = allocator_malloc(sizeof(struct Value));
     val->vtype = VTYPE_CONSTRUCTOR;
     val->type = funname; // constructor name should be same as classname
     val->funcall = new_funcall(funname, args);
@@ -224,7 +225,7 @@ struct Value *new_constructor(Symbol funname, Values *args)
 
 struct Value *new_get(Symbol symbol, LValues *lvalues)
 {
-    struct Value *val = malloc(sizeof(struct Value));
+    struct Value *val = allocator_malloc(sizeof(struct Value));
     val->vtype = VTYPE_GET;
     val->type = TYPE_UNDEFINED;
     val->get = new_accessor(symbol, lvalues);
@@ -233,7 +234,7 @@ struct Value *new_get(Symbol symbol, LValues *lvalues)
 
 struct Value *new_expr(struct Expr *expr)
 {
-    struct Value *val = malloc(sizeof(struct Value));
+    struct Value *val = allocator_malloc(sizeof(struct Value));
     val->vtype = VTYPE_EXPR;
     val->type = TYPE_UNDEFINED;
     val->expr = expr;
@@ -242,7 +243,7 @@ struct Value *new_expr(struct Expr *expr)
 
 struct LValue *new_property(Symbol property)
 {
-    struct LValue *lvalue = malloc(sizeof(struct LValue));
+    struct LValue *lvalue = allocator_malloc(sizeof(struct LValue));
     lvalue->type = LV_PROPERTY;
     lvalue->type = TYPE_UNDEFINED;
     lvalue->property = property;
@@ -251,7 +252,7 @@ struct LValue *new_property(Symbol property)
 
 struct LValue *new_index(struct Value *index)
 {
-    struct LValue *lvalue = malloc(sizeof(struct LValue));
+    struct LValue *lvalue = allocator_malloc(sizeof(struct LValue));
     lvalue->type = LV_INDEX;
     lvalue->type = TYPE_UNDEFINED;
     lvalue->index = index;
@@ -264,7 +265,7 @@ struct LValue *new_index(struct Value *index)
 
 #define define_unary_op(name, operator) \
 struct Expr *name(struct Value *val1) {\
-    struct Expr *expr = malloc(sizeof(struct Expr));\
+    struct Expr *expr = allocator_malloc(sizeof(struct Expr));\
     expr->op = operator;\
     expr->val1 = val1;\
     expr->val2 = NULL;\
@@ -278,7 +279,7 @@ define_unary_op(unary_minus, OP_UNARY_MINUS)
 
 #define define_binary_op(name, operator) \
 struct Expr *name(struct Value *val1, struct Value *val2) {\
-    struct Expr *expr = malloc(sizeof(struct Expr));\
+    struct Expr *expr = allocator_malloc(sizeof(struct Expr));\
     expr->op = operator;\
     expr->val1 = val1;\
     expr->val2 = val2;\

@@ -1,6 +1,7 @@
 #include "common.h"
-#include "lexer.h"
+#include "allocator.h"
 #include "linkedlist.h"
+#include "lexer.h"
 
 struct TokenMapping {
     char *string;
@@ -60,7 +61,7 @@ struct TokenMapping symbols1[] = {
 
 static struct Token *new_token(int start, int end, enum TokenType type)
 {
-    struct Token *token = malloc(sizeof(*token));
+    struct Token *token = allocator_malloc(sizeof(*token));
     token->start = start;
     token->end = end;
     token->type = type;
@@ -112,24 +113,24 @@ static inline bool is_terminal(char c)
     return is_symbol(c) || is_space(c) || c == '\0';
 }
 
+static inline char peek(struct Lexer *lexer)
+{
+    return lexer->input[lexer->offset];
+}
+
 static inline bool has_next(struct Lexer *lexer)
 {
-    return lexer->offset <= lexer->input_length;
+    return lexer->offset <= lexer->input_length && peek(lexer) != '\0';
 }
 
 static inline char next(struct Lexer *lexer)
 {
-    lexer->error->column_number++;
+    lexer->error.column_number++;
     if (lexer->input[lexer->offset] == '\n') {
-        lexer->error->column_number = 1;
-        lexer->error->line_number++;
+        lexer->error.column_number = 1;
+        lexer->error.line_number++;
     }
     return lexer->input[lexer->offset++];
-}
-
-static inline char peek(struct Lexer *lexer)
-{
-    return lexer->input[lexer->offset];
 }
 
 // Checks if lexer matches given string, consuming the characters it reads on success
@@ -154,7 +155,7 @@ static int match(struct Lexer *lexer, char *str, bool require_terminal)
         i++;
     }
     lexer->offset = i;
-    lexer->error->column_number += i - init_offset;
+    lexer->error.column_number += i - init_offset;
     return i - init_offset;
 }
 
@@ -174,7 +175,7 @@ static void tokenize_comment(struct Lexer *lexer)
 
 static char *make_string(char *input, int start, int end)
 {
-    char *str = malloc(sizeof(char) * (end - start + 1));
+    char *str = allocator_malloc(sizeof(char) * (end - start + 1));
     for (int i = start; i < end; i++) {
         str[i - start] = input[i];
     }
@@ -188,7 +189,7 @@ static void tokenize_string(struct Lexer *lexer)
     int init_offset = lexer->offset;
     while (peek(lexer) != '"') {
         if (peek(lexer) == '\n' || peek(lexer) == '\0') {
-            lexer->error->message = "Unexpected end of string";
+            lexer->error.message = "Unexpected end of string";
             return;
         }
         next(lexer);
@@ -235,7 +236,7 @@ static int64_t str_to_int64(struct Lexer *lexer, int init_offset, int count)
         int64_t digit = lexer->input[i] - '0';
         // If we're about to overflow, return with an error
         if (num > INT64_MAX_HIGHPART || (num == INT64_MAX_HIGHPART && digit > INT64_MAX_LOWPART)) {
-            lexer->error->message = "integer literal exceeds maximum allowed size of integer";
+            lexer->error.message = "integer literal exceeds maximum allowed size of integer";
             return 0;
         }
         num = num * 10 + digit;
@@ -251,12 +252,12 @@ static void tokenize_number(struct Lexer *lexer)
         next(lexer);
     }
     if (!is_terminal(peek(lexer))) {
-        lexer->error->message = "unexpected character in integer literal";
+        lexer->error.message = "unexpected character in integer literal";
         return;
     }
     int count = lexer->offset - init_offset;
     int64_t num = str_to_int64(lexer, init_offset, count);
-    if (!lexer->error->message) {
+    if (!lexer->error.message) {
         linkedlist_append(lexer->tokens, new_integer_token(init_offset, lexer->offset, num));
     }
 }
@@ -285,7 +286,7 @@ static Symbol add_symbol(char *yytext, int yyleng)
             symbol_table = symbol_table->next;
         }
     }
-    symbol = malloc((yyleng + 1) * sizeof(char));
+    symbol = allocator_malloc((yyleng + 1) * sizeof(char));
     strcpy(symbol, yytext);
     symbol_table->next = new_list(symbol);
 addsymbol:
@@ -302,16 +303,15 @@ static void tokenize_symbol(struct Lexer *lexer)
         next(lexer);
     }
     if (!is_terminal(peek(lexer))) {
-        lexer->error->message = "unexpected character in integer literal";
+        lexer->error.message = "unexpected character in integer literal";
         return;
     }
     int count = lexer->offset - init_offset;
-    char *text = malloc(count + 1);
+    char *text = allocator_malloc(count + 1);
     memcpy(text, lexer->input + init_offset, count);
     text[count] = '\0';
     Symbol symbol = add_symbol(text, count);
     linkedlist_append(lexer->tokens, new_symbol_token(init_offset, lexer->offset, symbol));
-    free(text);
 }
 
 void print_token(struct Lexer *lexer, struct Token *token)
@@ -353,11 +353,22 @@ void print_error(struct CompilerError *error)
     printf("Error at line %d column %d: %s\n", error->line_number, error->column_number, error->message);
 }
 
-void tokenize(struct Lexer *lexer)
+void lexer_init(struct Lexer *lexer, char *input, int input_length)
+{
+    lexer->error.message = NULL;
+    lexer->error.line_number = 1;
+    lexer->error.column_number = 1;
+    lexer->input = input;
+    lexer->input_length = input_length;
+    lexer->offset = 0;
+    lexer->tokens = linkedlist_new();
+}
+
+bool tokenize(struct Lexer *lexer)
 {
     if (!has_next(lexer)) {
-        lexer->error->message = "File is empty";
-        return;
+        lexer->error.message = "File is empty";
+        return false;
     }
     while (has_next(lexer)) {
         if (is_space(peek(lexer))) {
@@ -375,10 +386,11 @@ void tokenize(struct Lexer *lexer)
         } else if (isalpha(peek(lexer)) || peek(lexer) == '_') {
             tokenize_symbol(lexer);
         } else {
-            lexer->error->message = "illegal characters in token";
+            lexer->error.message = "illegal characters in token";
         }
-        if (lexer->error->message) {
-            return;
+        if (lexer->error.message) {
+            return false;
         }
     }
+    return true;
 }

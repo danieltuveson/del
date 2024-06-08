@@ -1,5 +1,6 @@
 #ifndef LEXER_H
 #define LEXER_H
+#include "common.h"
 
 enum TokenType {
     T_STRING,
@@ -73,14 +74,15 @@ struct CompilerError {
 };
 
 struct Lexer {
-    struct CompilerError *error;
+    struct CompilerError error;
     int input_length; // Excludes null terminator
     char *input;
     int offset;
     Tokens *tokens;
 };
 
-void tokenize(struct Lexer *lexer);
+void lexer_init(struct Lexer *lexer, char *input, int input_length);
+bool tokenize(struct Lexer *lexer);
 void print_error(struct CompilerError *error); 
 void print_token(struct Lexer *lexer, struct Token *token);
 void print_lexer(struct Lexer *lexer);

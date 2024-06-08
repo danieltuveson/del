@@ -23,6 +23,11 @@ struct ExprPair {
 };
 
 // Forward declarations
+static struct Value *parse_expr(struct Parser *parser);
+static struct Value *parse_orexpr(struct Parser *parser);
+static struct Value *parse_andexpr(struct Parser *parser);
+static struct Value *parse_eqexpr(struct Parser *parser);
+static struct Value *parse_compexpr(struct Parser *parser);
 static struct Value *parse_addexpr(struct Parser *parser);
 static struct Value *parse_multexpr(struct Parser *parser);
 static struct Value *parse_subexpr(struct Parser *parser);
@@ -62,12 +67,6 @@ static struct Value *parse_subexpr(struct Parser *parser);
 
 enum MatchType {
     MT_EXPR = INT_MIN,
-    MT_ANDEXPR,
-    MT_EQEXPR,
-    MT_COMPEXPR,
-    MT_ADDEXPR,
-    MT_MULTEXPR,
-    MT_SUBEXPR,
     MT_PROGRAM,
     MT_TLDS,
     MT_METHODS,
@@ -150,27 +149,13 @@ static inline struct Token *nth_token(struct LinkedListNode *head, int num)
     return lnode == NULL ? NULL : lnode->value;
 }
 
-// int st_plus = { MT_EXPR, ST_PLUS, MT_EXPR };
-// static struct Value *parse_subexpr(struct Parser *parser)
-// {
-//     if      (match(parser, st_plus))      return new_integer(nth_token(head, 1)->integer);
-// 
-//     printf("Error: could not match expression\n");
-//     return NULL;
-// }
-
-static struct Value *parse_expr(struct Parser *parser)
-{
-    return parse_addexpr(parser);
-}
-
 // Cursed helper function for parsing expressions.
 // I would have had to write basically the same code for every binary expression, but instead I'm
 // using function pointers to DRY it up. I know it looks heinous.
 static struct Value *parse_binexp_help(struct Parser *parser, ExprParserFunction epfunc,
                                        struct ExprPair *epairs, size_t epairs_length)
 {
-    struct Value *left = parse_subexpr(parser);
+    struct Value *left = epfunc(parser);
     if (left == NULL) {
         return NULL;
     }
@@ -197,55 +182,74 @@ static struct Value *parse_binexp_help(struct Parser *parser, ExprParserFunction
 #define parse_binexp(parser, epfunc, epairs) \
     parse_binexp_help(parser, epfunc, epairs, sizeof(epairs) / sizeof(*epairs))
 
-struct ExprPair addexpr_pairs[] = {
-    { ST_PLUS,  bin_plus  },
-    { ST_MINUS, bin_minus }
+struct ExprPair orexpr_pairs[] = {
+    { ST_OR, bin_or },
 };
 
-static struct Value *parse_addexpr(struct Parser *parser)
+struct ExprPair andexpr_pairs[] = {
+    { ST_AND, bin_and },
+};
+
+struct ExprPair eqexpr_pairs[] = {
+    { ST_EQEQ,   bin_eqeq   },
+    { ST_NOT_EQ, bin_not_eq },
+};
+
+struct ExprPair compexpr_pairs[] = {
+    { ST_GREATER,    bin_greater    },
+    { ST_GREATER_EQ, bin_greater_eq },
+    { ST_LESS,       bin_less       },
+    { ST_LESS_EQ,    bin_less_eq    },
+};
+
+struct ExprPair addexpr_pairs[] = {
+    { ST_PLUS,  bin_plus  },
+    { ST_MINUS, bin_minus },
+};
+
+struct ExprPair multexpr_pairs[] = {
+    { ST_STAR,  bin_star  },
+    { ST_SLASH, bin_slash },
+};
+
+// Technically redundant, since it just calls orexpr. But simplifies things if we ever want to
+// create a lower precedence expression than "or"
+static inline struct Value *parse_expr(struct Parser *parser)
+{
+    return parse_orexpr(parser);
+}
+
+static inline struct Value *parse_orexpr(struct Parser *parser)
+{
+    return parse_binexp(parser, parse_andexpr, orexpr_pairs);
+}
+
+static inline struct Value *parse_andexpr(struct Parser *parser)
+{
+    return parse_binexp(parser, parse_eqexpr, andexpr_pairs);
+}
+
+static inline struct Value *parse_eqexpr(struct Parser *parser)
+{
+    return parse_binexp(parser, parse_compexpr, eqexpr_pairs);
+}
+
+static inline struct Value *parse_compexpr(struct Parser *parser)
+{
+    return parse_binexp(parser, parse_addexpr, compexpr_pairs);
+}
+
+static inline struct Value *parse_addexpr(struct Parser *parser)
 {
     return parse_binexp(parser, parse_multexpr, addexpr_pairs);
 }
 
-struct ExprPair multexpr_pairs[] = {
-    { ST_STAR,  bin_star  },
-    { ST_SLASH, bin_slash }
-};
-static struct Value *parse_multexpr(struct Parser *parser)
+static inline struct Value *parse_multexpr(struct Parser *parser)
 {
     return parse_binexp(parser, parse_subexpr, multexpr_pairs);
 }
 
 #undef parse_binexp
-
-// static struct Value *parse_multexpr(struct Parser *parser)
-// {
-//     struct Value *left = parse_subexpr(parser);
-//     if (left == NULL) {
-//         return NULL;
-//     }
-//     struct Value *right = NULL;
-//     while (parser->head != NULL) {
-//         if (match(parser, ST_STAR)) {
-//             right = parse_subexpr(parser);
-//             if (right == NULL) {
-//                 return NULL;
-//             }
-//             left = new_expr(bin_star(left, right));
-//         } else if (match(parser, ST_SLASH)) {
-//             right = parse_subexpr(parser);
-//             if (right == NULL) {
-//                 return NULL;
-//             }
-//             left = new_expr(bin_slash(left, right));
-//         } else {
-//             break;
-//         }
-//     }
-//     return left;
-// }
-
-// int paren_expr[] = { ST_OPEN_PAREN, T_INT, ST_CLOSE_PAREN }; // MT_SUBEXPR, ST_CLOSE_PAREN };
 
 static struct Value *parse_subexpr(struct Parser *parser)
 {
@@ -278,36 +282,35 @@ static struct Value *parse_subexpr(struct Parser *parser)
 
 int main(int argc, char *argv[])
 {
+    int ret = EXIT_FAILURE;
     if (argc != 2) {
         printf("Error: expecting input file\nExample usage:\n./del hello_world.del\n");
-        return 1;
+        goto FAIL;
     }
+
     printf("........ READING FILE : %s ........\n", argv[1]);
+    // TODO: Figure out why this returns error if input is 1 character
     char *input = NULL;
-    int input_length = readfile(&input, argv[1]);
+    long input_length = readfile(&input, argv[1]);
     if (input_length == 0) {
-        return 1;
+        printf("Error: could not read contents of empty file\n");
+        goto FAIL;
     }
     printf("%s\n", input);
-    printf("........ TOKENIZING INPUT ........\n");
-    struct CompilerError error = { NULL, 1, 1 };
-    Tokens *tokens = linkedlist_new();
-    struct Lexer lexer = {
-        &error,
-        input_length,
-        input,
-        0,
-        tokens
-    };
-    // TODO: delete this, it's only used for debugging
-    debug_lexer = &lexer;
+    print_memory_usage();
 
-    tokenize(&lexer);
-    if (lexer.error->message) {
-        print_error(lexer.error);
-        return 1;
+    printf("........ TOKENIZING INPUT ........\n");
+    struct Lexer lexer;
+    lexer_init(&lexer, input, input_length);
+    if (!tokenize(&lexer)) {
+        print_error(&(lexer.error));
+        goto FAIL;
     }
     print_lexer(&lexer);
+    print_memory_usage();
+
+    // TODO: delete this, it's only used for debugging
+    debug_lexer = &lexer;
 
     printf("........ PARSING AST FROM TOKENS ........\n");
     struct Parser parser = { lexer.tokens->head, &lexer };
@@ -318,6 +321,12 @@ int main(int argc, char *argv[])
     } else {
         printf("no value. sad\n");
     }
+    print_memory_usage();
 
-    return 0;
+
+SUCCESS:
+    ret = EXIT_SUCCESS;
+FAIL:
+    allocator_freeall();
+    return ret;
 }

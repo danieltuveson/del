@@ -1,8 +1,9 @@
 #include "common.h"
+#include "allocator.h"
 
 // Populates buffer with contents of file
 // Returns 0 on failure, returns length of buffer (excluding null terminator) on success
-int readfile(char **buff, char *filename)
+long readfile(char **buff, char *filename)
 {
     FILE *fp = fopen(filename, "r");
     if (!fp) {
@@ -21,7 +22,7 @@ int readfile(char **buff, char *filename)
     }
     rewind(fp);
 
-    *buff = malloc(length + 1);
+    *buff = allocator_malloc(length + 1);
     if ((long) fread(*buff, 1, length, fp) != length) {
         printf(generic_error);
         return 0;
@@ -29,5 +30,5 @@ int readfile(char **buff, char *filename)
     fclose(fp);
 
     (*buff)[length] = '\0';
-    return length - 1;
+    return length;
 }

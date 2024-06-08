@@ -1,4 +1,5 @@
 #include "common.h"
+#include "allocator.h"
 
 struct Ast ast = { NULL, 0, 0, 0, NULL };
 
@@ -11,7 +12,7 @@ uint64_t TYPE_STRING    = 5;
 
 static void add_symbol_helper(char *sym, size_t size)
 {
-    char *symbol = malloc(size);
+    char *symbol = allocator_malloc(size);
     strcpy(symbol, sym);
     if (ast.symbol_table == NULL) {
         ast.symbol_table = new_list(symbol);
@@ -53,7 +54,7 @@ char *lookup_symbol(uint64_t symbol)
 /* List functions */
 struct List *new_list(void *value)
 {
-    struct List *list = malloc(sizeof(struct List));
+    struct List *list = allocator_malloc(sizeof(struct List));
     list->value = value;
     list->length = 1;
     list->next = NULL;
