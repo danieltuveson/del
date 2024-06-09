@@ -1,4 +1,5 @@
 #include "common.h"
+#include "linkedlist.h"
 #include "printers.h"
 
 static void print_statements_indent(Statements *stmts, int indent);
@@ -260,16 +261,18 @@ void print_expr(struct Expr *expr)
     printf(")");
 }
 
-// static void print_funcall(Symbol funname, Values *vals)
-// {
-//     printf("%s", lookup_symbol(funname));
-//     printf("(");
-//     for (; vals != NULL; vals = vals->next) {
-//         print_value(vals->value);
-//         if (vals->next != NULL) printf(", ");
-//     }
-//     printf(")");
-// }
+static void print_funcall(Symbol funname, Values *vals)
+{
+    printf("%s", lookup_symbol(funname));
+    printf("(");
+    if (vals != NULL) {
+        linkedlist_foreach(lnode, vals->head) {
+            print_value(lnode->value);
+            if (lnode->next != NULL) printf(", ");
+        }
+    }
+    printf(")");
+}
 // 
 // static void print_get(struct Accessor *get)
 // {
@@ -307,13 +310,13 @@ void print_value(struct Value *val)
     case VTYPE_EXPR:
         print_expr(val->expr);
         break;
-    // case VTYPE_FUNCALL:
-    //     print_funcall(val->funcall->funname, val->funcall->args);
-    //     break;
-    // case VTYPE_CONSTRUCTOR:
-    //     printf("new ");
-    //     print_funcall(val->constructor->funname, val->constructor->args);
-    //     break;
+    case VTYPE_FUNCALL:
+        print_funcall(val->funcall->funname, val->funcall->args);
+        break;
+    case VTYPE_CONSTRUCTOR:
+        printf("new ");
+        print_funcall(val->constructor->funname, val->constructor->args);
+        break;
     // case  VTYPE_GET:
     //     print_get(val->get);
     //     break;

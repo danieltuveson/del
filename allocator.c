@@ -17,6 +17,7 @@ size_t global_allocator_usage = 0;
 void *allocator_malloc(size_t size)
 {
     global_total_mem_usage += size;
+    // printf("allocating %lu bytes\n", size);
     global_allocator_usage += sizeof(struct Stack);
     void *memory = malloc(size);
     struct Stack *stack = malloc(sizeof(*stack));
