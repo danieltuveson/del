@@ -365,7 +365,7 @@ void lexer_init(struct Lexer *lexer, char *input, int input_length, bool include
     lexer->error.column_number = 1;
     lexer->input = input;
     lexer->input_length = input_length;
-    lexer->include_comments = false;
+    lexer->include_comments = include_comments;
     lexer->offset = 0;
     lexer->tokens = linkedlist_new();
 }

@@ -1,11 +1,13 @@
-#include <assert.h>
 #include "common.h"
-#include "printers.h"
+#include "allocator.h"
+#include "readfile.h"
+#include "lexer.h"
+#include "ast.h"
 #include "parser.h"
+#include "typecheck.h"
 #include "compiler.h"
 #include "vm.h"
-#include "ast.h"
-#include "typecheck.h"
+#include "printers.h"
 
 // struct ClassTable {
 //     size_t size;

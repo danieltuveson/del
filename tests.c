@@ -2,7 +2,7 @@
 #include "allocator.h"
 #include "linkedlist.h"
 #include "lexer.h"
-// #include "parser.h"
+#include "parser.h"
 
 static void test_startmessage(char *name)
 {

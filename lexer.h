@@ -50,8 +50,6 @@ enum TokenType {
     ST_DOT,
     ST_TRUE,
     ST_FALSE,
-    // Forces use of signed int, so we can do typesafe comparisons with MatchType in the parser
-    UNUSED_FORCE_NEGATIVE = -1
 };
 
 struct Token {

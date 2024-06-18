@@ -1,20 +1,11 @@
 #include "common.h"
-#include "allocator.h"
 #include "linkedlist.h"
 #include "lexer.h"
-#include "readfile.h"
 #include "ast.h"
 #include "printers.h"
+#include "parser.h"
 
 // TODO: improve quality of error messages
-
-// TODO: Used for debugging purposes, delete later
-static struct Lexer *debug_lexer;
-
-struct Parser {
-    struct LinkedListNode *head;
-    struct Lexer *lexer;
-};
 
 typedef struct Value *(*ExprParserFunction)(struct Parser *);
 typedef struct Expr *(*ExprFunction)(struct Value *, struct Value *);
@@ -25,42 +16,11 @@ struct ExprPair {
 };
 
 // Forard declarations
-static inline struct Value *parse_expr(struct Parser *parser);
 static struct Value *parse_subexpr(struct Parser *parser);
 static struct Statement *parse_statement(struct Parser *parser);
 
-enum MatchType {
-    MT_EXPR = INT_MIN,
-    MT_PROGRAM,
-    MT_TLDS,
-    MT_METHODS,
-    MT_TLD,
-    MT_CLS,
-    MT_FUNDEF,
-    MT_FUNDEF_ARGS,
-    MT_METHOD,
-    MT_STATEMENTS,
-    MT_BLOCK,
-    MT_STATEMENT,
-    MT_LINE,
-    MT_TYPE,
-    MT_CLASS_DEFINITIONS,
-    MT_SYMBOLS,
-    MT_DEFINITIONS,
-    MT_DEFINITION,
-    MT_ARGS,
-    MT_ACCESSORS,
-    MT_ACCESSOR
-};
-
-// A Match can either be a MatchType or a TokenType.
-// NOTE: if the values of MatchType and TokenType overlap, that will result in compiler bugs.
-//       To keep things simple, TokenTypes are undeclared, and thus always positive or 0, and
-//       MatchTypes should always be declared as negative
-typedef int Match;
-
 // Parses one or more tokens on success, does not consume tokens on failure
-static bool parser_match(struct Parser *parser, Match *matches, size_t matches_length)
+static bool parser_match(struct Parser *parser, enum TokenType *matches, size_t matches_length)
 {
     if (parser->head == NULL) {
         return false;
@@ -88,7 +48,7 @@ static bool parser_match(struct Parser *parser, Match *matches, size_t matches_l
 #define match_multiple(parser, matches)\
         parser_match(parser, matches, sizeof(matches) / sizeof(*matches))
 
-static inline bool match(struct Parser *parser, Match match)
+static inline bool match(struct Parser *parser, enum TokenType match)
 {
     return parser_match(parser, &match, 1);
 }
@@ -345,7 +305,7 @@ static struct Statement *parse_line(struct Parser *parser)
             return parse_set(parser, symbol, lvals, false);
         }
     } else if (match(parser, ST_LET)) {
-        Match matches[] = { T_SYMBOL, ST_EQ };
+        enum TokenType matches[] = { T_SYMBOL, ST_EQ };
         if (match_multiple(parser, matches)) {
             Symbol symbol = nth_token(old_head, 2)->symbol;
             return parse_set(parser, symbol, NULL, true);
@@ -405,7 +365,7 @@ static struct Statement *parse_if(struct Parser *parser)
         return NULL;
     }
     struct Statement *stmt = first_if_stmt;
-    Match elseif[] = { ST_ELSE, ST_IF };
+    enum TokenType elseif[] = { ST_ELSE, ST_IF };
     while (match_multiple(parser, elseif)) {
         struct Statement *elseif_stmt = parse_if_branch(parser, "else if block");
         if (!elseif_stmt) {
