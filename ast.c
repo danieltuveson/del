@@ -1,7 +1,8 @@
 #include "common.h"
 #include "allocator.h"
+// #include "printers.h"
+#include "linkedlist.h"
 #include "ast.h"
-#include "printers.h"
 
 /* Functions to create top level definitions */
 struct TopLevelDecl *new_class(Symbol symbol, Definitions *definitions, Methods *methods)
@@ -71,7 +72,7 @@ struct TopLevelDecl *new_tld_fundef(Symbol symbol, Type rettype, Definitions *ar
 }
 
 /* Functions to create Statements */
-struct Statement *new_set(Symbol symbol, struct Value *val, LValues *lvalues, int is_define)
+struct Statement *new_set(Symbol symbol, struct Value *val, LValues *lvalues, bool is_define)
 {
     struct Statement *stmt = allocator_malloc(sizeof(struct Statement));
     stmt->type = STMT_SET;
@@ -82,18 +83,28 @@ struct Statement *new_set(Symbol symbol, struct Value *val, LValues *lvalues, in
     return stmt;
 }
 
-struct Statement *new_if(struct Value *condition, Statements *if_stmts, Statements *else_stmts) {
+struct Statement *new_if(struct Value *condition, Statements *if_stmts)
+{
     struct Statement *stmt = allocator_malloc(sizeof(struct Statement));
     stmt->type = STMT_IF;
     stmt->if_stmt = allocator_malloc(sizeof(struct IfStatement));
     stmt->if_stmt->condition = condition;
     stmt->if_stmt->if_stmts = if_stmts;
-    if (else_stmts) {
-        stmt->if_stmt->else_stmts = else_stmts;
-    } else {
-        stmt->if_stmt->else_stmts = NULL;
-    }
+    stmt->if_stmt->else_stmts = NULL;
     return stmt;
+}
+
+// This is a little hacky, maybe re-write the IfStatement structure to accomodate else-ifs
+struct Statement *add_elseif(struct IfStatement *if_stmt, struct Statement *elseif_stmt)
+{
+    if_stmt->else_stmts = linkedlist_new();
+    linkedlist_append(if_stmt->else_stmts, elseif_stmt);
+    return if_stmt->else_stmts->head->value;
+}
+
+void add_else(struct IfStatement *if_stmt, Statements *else_stmts)
+{
+    if_stmt->else_stmts = else_stmts;
 }
 
 struct Statement *new_while(struct Value *condition, Statements *stmts)

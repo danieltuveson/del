@@ -3,7 +3,7 @@
 #include "printers.h"
 
 static void print_statements_indent(Statements *stmts, int indent);
-static void print_definitions(struct List *lst, char sep, int indent);
+static void print_definitions(struct LinkedList *lst, char sep, int indent);
 static void print_statement_indent(struct Statement *stmt, int indent);
 
 static const int TAB_WIDTH = 4;
@@ -328,206 +328,221 @@ static void left_pad(int indent) {
     for (int i = 0; i < indent; i++) putchar(' ');
 }
 
-static void print_definitions(struct List *lst, char sep, int indent)
+static void print_definitions(struct LinkedList *lst, char sep, int indent)
 {
     struct Definition *def = NULL;
-    while (lst != NULL) {
-        def = (struct Definition *) lst->value;
+    linkedlist_foreach(lnode, lst->head) {
+        def = lnode->value;
         if (sep == ';') left_pad(indent);
         printf("%s: ", lookup_symbol(def->name));
         printf("%s", lookup_symbol(def->type));
         if (sep == ';') {
             printf(";\n");
-        } else if (lst->next && sep == ',') {
+        } else if (lnode->next && sep == ',') {
             printf(", ");
         }
-        lst = lst->next;
+    }
+    // while (lst != NULL) {
+    //     def = (struct Definition *) lst->value;
+    //     if (sep == ';') left_pad(indent);
+    //     printf("%s: ", lookup_symbol(def->name));
+    //     printf("%s", lookup_symbol(def->type));
+    //     if (sep == ';') {
+    //         printf(";\n");
+    //     } else if (lst->next && sep == ',') {
+    //         printf(", ");
+    //     }
+    //     lst = lst->next;
+    // }
+}
+
+static void print_set(struct Set *set)
+{
+    if (set->is_define) printf("let ");
+    printf("%s", lookup_symbol(set->to_set->symbol));
+    if (set->to_set->lvalues != NULL) {
+        linkedlist_foreach(lnode, set->to_set->lvalues->head) {
+        // for (LValues *lvalues = set->to_set->lvalues; lvalues != NULL; lvalues = lvalues->next) {
+            struct LValue *lvalue = lnode->value;
+            if (lvalue->type == LV_PROPERTY) {
+                printf(".%s", lookup_symbol(lvalue->property));
+            } else {
+                printf("[");
+                print_value(lvalue->index);
+                printf("]");
+            }
+        }
+    }
+    printf(" = ");
+    print_value(set->val);
+    printf(";");
+}
+
+static void print_if(struct IfStatement *if_stmt, int indent)
+{
+    printf("if ");
+    print_value(if_stmt->condition);
+    printf(" {\n");
+    print_statements_indent(if_stmt->if_stmts, indent + TAB_WIDTH);
+    if (if_stmt->else_stmts) {
+        left_pad(indent);
+        printf("} else {\n");
+        print_statements_indent(if_stmt->else_stmts, indent + TAB_WIDTH);
+    }
+    left_pad(indent);
+    printf("}");
+
+}
+
+// struct Statement *init;
+// struct Value *condition;
+// struct Statement *increment;
+// Statements *stmts;
+static void print_for(struct For *for_stmt, int indent)
+{
+    printf("for (\n");
+    print_statement_indent(for_stmt->init, indent + TAB_WIDTH);
+    left_pad(indent + TAB_WIDTH);
+    print_value(for_stmt->condition);
+    printf(";\n");
+    print_statement_indent(for_stmt->increment, indent + TAB_WIDTH);
+    left_pad(indent);
+    printf(") {\n");
+    print_statements_indent(for_stmt->stmts, indent + TAB_WIDTH);
+    left_pad(indent);
+    printf("}");
+}
+
+static void print_while(struct While *while_stmt, int indent)
+{
+    printf("while ");
+    print_value(while_stmt->condition);
+    printf(" {\n");
+    print_statements_indent(while_stmt->stmts, indent + TAB_WIDTH);
+    left_pad(indent);
+    printf("}");
+}
+
+static void print_statement_indent(struct Statement *stmt, int indent)
+{
+    left_pad(indent);
+    switch (stmt->type) {
+        case STMT_LET:
+            printf("let ");
+            print_definitions(stmt->let, ',', indent);
+            break;
+        case STMT_SET:
+            print_set(stmt->set);
+            break;
+        case STMT_IF:
+            print_if(stmt->if_stmt, indent);
+            break;
+        case STMT_WHILE:
+            print_while(stmt->while_stmt, indent);
+            break;
+        case STMT_RETURN:
+            printf("return");
+            if (stmt->ret != NULL) {
+                printf(" ");
+                print_value(stmt->ret);
+            }
+            printf(";");
+            break;
+        case STMT_FOR:
+            print_for(stmt->for_stmt, indent);
+            break;
+        case STMT_FOREACH:
+            printf("print_statement not yet implemented for this type");
+            break;
+        case STMT_FUNCALL:
+            printf("%s", lookup_symbol(stmt->funcall->funname));
+            printf("(");
+            linkedlist_foreach(vals, stmt->funcall->args->head) {
+            // for (Values *vals = stmt->funcall->args; vals != NULL;
+            //         vals = vals->next) {
+                print_value(vals->value);
+                if (vals->next != NULL) printf(", ");
+            }
+            printf(");");
+            break;
+    }
+    printf("\n");
+}
+
+static void print_statements_indent(Statements *stmts, int indent)
+{
+    // while (stmts != NULL)
+    linkedlist_foreach(stmt, stmts->head) {
+        // print_statement_indent(stmts->value, indent);
+        print_statement_indent(stmt->value, indent);
+        // stmts = stmts->next;
     }
 }
 
-// static void print_set(struct Set *set)
-// {
-//     if (set->is_define) printf("let ");
-//     printf("%s", lookup_symbol(set->to_set->symbol));
-//     for (LValues *lvalues = set->to_set->lvalues; lvalues != NULL; lvalues = lvalues->next) {
-//         struct LValue *lvalue = lvalues->value;
-//         if (lvalue->type == LV_PROPERTY) {
-//             printf(".%s", lookup_symbol(lvalue->property));
-//         } else {
-//             printf("[");
-//             print_value(lvalue->index);
-//             printf("]");
-//         }
-//     }
-//     printf(" = ");
-//     print_value(set->val);
-//     printf(";");
-// }
-// 
-// static void print_if(struct IfStatement *if_stmt, int indent)
-// {
-//     printf("if ");
-//     print_value(if_stmt->condition);
-//     printf(" {\n");
-//     print_statements_indent(if_stmt->if_stmts, indent + TAB_WIDTH);
-//     if (if_stmt->else_stmts) {
-//         left_pad(indent);
-//         printf("} else {\n");
-//         print_statements_indent(if_stmt->else_stmts, indent + TAB_WIDTH);
-//     }
-//     left_pad(indent);
-//     printf("}");
-// 
-// }
-// 
-// // struct Statement *init;
-// // struct Value *condition;
-// // struct Statement *increment;
-// // Statements *stmts;
-// static void print_for(struct For *for_stmt, int indent)
-// {
-//     printf("for (\n");
-//     print_statement_indent(for_stmt->init, indent + TAB_WIDTH);
-//     left_pad(indent + TAB_WIDTH);
-//     print_value(for_stmt->condition);
-//     printf(";\n");
-//     print_statement_indent(for_stmt->increment, indent + TAB_WIDTH);
-//     left_pad(indent);
-//     printf(") {\n");
-//     print_statements_indent(for_stmt->stmts, indent + TAB_WIDTH);
-//     left_pad(indent);
-//     printf("}");
-// }
-// 
-// static void print_while(struct While *while_stmt, int indent)
-// {
-//     printf("while ");
-//     print_value(while_stmt->condition);
-//     printf(" {\n");
-//     print_statements_indent(while_stmt->stmts, indent + TAB_WIDTH);
-//     left_pad(indent);
-//     printf("}");
-// }
-// 
-// static void print_statement_indent(struct Statement *stmt, int indent)
-// {
-//     left_pad(indent);
-//     switch (stmt->type) {
-//         case STMT_LET:
-//             printf("let ");
-//             print_definitions(stmt->let, ',', indent);
-//             break;
-//         case STMT_SET:
-//             print_set(stmt->set);
-//             break;
-//         case STMT_IF:
-//             print_if(stmt->if_stmt, indent);
-//             break;
-//         case STMT_WHILE:
-//             print_while(stmt->while_stmt, indent);
-//             break;
-//         case STMT_RETURN:
-//             printf("return");
-//             if (stmt->ret != NULL) {
-//                 printf(" ");
-//                 print_value(stmt->ret);
-//             }
-//             printf(";");
-//             break;
-//         case STMT_FOR:
-//             print_for(stmt->for_stmt, indent);
-//             break;
-//         case STMT_FOREACH:
-//             printf("print_statement not yet implemented for this type");
-//             break;
-//         case STMT_FUNCALL:
-//             printf("%s", lookup_symbol(stmt->funcall->funname));
-//             printf("(");
-//             for (Values *vals = stmt->funcall->args; vals != NULL;
-//                     vals = vals->next) {
-//                 print_value(vals->value);
-//                 if (vals->next != NULL) printf(", ");
-//             }
-//             printf(");");
-//             break;
-//     }
-//     printf("\n");
-// }
-// 
-// static void print_statements_indent(Statements *stmts, int indent)
-// {
-//     while (stmts != NULL)
-//     {
-//         print_statement_indent(stmts->value, indent);
-//         stmts = stmts->next;
-//     }
-// }
-// 
-// void print_statement(struct Statement *stmt)
-// {
-//     print_statement_indent(stmt, 0);
-// }
-// 
-// void print_statements(Statements *stmts)
-// {
-//     print_statements_indent(stmts, 0);
-// }
-// 
-// void print_fundef(struct FunDef *fundef, int indent, int ismethod)
-// {
-//     left_pad(indent);
-//     if (!ismethod) {
-//         printf("function ");
-//     }
-//     printf("%s(", lookup_symbol(fundef->name));
-//     print_definitions(fundef->args, ',', indent);
-//     printf("): %s {\n", lookup_symbol(fundef->rettype));
-//     print_statements_indent(fundef->stmts, TAB_WIDTH + indent);
-//     left_pad(indent);
-//     printf("}");
-// }
-// 
-// void print_class(struct Class *cls, int indent)
-// {
-//     printf("class %s {\n", lookup_symbol(cls->name));
-//     print_definitions(cls->definitions, ';', indent + TAB_WIDTH);
-//     for (Methods *methods = cls->methods; methods != NULL; methods = methods->next) {
-//         struct FunDef *method = (struct FunDef *) methods->value;
-//         print_fundef(method, indent + TAB_WIDTH, 1);
-//         printf("\n");
-//     }
-//     printf("}");
-// }
-// 
-// static void print_tld_indent(struct TopLevelDecl *tld, int indent)
-// {
-//     switch (tld->type) {
-//         case TLD_TYPE_CLASS:
-//             print_class(tld->cls, indent);
-//             break;
-//         case TLD_TYPE_FUNDEF:
-//             print_fundef(tld->fundef, indent, 0);
-//             break;
-//     }
-//     printf("\n\n");
-// }
-// 
-// static void print_tlds_indent(TopLevelDecls *tlds, int indent)
-// {
-//     printf("%" PRIu64 " functions defined\n", ast.function_count);
-//     printf("%" PRIu64 " classes defined\n", ast.class_count);
-//     while (tlds != NULL)
-//     {
-//         print_tld_indent(tlds->value, indent);
-//         tlds = tlds->next;
-//     }
-// }
-// 
-// void print_tlds(TopLevelDecls *tlds)
-// {
-//     print_tlds_indent(tlds, 0);
-// }
-// 
+void print_statement(struct Statement *stmt)
+{
+    print_statement_indent(stmt, 0);
+}
+
+void print_statements(Statements *stmts)
+{
+    print_statements_indent(stmts, 0);
+}
+
+void print_fundef(struct FunDef *fundef, int indent, int ismethod)
+{
+    left_pad(indent);
+    if (!ismethod) {
+        printf("function ");
+    }
+    printf("%s(", lookup_symbol(fundef->name));
+    print_definitions(fundef->args, ',', indent);
+    printf("): %s {\n", lookup_symbol(fundef->rettype));
+    print_statements_indent(fundef->stmts, TAB_WIDTH + indent);
+    left_pad(indent);
+    printf("}");
+}
+
+void print_class(struct Class *cls, int indent)
+{
+    printf("class %s {\n", lookup_symbol(cls->name));
+    print_definitions(cls->definitions, ';', indent + TAB_WIDTH);
+    // for (Methods *methods = cls->methods; methods != NULL; methods = methods->next) {
+    //     struct FunDef *method = (struct FunDef *) methods->value;
+    //     print_fundef(method, indent + TAB_WIDTH, 1);
+    //     printf("\n");
+    // }
+    printf("}");
+}
+
+static void print_tld_indent(struct TopLevelDecl *tld, int indent)
+{
+    switch (tld->type) {
+        case TLD_TYPE_CLASS:
+            print_class(tld->cls, indent);
+            break;
+        case TLD_TYPE_FUNDEF:
+            print_fundef(tld->fundef, indent, 0);
+            break;
+    }
+    printf("\n\n");
+}
+
+static void print_tlds_indent(TopLevelDecls *tlds, int indent)
+{
+    printf("%" PRIu64 " functions defined\n", ast.function_count);
+    printf("%" PRIu64 " classes defined\n", ast.class_count);
+    // while (tlds != NULL)
+    linkedlist_foreach(tld, tlds->head) {
+        print_tld_indent(tld->value, indent);
+    }
+}
+
+void print_tlds(TopLevelDecls *tlds)
+{
+    print_tlds_indent(tlds, 0);
+}
+
 // void print_ft_node(struct FunctionCallTableNode *fn)
 // {
 //     printf("%s: ", lookup_symbol(fn->function));

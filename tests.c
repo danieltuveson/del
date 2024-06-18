@@ -2,6 +2,7 @@
 #include "allocator.h"
 #include "linkedlist.h"
 #include "lexer.h"
+// #include "parser.h"
 
 static void test_startmessage(char *name)
 {
@@ -21,16 +22,22 @@ static void test_endmessage(char *name)
 //     test_endmessage(testname);
 // }
 
+#define l_init(input) lexer_init(&lexer, input, sizeof(input), false)
+
 void test_parser(void)
 {
     char testname[] = "parser";
     test_startmessage(testname);
-    // 1 > 0 == 1 - 2 / 2 || 4 / 2 == 2 && 5 < 6
+    // char input[] = "(false || 4 / two == -2) && 5 < 6  + oijoji(x + new nested( "
+    //                "functioncalls(wow, this_is, crazy * 100)) / 5)";
+    // struct Lexer lexer;
+    // l_init(input);
+    // assert(tokenize(&lexer));
+
+    // TODO: finish writing this test
 
     test_endmessage(testname);
 }
-
-#define l_init(input) lexer_init(&lexer, input, sizeof(input))
 
 void test_lexer(void)
 {

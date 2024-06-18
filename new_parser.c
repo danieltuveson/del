@@ -6,6 +6,7 @@
 #include "ast.h"
 #include "printers.h"
 
+// TODO: improve quality of error messages
 
 // TODO: Used for debugging purposes, delete later
 static struct Lexer *debug_lexer;
@@ -26,6 +27,7 @@ struct ExprPair {
 // Forard declarations
 static inline struct Value *parse_expr(struct Parser *parser);
 static struct Value *parse_subexpr(struct Parser *parser);
+static struct Statement *parse_statement(struct Parser *parser);
 
 enum MatchType {
     MT_EXPR = INT_MIN,
@@ -57,6 +59,7 @@ enum MatchType {
 //       MatchTypes should always be declared as negative
 typedef int Match;
 
+// Parses one or more tokens on success, does not consume tokens on failure
 static bool parser_match(struct Parser *parser, Match *matches, size_t matches_length)
 {
     if (parser->head == NULL) {
@@ -75,6 +78,9 @@ static bool parser_match(struct Parser *parser, Match *matches, size_t matches_l
         i++;
         head = lnode;
     }
+    if (i < matches_length) {
+        return false;
+    }
     parser->head = head->next;
     return true;
 }
@@ -87,7 +93,6 @@ static inline bool match(struct Parser *parser, Match match)
     return parser_match(parser, &match, 1);
 }
 
-// Get nth node
 static struct LinkedListNode *nth_lnode(struct LinkedListNode *head, int num)
 {
     int i = 1; // starting index at 1 to match flex/bison
@@ -194,14 +199,10 @@ static inline struct Value *parse_orexpr(struct Parser *parser)
     return parse_binexp(parser, parse_andexpr, orexpr_pairs);
 }
 
-// Technically redundant, since it just calls orexpr. But simplifies things if we ever want to
-// create a lower precedence operator than "or"
-static inline struct Value *parse_expr(struct Parser *parser)
+struct Value *parse_expr(struct Parser *parser)
 {
     return parse_orexpr(parser);
 }
-
-#undef parse_binexp
 
 static Values *parse_args(struct Parser *parser)
 {
@@ -221,19 +222,27 @@ static Values *parse_args(struct Parser *parser)
     return vals;
 }
 
-static struct Value *parse_call(struct Parser *parser, Symbol symbol, struct Value *func(Symbol, Values *))
+#define parse_call(rettype, parser, symbol, func) \
+    do {                                          \
+    Values *vals = NULL;                          \
+    if (match(parser, ST_CLOSE_PAREN)) {          \
+        rettype = func(symbol, NULL);             \
+    } else if ((vals = parse_args(parser))) {     \
+        rettype = func(symbol, vals);             \
+    } else {                                      \
+        rettype = NULL;                           \
+    }                                             \
+    } while (false)
+
+static struct Value *parse_vfuncall(struct Parser *parser, Symbol symbol,
+    struct Value *func(Symbol, Values *))
 {
-    Values *vals = NULL;
-    if (match(parser, ST_CLOSE_PAREN)) {
-        return func(symbol, NULL);
-    } else if ((vals = parse_args(parser))) {
-        return func(symbol, vals);
-    } else {
-        return NULL;
-    }
+    struct Value *val;
+    parse_call(val, parser, symbol, func);
+    return val;
 }
 
-Match m_new_obj = { ST_NEW, T_SYMBOL, ST_OPEN_PAREN };
+// TODO: Add options for method call
 static struct Value *parse_subexpr(struct Parser *parser)
 {
     if (parser->head == NULL) {
@@ -263,68 +272,450 @@ static struct Value *parse_subexpr(struct Parser *parser)
     } else if (match(parser, T_SYMBOL)) {
         Symbol symbol = nth_token(old_head, 1)->symbol;
         if (match(parser, ST_OPEN_PAREN)) {
-            return parse_call(parser, symbol, new_vfuncall);
+            return parse_vfuncall(parser, symbol, new_vfuncall);
         } else {
             return new_symbol(symbol);
         }
     } else if (match(parser, ST_NEW) && match(parser, T_SYMBOL) && match(parser, ST_OPEN_PAREN)) {
-        return parse_call(parser, nth_token(old_head, 2)->symbol, new_constructor);
+        return parse_vfuncall(parser, nth_token(old_head, 2)->symbol, new_constructor);
     }
     printf("Error: unexpected token in expression\n");
     return NULL;
 }
 
-#undef match_multiple
-
-// static struct Statement *parse_statement(
-
-
-int main(int argc, char *argv[])
+static struct Statement *parse_sfuncall(struct Parser *parser, Symbol symbol,
+    struct Statement *func(Symbol, Values *))
 {
-    int ret = EXIT_FAILURE;
-    if (argc != 2) {
-        printf("Error: expecting input file\nExample usage:\n./del hello_world.del\n");
-        goto FAIL;
-    }
-
-    printf("........ READING FILE : %s ........\n", argv[1]);
-    // TODO: Figure out why this returns error if input is 1 character
-    char *input = NULL;
-    long input_length = readfile(&input, argv[1]);
-    if (input_length == 0) {
-        printf("Error: could not read contents of empty file\n");
-        goto FAIL;
-    }
-    printf("%s\n", input);
-    print_memory_usage();
-
-    printf("........ TOKENIZING INPUT ........\n");
-    struct Lexer lexer;
-    lexer_init(&lexer, input, input_length);
-    if (!tokenize(&lexer)) {
-        print_error(&(lexer.error));
-        goto FAIL;
-    }
-    print_lexer(&lexer);
-    print_memory_usage();
-
-    // TODO: delete this, it's only used for debugging
-    debug_lexer = &lexer;
-
-    printf("........ PARSING AST FROM TOKENS ........\n");
-    struct Parser parser = { lexer.tokens->head, &lexer };
-    struct Value *value = parse_expr(&parser);
-    if (value) {
-        print_value(value);
-        printf("\n");
-    } else {
-        printf("no value. sad\n");
-        goto FAIL;
-    }
-    print_memory_usage();
-
-    ret = EXIT_SUCCESS;
-FAIL:
-    allocator_freeall();
-    return ret;
+    struct Statement *stmt;
+    parse_call(stmt, parser, symbol, func);
+    return stmt;
 }
+
+static LValues *parse_lvalues(void)
+{
+    assert("TODO: write parser for lvalues\n" && false);
+    return NULL;
+}
+
+static struct Statement *parse_set(struct Parser* parser, Symbol symbol, LValues *lvalues,
+    bool is_define)
+{
+    struct Value *expr;
+    if ((expr = parse_expr(parser))) {
+        return new_set(symbol, expr, lvalues, is_define);
+    }
+    return NULL;
+}
+
+static Definitions *parse_symbols(struct Parser *parser)
+{
+    Symbol symbol;
+    Definitions *defs = linkedlist_new();
+    do {
+        struct LinkedListNode *old_head = parser->head;
+        if (match(parser, T_SYMBOL)) {
+            symbol = nth_token(old_head, 1)->symbol;
+            linkedlist_append(defs, new_define(symbol, TYPE_UNDEFINED));
+        } else {
+            printf("Error: unexpected token in definition\n");
+            return NULL;
+        }
+    } while (match(parser, ST_COMMA));
+    return defs;
+}
+
+// TODO: Add options for method call
+static struct Statement *parse_line(struct Parser *parser)
+{
+    if (parser->head == NULL) {
+        printf("Error: unexpected end of input. Expected start of statement\n");
+        return NULL;
+    }
+    struct LinkedListNode *old_head = parser->head;
+    LValues *lvals = NULL;
+    Definitions *defs = NULL;
+    if (match(parser, T_SYMBOL)) {
+        Symbol symbol = nth_token(old_head, 1)->symbol;
+        if (match(parser, ST_EQ)) {
+            return parse_set(parser, symbol, NULL, false);
+        } else if (match(parser, ST_OPEN_PAREN)) {
+            return parse_sfuncall(parser, symbol, new_sfuncall);
+        // TODO: handle accessors
+        } else if ((lvals = parse_lvalues())) {
+            return parse_set(parser, symbol, lvals, false);
+        }
+    } else if (match(parser, ST_LET)) {
+        Match matches[] = { T_SYMBOL, ST_EQ };
+        if (match_multiple(parser, matches)) {
+            Symbol symbol = nth_token(old_head, 2)->symbol;
+            return parse_set(parser, symbol, NULL, true);
+        } else if ((defs = parse_symbols(parser))) {
+            return new_let(defs);
+        }
+        return NULL;
+    } else if (match(parser, ST_RETURN)) {
+        struct Value *expr = NULL;
+        if (match(parser, ST_SEMICOLON)) {
+            parser->head = old_head; // don't want to consume semicolon yet
+            return new_return(NULL);
+        } else if ((expr = parse_expr(parser))) {
+            return new_return(expr);
+        }
+        return NULL;
+    }
+    printf("Error: unexpected token in statement\n");
+    return NULL;
+}
+
+static Statements *parse_block(struct Parser *parser, char *type)
+{
+    if (!match(parser, ST_OPEN_BRACE)) {
+        printf("Error: %s missing opening brace\n", type);
+        return NULL;
+    }
+    struct Statement *stmt = NULL;
+    Statements *stmts = linkedlist_new();
+    while (!match(parser, ST_CLOSE_BRACE)) {
+        stmt = parse_statement(parser);
+        if (!stmt) {
+            return NULL;
+        }
+        linkedlist_append(stmts, stmt);
+    }
+    return stmts;
+}
+
+static struct Statement *parse_if_branch(struct Parser *parser, char *type)
+{
+    struct Value *condition = parse_expr(parser);
+    if (!condition) {
+        return NULL;
+    }
+    Statements *if_stmts = parse_block(parser, type);
+    if (!if_stmts) {
+        return NULL;
+    }
+    return new_if(condition, if_stmts);
+}
+
+static struct Statement *parse_if(struct Parser *parser)
+{
+    struct Statement *first_if_stmt = parse_if_branch(parser, "if block");
+    if (!first_if_stmt) {
+        return NULL;
+    }
+    struct Statement *stmt = first_if_stmt;
+    Match elseif[] = { ST_ELSE, ST_IF };
+    while (match_multiple(parser, elseif)) {
+        struct Statement *elseif_stmt = parse_if_branch(parser, "else if block");
+        if (!elseif_stmt) {
+            return NULL;
+        }
+        stmt = add_elseif(stmt->if_stmt, elseif_stmt);
+    }
+    if (match(parser, ST_ELSE)) {
+        Statements *else_stmts = parse_block(parser, "else block");
+        if (!else_stmts) {
+            return NULL;
+        }
+        add_else(stmt->if_stmt, else_stmts);
+    }
+    return first_if_stmt;
+}
+
+static struct Statement *parse_statement(struct Parser *parser)
+{
+    char err[] = "Error: unexpected end of statement (you probably forgot to end it with a semicolon)";
+    struct Value *expr = NULL;
+    struct Statement *stmt = NULL;
+    Statements *stmts = NULL;
+    if (match(parser, ST_IF)) {
+        if ((stmt = parse_if(parser))) {
+            return stmt;
+        }
+        return NULL;
+    } else if (match(parser, ST_FOR)) {
+        struct Statement *init, *increment;
+        // Parens are allowed to surround for loop arguments but are not required
+        bool redundant_paren = match(parser, ST_OPEN_PAREN);
+        if ((init = parse_line(parser)) && match(parser, ST_SEMICOLON)
+                && (expr = parse_expr(parser)) && match(parser, ST_SEMICOLON) 
+                && (increment = parse_line(parser))) {
+            if (redundant_paren != match(parser, ST_CLOSE_PAREN)) {
+                printf("Error: mismatched parenthesis\n");
+                return NULL;
+            } else if ((stmts = parse_block(parser, "for block"))) {
+                return new_for(init, expr, increment, stmts);
+            }
+        }
+        return NULL;
+    } else if (match(parser, ST_WHILE)) {
+        if ((expr = parse_expr(parser))) {
+            if ((stmts = parse_block(parser, "while block"))) {
+                return new_while(expr, stmts);
+            }
+        }
+        return NULL;
+    } else if ((stmt = parse_line(parser))) {
+        if (match(parser, ST_SEMICOLON)) {
+            return stmt;
+        }
+        printf(err);
+    } 
+    return NULL;
+}
+
+// type: ST_INT { $$ = TYPE_INT; }
+//     | ST_FLOAT { $$ = TYPE_FLOAT; }
+//     | ST_BOOL { $$ = TYPE_BOOL; }
+//     | ST_STRING { $$ = TYPE_STRING; }
+//     | T_SYMBOL { $$ = $1; }
+// ;
+static Type parse_type(struct Parser *parser)
+{
+    struct LinkedListNode *old_head = parser->head;
+    if (match(parser, ST_INT)) {
+        return TYPE_INT;
+    } else if (match(parser, ST_FLOAT)) {
+        return TYPE_FLOAT;
+    } else if (match(parser, ST_BOOL)) {
+        return TYPE_BOOL;
+    } else if (match(parser, ST_STRING)) {
+        return TYPE_STRING;
+    } else if (match(parser, T_SYMBOL)) {
+        return nth_token(old_head, 1)->symbol;
+    }
+    printf("Error: invalid type\n");
+    return TYPE_UNDEFINED;
+}
+
+// definitions: definition { $$ = new_list($1); }
+//            | definition ST_COMMA definitions { $$ = append($3, $1); }
+// ;
+// 
+// definition: T_SYMBOL ST_COLON type { $$ = new_define($1, $3); };
+static struct Definition *parse_definition(struct Parser *parser)
+{
+    struct LinkedListNode *old_head = parser->head;
+    Type type = TYPE_UNDEFINED;
+    if (!match(parser, T_SYMBOL)) {
+        printf("Error: expected variable name\n");
+        return NULL;
+    } else if (match(parser, ST_COMMA) || match(parser, ST_CLOSE_PAREN)) {
+        printf("Error: function argument is missing a type\n");
+        return NULL;
+    } else if (!(match(parser, ST_COLON))) {
+        printf("Error: expected colon\n");
+        return NULL;
+    } else if ((type = parse_type(parser)) == TYPE_UNDEFINED) {
+        printf("Error: invalid type\n");
+        return NULL;
+    }
+    return new_define(nth_token(old_head, 1)->symbol, type);
+}
+
+// fundef_args: ST_OPEN_PAREN definitions ST_CLOSE_PAREN { $$ = $2; }
+//            | ST_OPEN_PAREN ST_CLOSE_PAREN { $$ = NULL; }
+// ;
+static Definitions *parse_fundef_args(struct Parser *parser)
+{
+    if (!match(parser, ST_OPEN_PAREN)) {
+        printf("Error: expected list of function arguments\n");
+        return NULL;
+    }
+    Definitions *definitions = linkedlist_new();
+    if (match(parser, ST_CLOSE_PAREN)) {
+        return definitions;
+    }
+    do {
+        struct Definition *definition = parse_definition(parser);
+        if (!definition) {
+            return NULL;
+        }
+        linkedlist_append(definitions, definition);
+    } while (match(parser, ST_COMMA));
+    if (!match(parser, ST_CLOSE_PAREN)) {
+        printf("Error: unexpected end of argument list\n");
+        return NULL;
+    }
+    return definitions;
+}
+
+// fundef: ST_FUNCTION T_SYMBOL fundef_args ST_COLON type ST_OPEN_BRACE statements ST_CLOSE_BRACE
+//       { $$ = new_tld_fundef($2, $5, $3, $7); }
+//       | ST_FUNCTION T_SYMBOL fundef_args ST_OPEN_BRACE statements ST_CLOSE_BRACE
+// { $$ = new_tld_fundef($2, TYPE_UNDEFINED, $3, $5); }
+// ;
+static struct TopLevelDecl *parse_fundef(struct Parser *parser)
+{
+    struct LinkedListNode *old_head = parser->head;
+    if (match(parser, T_SYMBOL)) {
+        Symbol funname = nth_token(old_head, 1)->symbol;
+        Definitions *defs = parse_fundef_args(parser);
+        Type rettype = TYPE_UNDEFINED;
+        if (!defs) {
+            return NULL;
+        } else if (match(parser, ST_COLON)) {
+            rettype = parse_type(parser);
+            if (rettype == TYPE_UNDEFINED) {
+                return NULL;
+            }
+        }
+        Statements *stmts = parse_block(parser, lookup_symbol(funname));
+        if (!stmts) {
+            return NULL;
+        }
+        return new_tld_fundef(funname, rettype, defs, stmts);
+    }
+    printf("Error: could not parse function\n");
+    return NULL;
+}
+
+static struct Definition *parse_class_definition(struct Parser *parser)
+{
+    struct LinkedListNode *old_head = parser->head;
+    Type type = TYPE_UNDEFINED;
+    if (!match(parser, T_SYMBOL)) {
+        printf("Error: expected property name\n");
+        return NULL;
+    } else if (match(parser, ST_SEMICOLON)) {
+        printf("Error: class property is missing a type\n");
+        return NULL;
+    } else if (!(match(parser, ST_COLON))) {
+        printf("Error: expected colon\n");
+        return NULL;
+    } else if ((type = parse_type(parser)) == TYPE_UNDEFINED) {
+        printf("Error: invalid type\n");
+        return NULL;
+    }
+    return new_define(nth_token(old_head, 1)->symbol, type);
+}
+
+// class_definitions: definition ST_SEMICOLON { $$ = new_list($1); }
+//                  | definition ST_SEMICOLON class_definitions { $$ = append($3, $1); }
+// ;
+static Definitions *parse_class_defs(struct Parser *parser)
+{
+    if (!match(parser, ST_OPEN_BRACE)) {
+        printf("Error: expected list of class properties\n");
+        return NULL;
+    }
+    Definitions *definitions = linkedlist_new();
+    do {
+        if (match(parser, ST_CLOSE_BRACE)) {
+            return definitions;
+        }
+        struct Definition *definition = parse_class_definition(parser);
+        if (!definition) {
+            return NULL;
+        }
+        linkedlist_append(definitions, definition);
+    } while (match(parser, ST_SEMICOLON));
+    if (!match(parser, ST_CLOSE_BRACE)) {
+        printf("Error: unexpected end of property list\n");
+        return NULL;
+    }
+    return definitions;
+}
+
+// cls: ST_CLASS T_SYMBOL ST_OPEN_BRACE class_definitions methods ST_CLOSE_BRACE
+//        { $$ = new_class($2, $4, $5); }
+//    | ST_CLASS T_SYMBOL ST_OPEN_BRACE class_definitions ST_CLOSE_BRACE
+//        { $$ = new_class($2, $4, NULL); }
+//    | ST_CLASS T_SYMBOL ST_OPEN_BRACE methods ST_CLOSE_BRACE
+//        { $$ = new_class($2, NULL, $4); }
+// ;
+static struct TopLevelDecl *parse_class(struct Parser *parser)
+{
+    struct LinkedListNode *old_head = parser->head;
+    if (match(parser, T_SYMBOL)) {
+        Symbol class_name = nth_token(old_head, 1)->symbol;
+        Definitions *defs = parse_class_defs(parser);
+        if (!defs) {
+            return NULL;
+        }
+        return new_class(class_name, defs, NULL);
+    }
+    printf("Error: could not parse class\n");
+    return NULL;
+}
+
+static struct TopLevelDecl *parse_tld(struct Parser *parser)
+{
+    struct TopLevelDecl *tld = NULL;
+    if (match(parser, ST_FUNCTION)) {
+        tld = parse_fundef(parser);
+    } else if (match(parser, ST_CLASS)) {
+        tld = parse_class(parser);
+    } else {
+        printf("Error: expected function or class.\n");
+    }
+    return tld;
+}
+
+TopLevelDecls *parse_tlds(struct Parser *parser)
+{
+    TopLevelDecls *tlds = linkedlist_new();
+    do {
+        struct TopLevelDecl *tld = parse_tld(parser);
+        if (!tld) {
+            return NULL;
+        }
+        linkedlist_append(tlds, tld);
+    } while (parser->head != NULL);
+    return tlds;
+}
+
+// int main(int argc, char *argv[])
+// {
+//     int ret = EXIT_FAILURE;
+//     if (argc != 2) {
+//         printf("Error: expecting input file\nExample usage:\n./del hello_world.del\n");
+//         goto FAIL;
+//     }
+// 
+//     printf("........ READING FILE : %s ........\n", argv[1]);
+//     // TODO: Figure out why this returns error if input is 1 character
+//     char *input = NULL;
+//     long input_length = readfile(&input, argv[1]);
+//     if (input_length == 0) {
+//         printf("Error: could not read contents of empty file\n");
+//         goto FAIL;
+//     }
+//     printf("%s\n", input);
+//     print_memory_usage();
+// 
+//     printf("........ TOKENIZING INPUT ........\n");
+//     struct Lexer lexer;
+//     lexer_init(&lexer, input, input_length, false);
+//     if (!tokenize(&lexer)) {
+//         print_error(&(lexer.error));
+//         goto FAIL;
+//     }
+//     print_lexer(&lexer);
+//     print_memory_usage();
+// 
+//     // TODO: delete this, it's only used for debugging
+//     // debug_lexer = &lexer;
+// 
+//     printf("........ PARSING AST FROM TOKENS ........\n");
+//     struct Parser parser = { lexer.tokens->head, &lexer };
+//     TopLevelDecls *tlds = parse_tlds(&parser);
+//     if (tlds) {
+//         print_tlds(tlds);
+//         printf("\n");
+//     } else {
+//         printf("no value. sad\n");
+//         goto FAIL;
+//     }
+//     print_memory_usage();
+// 
+//     ret = EXIT_SUCCESS;
+// FAIL:
+//     allocator_freeall();
+//     return ret;
+// }
+
+#undef match_multiple
+#undef parse_call
+#undef parse_binexp

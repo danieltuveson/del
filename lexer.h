@@ -77,11 +77,12 @@ struct Lexer {
     struct CompilerError error;
     int input_length; // Excludes null terminator
     char *input;
+    bool include_comments;
     int offset;
     Tokens *tokens;
 };
 
-void lexer_init(struct Lexer *lexer, char *input, int input_length);
+void lexer_init(struct Lexer *lexer, char *input, int input_length, bool include_comments);
 bool tokenize(struct Lexer *lexer);
 void print_error(struct CompilerError *error); 
 void print_token(struct Lexer *lexer, struct Token *token);

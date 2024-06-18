@@ -166,10 +166,12 @@ static void tokenize_comment(struct Lexer *lexer)
     while (peek(lexer) != '\n' && peek(lexer) != '\0') {
         c = next(lexer);
     }
-    if (c == '\r') {
-        linkedlist_append(lexer->tokens, new_token(init_offset, lexer->offset - 1, T_COMMENT));
-    } else {
-        linkedlist_append(lexer->tokens, new_token(init_offset, lexer->offset, T_COMMENT));
+    if (lexer->include_comments) {
+        if (c == '\r') {
+            linkedlist_append(lexer->tokens, new_token(init_offset, lexer->offset - 1, T_COMMENT));
+        } else {
+            linkedlist_append(lexer->tokens, new_token(init_offset, lexer->offset, T_COMMENT));
+        }
     }
 }
 
@@ -330,6 +332,9 @@ void print_token(struct Lexer *lexer, struct Token *token)
         case T_STRING:
             printf(", Value: '%s'", token->string);
             break;
+        case T_SYMBOL:
+            printf(", Value: '%s'", lookup_symbol(token->symbol));
+            break;
         default:
             break;
     }
@@ -353,13 +358,14 @@ void print_error(struct CompilerError *error)
     printf("Error at line %d column %d: %s\n", error->line_number, error->column_number, error->message);
 }
 
-void lexer_init(struct Lexer *lexer, char *input, int input_length)
+void lexer_init(struct Lexer *lexer, char *input, int input_length, bool include_comments)
 {
     lexer->error.message = NULL;
     lexer->error.line_number = 1;
     lexer->error.column_number = 1;
     lexer->input = input;
     lexer->input_length = input_length;
+    lexer->include_comments = false;
     lexer->offset = 0;
     lexer->tokens = linkedlist_new();
 }

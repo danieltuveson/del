@@ -124,7 +124,7 @@ struct Set {
     // Symbol symbol;
     // Type type;
     // LValues *lvalues; // May be null
-    int is_define;
+    bool is_define;
     struct Accessor *to_set;
     struct Value *val;
 };
@@ -190,8 +190,10 @@ struct TopLevelDecl *new_tld_fundef(Symbol symbol, Type rettype, Definitions *ar
 struct FunDef *new_fundef(Symbol symbol, Type rettype, Definitions *args, Statements *stmts);
 
 /* Statement constructors */
-struct Statement *new_set(Symbol symbol, struct Value *val, LValues *lvalues, int is_define);
-struct Statement *new_if(struct Value *condition, Statements *if_stmts, Statements *else_stmts);
+struct Statement *new_set(Symbol symbol, struct Value *val, LValues *lvalues, bool is_define);
+struct Statement *new_if(struct Value *condition, Statements *if_stmts);
+struct Statement *add_elseif(struct IfStatement *if_stmt, struct Statement *elseif_stmt);
+void add_else(struct IfStatement *if_stmt, Statements *else_stmts);
 struct Statement *new_while(struct Value *condition, Statements *stmts);
 struct Statement *new_for(struct Statement *init, struct Value *condition,
         struct Statement *increment, Statements *stmts);
