@@ -1,13 +1,15 @@
+#include "allocator.h"
+#include "linkedlist.h"
 #include "functiontable.h"
 #include "printers.h"
 
 struct FunctionCallTable *new_ft(uint64_t function)
 {
-    struct FunctionCallTable *ft = malloc(sizeof(struct FunctionCallTable));
-    ft->node = malloc(sizeof(struct FunctionCallTableNode));
+    struct FunctionCallTable *ft = allocator_malloc(sizeof(struct FunctionCallTable));
+    ft->node = allocator_malloc(sizeof(struct FunctionCallTableNode));
     ft->node->function = function;
     ft->node->location = 0;
-    ft->node->callsites = NULL;
+    ft->node->callsites = linkedlist_new();
     ft->left = NULL;
     ft->right = NULL;
     return ft;
@@ -57,14 +59,9 @@ struct FunctionCallTableNode *add_ft_node(struct FunctionCallTable *ft, Symbol f
 void add_callsite(struct FunctionCallTable *ft, Symbol function, uint64_t callsite)
 {
     struct FunctionCallTableNode *node = add_function_noloc(ft, function);
-    int *hcallsite = malloc(sizeof(uint64_t));
+    int *hcallsite = allocator_malloc(sizeof(uint64_t));
     *hcallsite = callsite;
-    if (node->callsites == NULL) {
-        node->callsites = new_list(hcallsite);
-    } else {
-        append(node->callsites, hcallsite);
-    }
+    linkedlist_append(node->callsites, hcallsite);
 }
 
 #undef add_function_noloc
-

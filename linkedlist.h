@@ -18,6 +18,9 @@ struct LinkedList {
 #define linkedlist_foreach(lnode, start_node) \
     for (struct LinkedListNode *lnode = start_node; lnode != NULL; lnode = lnode->next)
 
+#define linkedlist_foreach_reverse(lnode, start_node) \
+    for (struct LinkedListNode *lnode = start_node; lnode != NULL; lnode = lnode->prev)
+
 struct LinkedList *linkedlist_new(void);
 void linkedlist_append(struct LinkedList *ll, void *value);
 void linkedlist_print(struct LinkedList *ll, void (*printer)(void *));

@@ -1,6 +1,9 @@
+#include "common.h"
+#include "allocator.h"
+#include "linkedlist.h"
+#include "ast.h"
 #include "printers.h"
 #include "typecheck.h"
-#include "ast.h"
 
 #define ALL_GOOD 1
 #define BAD_STUFF 0
@@ -55,10 +58,11 @@ void print_scope(struct Scope *scope)
         printf("(Top Level)");
     }
     printf("<- { ");
-    for (Definitions *defs = scope->definitions; defs != NULL; defs = defs->next) {
-        struct Definition *def = defs->value;
+    linkedlist_foreach(lnode, scope->definitions->head) {
+    // for (Definitions *defs = scope->definitions; defs != NULL; defs = defs->next) {
+        struct Definition *def = lnode->value;
         printf("%s: %s", lookup_symbol(def->name), lookup_symbol(def->type));
-        if (defs->next != NULL) {
+        if (lnode->next != NULL) {
             printf(", ");
         }
     }
@@ -67,8 +71,8 @@ void print_scope(struct Scope *scope)
 
 static void enter_scope(struct Scope **current)
 {
-    struct Scope *scope = malloc(sizeof(*scope));
-    scope->definitions = NULL;
+    struct Scope *scope = allocator_malloc(sizeof(*scope));
+    scope->definitions = linkedlist_new();
     scope->parent = *current;
     *current = scope;
 }
@@ -80,17 +84,19 @@ static void exit_scope(struct Scope **current)
 
 static void add_var(struct Scope *current, struct Definition *def)
 {
-    if (current->definitions == NULL) {
-        current->definitions = new_list(def);
-    } else {
-        current->definitions = append(current->definitions, def);
-    }
+    // if (current->definitions == NULL) {
+    //     current->definitions = linkedlist_new(def);
+    // } else {
+    //     current->definitions = linkedlist_append(current->definitions, def);
+    // }
+    linkedlist_append(current->definitions, def);
 }
 
 static int add_type(struct Scope *current, struct Definition *def)
 {
-    for (Definitions *defs = current->definitions; defs != NULL; defs = defs->next) {
-        struct Definition *lookup_def = defs->value;
+    linkedlist_foreach(lnode, current->definitions->head) {
+    // for (Definitions *defs = current->definitions; defs != NULL; defs = defs->next) {
+        struct Definition *lookup_def = lnode->value;
         if (lookup_def->name == def->name) {
             lookup_def->type = def->type;
             return 1;
@@ -105,8 +111,9 @@ static int add_type(struct Scope *current, struct Definition *def)
 
 static struct Definition *lookup_var(struct Scope *scope, Symbol name)
 {
-    for (Definitions *defs = scope->definitions; defs != NULL; defs = defs->next) {
-        struct Definition *def = defs->value;
+    linkedlist_foreach(lnode, scope->definitions->head) {
+    // for (Definitions *defs = scope->definitions; defs != NULL; defs = defs->next) {
+        struct Definition *def = lnode->value;
         if (def->name == name) {
             return def;
         }
@@ -146,8 +153,9 @@ static int add_function(struct FunctionTable *ft, struct FunDef *fundef)
 // Basically just make sure that there aren't 2 properties / arguments with the same name
 static int add_types(TopLevelDecls *tlds, struct ClassTable *clst, struct FunctionTable *ft)
 {
-    for (; tlds != NULL; tlds = tlds->next) {
-        struct TopLevelDecl *tld = tlds->value;
+    linkedlist_foreach(lnode, tlds->head) {
+    // for (; tlds != NULL; tlds = tlds->next) {
+        struct TopLevelDecl *tld = lnode->value;
         if (tld->type == TLD_TYPE_FUNDEF) {
             add_function(ft, tld->fundef);
         } else {
@@ -297,11 +305,12 @@ static void print_lhs(Symbol symbol, LValues *lvalues, int n)
 {
     printf("%s", lookup_symbol(symbol));
     int i = 0;
-    for (; lvalues != NULL; lvalues = lvalues->next) {
+    linkedlist_foreach(lnode, lvalues->head) {
+    // for (; lvalues != NULL; lvalues = lvalues->next) {
         if (i > n) {
             return;
         }
-        struct LValue *lvalue = lvalues->value;
+        struct LValue *lvalue = lnode->value;
         switch (lvalue->lvtype) {
             case LV_PROPERTY:
                 printf(".");
@@ -322,13 +331,14 @@ static Type typecheck_lvalue(struct TypeCheckerContext *context, struct Definiti
         LValues *lvalues)
 {
     if (!is_object(def->type)) {
-        struct LValue *lvalue = lvalues->value;
+        struct LValue *lvalue = lvalues->head->value;
         printf("Error: '%s' is not an object and does not have property '%s'\n",
                 lookup_symbol(def->name), lookup_symbol(lvalue->property));
         return TYPE_UNDEFINED;
     }
-    for (; lvalues != NULL; lvalues = lvalues->next) {
-        struct LValue *lvalue = lvalues->value;
+    linkedlist_foreach(lnode, lvalues->head) {
+    // for (; lvalues != NULL; lvalues = lvalues->next) {
+        struct LValue *lvalue = lnode->value;
         struct Class *cls = NULL;
         switch (lvalue->type) {
             case LV_PROPERTY:
@@ -361,7 +371,7 @@ static int typecheck_set(struct TypeCheckerContext *context, struct Set *set)
     // If this is a combo definition + set, add definition to scope
     if (set->is_define) {
         assert(set->to_set->lvalues == NULL); // Not syntactically valid, should never happen
-        struct Definition *def = malloc(sizeof(*def));
+        struct Definition *def = allocator_malloc(sizeof(*def));
         def->name = set->to_set->symbol;
         def->type = TYPE_UNDEFINED;
         add_var(context->scope, def);
@@ -421,8 +431,9 @@ static Type typecheck_get(struct TypeCheckerContext *context, struct Accessor *g
 
 static void scope_vars(struct Scope *scope, Definitions *defs)
 {
-    for (; defs != NULL; defs = defs->next) {
-        struct Definition *def = defs->value;
+    linkedlist_foreach(lnode, defs->head) {
+    // for (; defs != NULL; defs = defs->next) {
+        struct Definition *def = lnode->value;
         add_var(scope, def);
     }
 }
@@ -517,8 +528,8 @@ static Type typecheck_funcall(struct TypeCheckerContext *context, struct FunCall
     }
 
     // Validate arguments
-    Values *vals = funcall->args;
-    Definitions *defs = fundef->args;
+    struct LinkedListNode *vals = funcall->args->head;
+    struct LinkedListNode *defs = fundef->args->head;
     for (uint64_t i = 0; i < funcall->args->length; i++) {
         struct Value *val = vals->value;
         struct Definition *fun_arg_def = defs->value;
@@ -563,8 +574,8 @@ static Type typecheck_constructor(struct TypeCheckerContext *context, struct Fun
     }
 
     // Validate arguments
-    Values *vals = constructor->args;
-    Definitions *defs = cls->definitions;
+    struct LinkedListNode *vals = constructor->args->head;
+    struct LinkedListNode *defs = cls->definitions->head;
     for (uint64_t i = 0; i < constructor->args->length; i++) {
         struct Value *val = vals->value;
         struct Definition *fun_arg_def = defs->value;
@@ -600,8 +611,9 @@ static int typecheck_statement(struct TypeCheckerContext *context, struct Statem
 
 static int typecheck_statements(struct TypeCheckerContext *context, Statements *stmts)
 {
-    for (; stmts != NULL; stmts = stmts->next) {
-        struct Statement *stmt = stmts->value;
+    linkedlist_foreach(lnode, stmts->head) {
+    // for (; stmts != NULL; stmts = stmts->next) {
+        struct Statement *stmt = lnode->value;
         if (!typecheck_statement(context, stmt)) {
             return 0;
         }
@@ -639,8 +651,9 @@ static int typecheck_tld(struct TypeCheckerContext *context, struct TopLevelDecl
 
 static int typecheck_tlds(struct TypeCheckerContext *context, TopLevelDecls *tlds)
 {
-    for (;tlds != NULL; tlds = tlds->next) {
-        if (!typecheck_tld(context, tlds->value)) {
+    linkedlist_foreach(lnode, tlds->head) {
+    // for (;tlds != NULL; tlds = tlds->next) {
+        if (!typecheck_tld(context, lnode->value)) {
             return 0;
         }
     }

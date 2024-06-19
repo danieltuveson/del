@@ -1,6 +1,7 @@
 #ifndef FUNCTIONTABLE_H
 #define FUNCTIONTABLE_H
 #include "common.h"
+#include "linkedlist.h"
 
 /* Stores every location in the instructions where each function is called.
  * Since we don't know the exact location in memory where a function will live
@@ -18,7 +19,7 @@ struct FunctionCallTable {
 struct FunctionCallTableNode {
     Symbol function;
     uint64_t location;
-    struct List *callsites;
+    struct LinkedList *callsites;
 };
 
 struct FunctionCallTable *new_ft(uint64_t function);

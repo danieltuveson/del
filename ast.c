@@ -17,31 +17,33 @@ struct TopLevelDecl *new_class(Symbol symbol, Definitions *definitions, Methods 
     return tld;
 }
 
-// struct Definition *lookup_property(struct Class *cls, Symbol name)
-// {
-//     for (Definitions *defs = cls->definitions; defs != NULL; defs = defs->next) {
-//         struct Definition *def = defs->value;
-//         if (def->name == name) {
-//             return def;
-//         }
-//     }
-//     return NULL;
-// }
-// 
-// // Code assumes that property name does exist
-// uint64_t lookup_property_index(struct Class *cls, Symbol name)
-// {
-//     uint64_t cnt = 0;
-//     for (Definitions *defs = cls->definitions; defs != NULL; defs = defs->next) {
-//         struct Definition *def = defs->value;
-//         if (def->name == name) {
-//             return cnt;
-//         }
-//         cnt++;
-//     }
-//     assert("Error: lookup_property_index could not find element" && 0);
-//     return 0;
-// }
+struct Definition *lookup_property(struct Class *cls, Symbol name)
+{
+    linkedlist_foreach(lnode, cls->definitions->head) {
+    // for (Definitions *defs = cls->definitions; defs != NULL; defs = defs->next) {
+        struct Definition *def = lnode->value;
+        if (def->name == name) {
+            return def;
+        }
+    }
+    return NULL;
+}
+
+// Code assumes that property name does exist
+uint64_t lookup_property_index(struct Class *cls, Symbol name)
+{
+    uint64_t cnt = 0;
+    linkedlist_foreach(lnode, cls->definitions->head) {
+    // for (Definitions *defs = cls->definitions; defs != NULL; defs = defs->next) {
+        struct Definition *def = lnode->value;
+        if (def->name == name) {
+            return cnt;
+        }
+        cnt++;
+    }
+    assert("Error: lookup_property_index could not find element" && 0);
+    return 0;
+}
 
 static struct Accessor *new_accessor(Symbol symbol, LValues *lvalues)
 {

@@ -1,7 +1,8 @@
-#include "printers.h"
 #include "common.h"
+#include "linkedlist.h"
 #include "ast.h"
 #include "typecheck.h"
+#include "printers.h"
 #include "compiler.h"
 
 static void compile_value(struct CompilerContext *cc, struct Value *val);
@@ -96,8 +97,9 @@ static void compile_unary_op(struct CompilerContext *cc, struct Value *val, enum
 
 static void compile_funargs(struct CompilerContext *cc, Definitions *defs)
 {
-    for (; defs != NULL; defs = defs->next) {
-        struct Definition *def = (struct Definition *) defs->value;
+    linkedlist_foreach(lnode, defs->head) {
+    // for (; defs != NULL; defs = defs->next) {
+        struct Definition *def = lnode->value;
         load(cc, PUSH);
         load(cc, def->name);
         load(cc, SET_LOCAL);
@@ -120,11 +122,12 @@ static void compile_fundef(struct CompilerContext *cc, struct FunDef *fundef)
 
 static void compile_constructor(struct CompilerContext *cc, struct FunCall *funcall)
 {
-    for (Values *args = seek_end(funcall->args); args != NULL; args = args->prev) {
+    linkedlist_foreach_reverse(lnode, funcall->args->tail) {
+    // for (Values *args = seek_end(funcall->args); args != NULL; args = args->prev) {
         // printf("...compiling constructor...\n");
         // print_value(args->value);
         // printf("\n");
-        compile_value(cc, args->value);
+        compile_value(cc, lnode->value);
     }
     load(cc, PUSH);
     load(cc, funcall->args->length);
@@ -141,9 +144,10 @@ static void compile_get(struct CompilerContext *cc, struct Accessor *get)
     } 
     compile_loadsym(cc, get->symbol);
     Type parent_value_type = get->type;
-    for (LValues *lvalues = get->lvalues; lvalues != NULL; lvalues = lvalues->next) {
+    linkedlist_foreach(lnode, get->lvalues->head) {
+    // for (LValues *lvalues = get->lvalues; lvalues != NULL; lvalues = lvalues->next) {
         struct Class *cls = lookup_class(cc->class_table, parent_value_type);
-        struct LValue *lvalue = lvalues->value;
+        struct LValue *lvalue = lnode->value;
         switch (lvalue->lvtype) {
             case LV_PROPERTY: {
                 uint64_t index = lookup_property_index(cls, lvalue->property);
@@ -165,8 +169,9 @@ static void compile_funcall(struct CompilerContext *cc, struct FunCall *funcall)
 {
     load(cc, PUSH);
     int bookmark = next(cc);
-    for (Values *args = seek_end(funcall->args); args != NULL; args = args->prev) {
-        compile_value(cc, args->value);
+    linkedlist_foreach_reverse(lnode, funcall->args->tail) {
+    // for (Values *args = seek_end(funcall->args); args != NULL; args = args->prev) {
+        compile_value(cc, lnode->value);
     }
     load(cc, PUSH);
     add_callsite(cc->funcall_table, funcall->funname, next(cc));
@@ -230,14 +235,15 @@ static void compile_set(struct CompilerContext *cc, struct Set *set)
     // }
     compile_loadsym(cc, set->to_set->symbol);
     Type parent_value_type = set->to_set->type;
-    for (LValues *lvalues = set->to_set->lvalues; lvalues != NULL; lvalues = lvalues->next) {
+    linkedlist_foreach(lnode, set->to_set->lvalues->head) {
+    // for (LValues *lvalues = set->to_set->lvalues; lvalues != NULL; lvalues = lvalues->next) {
         struct Class *cls = lookup_class(cc->class_table, parent_value_type);
-        struct LValue *lvalue = lvalues->value;
+        struct LValue *lvalue = lnode->value;
         switch (lvalue->lvtype) {
             case LV_PROPERTY: {
                 uint64_t index = lookup_property_index(cls, lvalue->property);
                 // NOTE: refactor to not have lookup_property on class, write a generic list lookup function
-                if (lvalues->next == NULL) {
+                if (lnode->next == NULL) {
                     load(cc, PUSH);
                     load(cc, index);
                     load(cc, SET_HEAP);
@@ -324,8 +330,9 @@ static void compile_statement(struct CompilerContext *cc, struct Statement *stmt
 
 static void compile_statements(struct CompilerContext *cc, Statements *stmts)
 {
-    for (; stmts != NULL; stmts = stmts->next) {
-        compile_statement(cc, stmts->value);
+    linkedlist_foreach(lnode, stmts->head) {
+    // for (; stmts != NULL; stmts = stmts->next) {
+        compile_statement(cc, lnode->value);
     }
 }
 
@@ -395,8 +402,9 @@ static void compile_statements(struct CompilerContext *cc, Statements *stmts)
 
 static void compile_entrypoint(struct CompilerContext *cc, TopLevelDecls *tlds)
 {
-    for (; tlds != NULL; tlds = tlds->next) {
-        struct TopLevelDecl *tld = (struct TopLevelDecl *) tlds->value;
+    linkedlist_foreach(lnode, tlds->head) {
+    // for (; tlds != NULL; tlds = tlds->next) {
+        struct TopLevelDecl *tld = lnode->value;
         if (tld->type == TLD_TYPE_FUNDEF && tld->fundef->name == ast.entrypoint) {
             compile_statements(cc, tld->fundef->stmts);
             load(cc, EXIT);
@@ -423,16 +431,18 @@ static void compile_tlds(struct CompilerContext *cc, TopLevelDecls *tlds)
 {
     cc->funcall_table = new_ft(0);
     compile_entrypoint(cc, tlds);
-    for (;tlds != NULL; tlds = tlds->next) {
-        compile_tld(cc, (struct TopLevelDecl *) tlds->value);
+    linkedlist_foreach(lnode, tlds->head) {
+    // for (;tlds != NULL; tlds = tlds->next) {
+        compile_tld(cc, (struct TopLevelDecl *) lnode->value);
     }
 }
 
 // Looks through compiled bytecode and adds references to where function is defined
 static void resolve_function_declarations_help(uint64_t *instructions, struct FunctionCallTableNode *fn)
 {
-    for (struct List *calls = fn->callsites; calls != NULL; calls = calls->prev) {
-        uint64_t *callsite = (uint64_t *) calls->value;
+    linkedlist_foreach(lnode, fn->callsites->head) {
+    // for (struct List *calls = fn->callsites; calls != NULL; calls = calls->prev) {
+        uint64_t *callsite = lnode->value;
         printf("callsite %" PRIu64 " updated with function %s at location %" PRIu64,
                 *callsite, lookup_symbol(fn->function), fn->location);
         instructions[*callsite] = fn->location;

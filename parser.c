@@ -15,7 +15,7 @@ struct ExprPair {
     ExprFunction efunc;
 };
 
-// Forard declarations
+// Forward declarations
 static struct Value *parse_subexpr(struct Parser *parser);
 static struct Statement *parse_statement(struct Parser *parser);
 
@@ -625,56 +625,6 @@ TopLevelDecls *parse_tlds(struct Parser *parser)
     } while (parser->head != NULL);
     return tlds;
 }
-
-// int main(int argc, char *argv[])
-// {
-//     int ret = EXIT_FAILURE;
-//     if (argc != 2) {
-//         printf("Error: expecting input file\nExample usage:\n./del hello_world.del\n");
-//         goto FAIL;
-//     }
-// 
-//     printf("........ READING FILE : %s ........\n", argv[1]);
-//     // TODO: Figure out why this returns error if input is 1 character
-//     char *input = NULL;
-//     long input_length = readfile(&input, argv[1]);
-//     if (input_length == 0) {
-//         printf("Error: could not read contents of empty file\n");
-//         goto FAIL;
-//     }
-//     printf("%s\n", input);
-//     print_memory_usage();
-// 
-//     printf("........ TOKENIZING INPUT ........\n");
-//     struct Lexer lexer;
-//     lexer_init(&lexer, input, input_length, false);
-//     if (!tokenize(&lexer)) {
-//         print_error(&(lexer.error));
-//         goto FAIL;
-//     }
-//     print_lexer(&lexer);
-//     print_memory_usage();
-// 
-//     // TODO: delete this, it's only used for debugging
-//     // debug_lexer = &lexer;
-// 
-//     printf("........ PARSING AST FROM TOKENS ........\n");
-//     struct Parser parser = { lexer.tokens->head, &lexer };
-//     TopLevelDecls *tlds = parse_tlds(&parser);
-//     if (tlds) {
-//         print_tlds(tlds);
-//         printf("\n");
-//     } else {
-//         printf("no value. sad\n");
-//         goto FAIL;
-//     }
-//     print_memory_usage();
-// 
-//     ret = EXIT_SUCCESS;
-// FAIL:
-//     allocator_freeall();
-//     return ret;
-// }
 
 #undef match_multiple
 #undef parse_call

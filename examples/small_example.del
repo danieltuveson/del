@@ -8,5 +8,7 @@
 //     arg1: int;
 //     arg2: string;
 // }
-function blah() {
-    ijojoij
+
+function main() {
+    let x = 4;
+}

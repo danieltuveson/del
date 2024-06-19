@@ -543,21 +543,22 @@ void print_tlds(TopLevelDecls *tlds)
     print_tlds_indent(tlds, 0);
 }
 
-// void print_ft_node(struct FunctionCallTableNode *fn)
-// {
-//     printf("%s: ", lookup_symbol(fn->function));
-//     for (struct List *calls = fn->callsites; calls != NULL; calls = calls->next) {
-//         printf("%" PRIu64 "", *((uint64_t *) calls->value));
-//         if (calls->next != NULL) printf(", ");
-//     }
-//     printf("\n");
-// }
-// 
-// void print_ft(struct FunctionCallTable *ft)
-// {
-//     if (ft == NULL) return;
-//     print_ft_node(ft->node);
-//     print_ft(ft->left);
-//     print_ft(ft->right);
-// }
+void print_ft_node(struct FunctionCallTableNode *fn)
+{
+    printf("%s: ", lookup_symbol(fn->function));
+    linkedlist_foreach(lnode, fn->callsites->head) {
+    // for (struct List *calls = fn->callsites; calls != NULL; calls = calls->next) {
+        printf("%" PRIu64 "", *((uint64_t *) lnode->value));
+        if (lnode->next != NULL) printf(", ");
+    }
+    printf("\n");
+}
+
+void print_ft(struct FunctionCallTable *ft)
+{
+    if (ft == NULL) return;
+    print_ft_node(ft->node);
+    print_ft(ft->left);
+    print_ft(ft->right);
+}
 
