@@ -15,7 +15,7 @@ def fib(n):
     return fibn
 
 def main():
-    num_iters = 100
+    num_iters = 1000000
     x = 2
     for i in range(0, num_iters):
         x = fib(90) - x // 2
