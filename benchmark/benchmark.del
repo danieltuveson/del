@@ -1,0 +1,25 @@
+function fib(n : int) : int {
+    let fibn_minus_2 = 0;
+    let fibn_minus_1 = 1;
+    let fibn = fibn_minus_1 + fibn_minus_2;
+    if n == 0 {
+        return fibn_minus_2;
+    } else if n == 1 {
+        return fibn_minus_1;
+    }
+    for let i = 2; i <= n; i = i + 1 {
+        fibn = fibn_minus_1 + fibn_minus_2;
+        fibn_minus_2 = fibn_minus_1;
+        fibn_minus_1 = fibn;
+    }
+    return fibn;
+}
+
+function main() {
+    // Can only go up to 90, until we create a BigInt class
+    let num_iters = 100;
+    let x = 2;
+    for let j = 0; j < num_iters; j = j + 1 {
+        x = fib(90) - x / 2;
+    }
+}
