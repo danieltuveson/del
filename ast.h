@@ -40,6 +40,7 @@ enum OperatorType {
     OP_MINUS,
     OP_STAR,
     OP_SLASH,
+    OP_PERCENT,
     OP_UNARY_PLUS,
     OP_UNARY_MINUS
 };
@@ -222,19 +223,21 @@ struct Expr *unary_plus(struct Value *val1);
 struct Expr *unary_minus(struct Value *val1);
 
 /* Binary */
-struct Expr *name(struct Value *val1, struct Value *val2);
-struct Expr *bin_or(struct Value *val1, struct Value *val2);
-struct Expr *bin_and(struct Value *val1, struct Value *val2);
-struct Expr *bin_eqeq(struct Value *val1, struct Value *val2);
-struct Expr *bin_not_eq(struct Value *val1, struct Value *val2);
-struct Expr *bin_greater_eq(struct Value *val1, struct Value *val2);
-struct Expr *bin_greater(struct Value *val1, struct Value *val2);
-struct Expr *bin_less_eq(struct Value *val1, struct Value *val2);
-struct Expr *bin_less(struct Value *val1, struct Value *val2);
-struct Expr *bin_plus(struct Value *val1, struct Value *val2);
-struct Expr *bin_minus(struct Value *val1, struct Value *val2);
-struct Expr *bin_star(struct Value *val1, struct Value *val2);
-struct Expr *bin_slash(struct Value *val1, struct Value *val2);
+#define bin_decl(name) struct Expr *name(struct Value *val1, struct Value *val2);
+bin_decl(bin_or)
+bin_decl(bin_and)
+bin_decl(bin_eqeq)
+bin_decl(bin_not_eq)
+bin_decl(bin_greater_eq)
+bin_decl(bin_greater)
+bin_decl(bin_less_eq)
+bin_decl(bin_less)
+bin_decl(bin_plus)
+bin_decl(bin_minus)
+bin_decl(bin_star)
+bin_decl(bin_slash)
+bin_decl(bin_percent)
+#undef bin_decl
 
 #endif
 

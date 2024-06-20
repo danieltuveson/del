@@ -43,6 +43,7 @@ struct TokenMapping symbols1[] = {
     {"-",        ST_MINUS },
     {"*",        ST_STAR },
     {"/",        ST_SLASH },
+    {"%",        ST_PERCENT },
     {"=",        ST_EQ },
     {"<",        ST_LESS },
     {">",        ST_GREATER },
@@ -269,12 +270,12 @@ static bool is_symbol_token(char c)
     return (isalnum(c) || c == '_');
 }
 
-// TODO: rewrite this to use globals / not rely on old linked list structure
+// TODO: rewrite this to use globals
 static Symbol add_symbol(char *yytext, int yyleng)
 {
     if (ast.symbol_table == NULL) init_symbol_table();
     /* Adds symbols to symbol table */
-    struct List *symbol_table = ast.symbol_table;
+    struct LinkedListNode *symbol_table = ast.symbol_table->head;
     uint64_t cnt = 0;
     char *symbol;
     while (1) {
@@ -290,7 +291,8 @@ static Symbol add_symbol(char *yytext, int yyleng)
     }
     symbol = allocator_malloc((yyleng + 1) * sizeof(char));
     strcpy(symbol, yytext);
-    symbol_table->next = new_list(symbol);
+    // symbol_table->next = new_list(symbol);
+    linkedlist_append(ast.symbol_table, symbol);
 addsymbol:
     if (strcmp(yytext, "main") == 0) {
         ast.entrypoint = cnt;

@@ -137,7 +137,7 @@ static int add_class(struct ClassTable *ct, struct Class *cls)
 
 static int add_function(struct FunctionTable *ft, struct FunDef *fundef)
 {
-    uint64_t loc;
+    uint64_t loc = fundef->name % ft->size;
     find_open_loc(loc, ft->table, ft->size, fundef->name);
     struct FunDef *new_fundef = &ft->table[loc];
     new_fundef->name = fundef->name;
@@ -269,6 +269,9 @@ static Type typecheck_expression(struct TypeCheckerContext *context, struct Expr
                 printf("Error: expecting numeric operand for '%s'\n", op_str);
                 return TYPE_UNDEFINED;
             }
+        default:
+            assert("Error, not implemented" && false);
+            break;
     };
 }
 
@@ -298,10 +301,11 @@ static Type typecheck_value(struct TypeCheckerContext *context, struct Value *va
         case VTYPE_CONSTRUCTOR: return typecheck_constructor(context, val->funcall);
         case VTYPE_GET:         return typecheck_get(context, val->get);
     }
+    return TYPE_UNDEFINED; // Doing this to silence compiler warning, should never happen
 }
 
 // Prints first n lvalues
-static void print_lhs(Symbol symbol, LValues *lvalues, int n)
+void print_lhs(Symbol symbol, LValues *lvalues, int n)
 {
     printf("%s", lookup_symbol(symbol));
     int i = 0;
@@ -320,6 +324,9 @@ static void print_lhs(Symbol symbol, LValues *lvalues, int n)
                 printf("[");
                 print_value(lvalue->index);
                 printf("]");
+                break;
+            default:
+                assert("Error, not implemented" && false);
                 break;
         }
         i++;
@@ -606,6 +613,9 @@ static int typecheck_statement(struct TypeCheckerContext *context, struct Statem
         case STMT_RETURN:  return typecheck_return(context, stmt->ret);
         case STMT_FOREACH: printf("Error: not implemented\n");
                            return 0;
+        default:
+            assert("Error, not implemented" && false);
+            break;
     }
 }
 

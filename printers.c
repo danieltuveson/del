@@ -257,6 +257,9 @@ void print_expr(struct Expr *expr)
         printf("-");
         print_value(expr->val1);
         break;
+    default:
+        assert("Error, not implemented" && false);
+        break;
     }
     printf(")");
 }
@@ -320,6 +323,9 @@ void print_value(struct Value *val)
     // case  VTYPE_GET:
     //     print_get(val->get);
     //     break;
+    default:
+        assert("Error, not implemented" && false);
+        break;
     }
 }
 
@@ -359,7 +365,9 @@ static void print_definitions(struct LinkedList *lst, char sep, int indent)
 static void print_set(struct Set *set)
 {
     if (set->is_define) printf("let ");
-    printf("%s", lookup_symbol(set->to_set->symbol));
+    Symbol symbol = set->to_set->symbol;
+    char *strsym = lookup_symbol(symbol);
+    printf("%s", strsym);
     if (set->to_set->lvalues != NULL) {
         linkedlist_foreach(lnode, set->to_set->lvalues->head) {
         // for (LValues *lvalues = set->to_set->lvalues; lvalues != NULL; lvalues = lvalues->next) {
@@ -464,6 +472,9 @@ static void print_statement_indent(struct Statement *stmt, int indent)
                 if (vals->next != NULL) printf(", ");
             }
             printf(");");
+            break;
+        default:
+            assert("Error, not implemented" && false);
             break;
     }
     printf("\n");

@@ -214,6 +214,7 @@ static void compile_expr(struct CompilerContext *cc, struct Expr *expr)
         case OP_MINUS:       compile_binary_op(cc, val1, val2, SUB);  break;
         case OP_STAR:        compile_binary_op(cc, val1, val2, MUL);  break;
         case OP_SLASH:       compile_binary_op(cc, val1, val2, DIV);  break;
+        case OP_PERCENT:     compile_binary_op(cc, val1, val2, MOD);  break;
         case OP_UNARY_PLUS:  compile_unary_op(cc, val1, UNARY_PLUS);  break;
         case OP_UNARY_MINUS: compile_unary_op(cc, val1, UNARY_MINUS); break;
         default: printf("Error cannot compile expression\n"); break;
@@ -438,13 +439,14 @@ static void compile_tlds(struct CompilerContext *cc, TopLevelDecls *tlds)
 }
 
 // Looks through compiled bytecode and adds references to where function is defined
-static void resolve_function_declarations_help(uint64_t *instructions, struct FunctionCallTableNode *fn)
+static void resolve_function_declarations_help(uint64_t *instructions,
+    struct FunctionCallTableNode *fn)
 {
     linkedlist_foreach(lnode, fn->callsites->head) {
     // for (struct List *calls = fn->callsites; calls != NULL; calls = calls->prev) {
         uint64_t *callsite = lnode->value;
-        printf("callsite %" PRIu64 " updated with function %s at location %" PRIu64,
-                *callsite, lookup_symbol(fn->function), fn->location);
+        // printf("callsite %" PRIu64 " updated with function %s at location %" PRIu64,
+        //         *callsite, lookup_symbol(fn->function), fn->location);
         instructions[*callsite] = fn->location;
     }
 }

@@ -51,6 +51,7 @@ static struct Accessor *new_accessor(Symbol symbol, LValues *lvalues)
     accessor->symbol = symbol;
     accessor->type = TYPE_UNDEFINED;
     accessor->lvalues = lvalues;
+    return accessor;
 }
 
 struct FunDef *new_fundef(Symbol symbol, Type rettype, Definitions *args, Statements *stmts)
@@ -311,6 +312,7 @@ define_binary_op(bin_plus, OP_PLUS)
 define_binary_op(bin_minus, OP_MINUS)
 define_binary_op(bin_star, OP_STAR)
 define_binary_op(bin_slash, OP_SLASH)
+define_binary_op(bin_percent, OP_PERCENT)
 
 #undef define_binary_op
 

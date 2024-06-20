@@ -30,6 +30,7 @@ enum TokenType {
     ST_MINUS,
     ST_STAR,
     ST_SLASH,
+    ST_PERCENT,
     ST_EQ,
     ST_EQEQ,
     ST_NOT_EQ,

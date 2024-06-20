@@ -49,14 +49,14 @@ static inline void swap(struct Stack *stack)
         v2 = (type) pop(stack_ptr); \
         push(stack_ptr, (uint64_t) (v2 op v1)); } while (0)
 
-static void uint64_as_string(uint64_t value, char *str, int start)
-{
-    for (int i = 0; i < 8; i++) {
-        str[i + start] = (char) (value >> (8 * i));
-    }
-    str[8 + start] = '\0';
-    printf("decoded as string '%s'\n", str);
-}
+// static void uint64_as_string(uint64_t value, char *str, int start)
+// {
+//     for (int i = 0; i < 8; i++) {
+//         str[i + start] = (char) (value >> (8 * i));
+//     }
+//     str[8 + start] = '\0';
+//     printf("decoded as string '%s'\n", str);
+// }
 
 /* Pops values from the stack and pushes them onto the heap */
 static inline void push_heap(struct Heap *heap, struct Stack *stack)
@@ -185,7 +185,7 @@ int vm_execute(uint64_t *instructions)
     struct Heap heap = {0, 0, {0}};
     uint64_t ip = 0;
     uint64_t ret = 0;
-    uint64_t val1, val2;
+    uint64_t val1 = 0, val2 = 0;
     Symbol symbol;
     int i = 0;
     while (1) {
@@ -196,7 +196,7 @@ int vm_execute(uint64_t *instructions)
                 break;
             case PUSH_HEAP:
                 push_heap(&heap, &stack);
-                print_heap(&heap);
+                // print_heap(&heap);
                 break;
             case SET_HEAP:
                 set_heap(&heap, &stack);
@@ -204,23 +204,24 @@ int vm_execute(uint64_t *instructions)
             /* Grotesque lump of binary operators. Boring! */
             case AND: eval_binary_op(&stack, val1, val2, &&, int64_t); break;
             case OR:  eval_binary_op(&stack, val1, val2, ||, int64_t); break;
-            case ADD: eval_binary_op(&stack, val1, val2, +, int64_t);  break;
-            case SUB: eval_binary_op(&stack, val1, val2, -, int64_t);  break;
-            case MUL: eval_binary_op(&stack, val1, val2, *, int64_t);  break;
-            case DIV: eval_binary_op(&stack, val2, val1, /, int64_t);  break;
+            case ADD: eval_binary_op(&stack, val1, val2, +,  int64_t);  break;
+            case SUB: eval_binary_op(&stack, val1, val2, -,  int64_t);  break;
+            case MUL: eval_binary_op(&stack, val1, val2, *,  int64_t);  break;
+            case DIV: eval_binary_op(&stack, val2, val1, /,  int64_t);  break;
+            case MOD: eval_binary_op(&stack, val2, val1, %,  int64_t);  break;
             case EQ:  eval_binary_op(&stack, val1, val2, ==, int64_t); break;
             case NEQ: eval_binary_op(&stack, val1, val2, !=, int64_t); break;
             case LTE: eval_binary_op(&stack, val1, val2, <=, int64_t); break;
             case GTE: eval_binary_op(&stack, val1, val2, >=, int64_t); break;
-            case LT:  eval_binary_op(&stack, val1, val2, <, int64_t);  break;
-            case GT:  eval_binary_op(&stack, val1, val2, >, int64_t);  break;
+            case LT:  eval_binary_op(&stack, val1, val2, <,  int64_t);  break;
+            case GT:  eval_binary_op(&stack, val1, val2, >,  int64_t);  break;
             case UNARY_PLUS: val1 = (int64_t) pop(&stack);
                 push(&stack, (uint64_t) val1); break;
             case UNARY_MINUS: val1 = (int64_t) pop(&stack);
                 push(&stack, (uint64_t) (-1 * val1)); break;
             case SET_LOCAL:
                 def(&stack, &locals);
-                print_locals(&locals);
+                // print_locals(&locals);
                 break;
             case GET_LOCAL:
                 ip++;
@@ -274,11 +275,11 @@ int vm_execute(uint64_t *instructions)
         }
         ip++;
         i++;
-        print_stack(&stack);
-        if (i > 100) {
-            printf("infinite loop detected, ending execution\n");
-            break;
-        }
+        // print_stack(&stack);
+        // if (i > 100) {
+        //     printf("infinite loop detected, ending execution\n");
+        //     break;
+        // }
     }
 exit_loop:
     print_locals(&locals);

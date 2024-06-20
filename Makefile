@@ -1,9 +1,8 @@
-# # CFLAGS = -g -Wall -Wextra -Wno-padded -Wno-poison-system-directories -Wno-void-pointer-to-enum-cast -Wno-int-to-void-pointer-cast
 CC=gcc
-CFLAGS = -g -Wall -Wextra -Wno-return-type
+# CFLAGS = -O0 -g -Wall -Wextra -Wno-return-type
+CFLAGS = -O2 -g -Wall -Wextra
 objects = common.o allocator.o lexer.o readfile.o linkedlist.o ast.o printers.o parser.o typecheck.o \
           functiontable.o compiler.o vm.o
-# compiler.o functiontable.o parser.o printers.o vm.o typecheck.o parser.tab.o lex.yy.o 
 main = main.o
 tests = tests.o
 new_parser = new_parser.o

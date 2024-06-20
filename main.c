@@ -38,6 +38,12 @@ int main(int argc, char *argv[])
     print_lexer(&lexer);
     print_memory_usage();
 
+
+    printf("........ PRINTING ALL SYMBOLS ........\n");
+    linkedlist_foreach(lnode, ast.symbol_table->head) {
+        printf("symbol: '%s'\n", (char *) lnode->value);
+    }
+
     printf("........ PARSING AST FROM TOKENS ........\n");
     struct Parser parser = { lexer.tokens->head, &lexer };
     TopLevelDecls *tlds = parse_tlds(&parser);
@@ -53,8 +59,8 @@ int main(int argc, char *argv[])
     ast.ast = tlds;
 
     printf("````````````````` CODE `````````````````\n");
-    struct Class *clst = calloc(ast.class_count, sizeof(*clst));
-    struct FunDef *ft = calloc(ast.function_count, sizeof(*ft));
+    struct Class *clst = allocator_malloc(ast.class_count * sizeof(*clst));
+    struct FunDef *ft = allocator_malloc(ast.function_count * sizeof(*ft));
     struct ClassTable class_table = { ast.class_count, clst };
     struct FunctionTable function_table = { ast.function_count, ft };
     uint64_t instructions[INSTRUCTIONS_SIZE];
@@ -68,7 +74,7 @@ int main(int argc, char *argv[])
         printf("program has typechecked\n");
     } else {
         printf("program failed to typecheck\n");
-        return EXIT_FAILURE;
+        goto FAIL;
     }
     printf("`````````````` COMPILE ```````````````\n");
     compile(&cc, ast.ast);
@@ -83,7 +89,6 @@ int main(int argc, char *argv[])
     printf("`````````````` EXECUTION ```````````````\n");
     ret = vm_execute(instructions);
     printf("ret: %d\n", ret);
-    return EXIT_SUCCESS;
 
     ret = EXIT_SUCCESS;
 FAIL:

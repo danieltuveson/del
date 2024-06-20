@@ -21,6 +21,7 @@ enum Code {
     SUB,
     MUL,
     DIV,
+    MOD,
     EQ,
     NEQ,
     LT,

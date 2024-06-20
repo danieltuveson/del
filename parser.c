@@ -126,7 +126,7 @@ static struct ExprPair addexpr_pairs[] = {
 };
 
 static struct ExprPair multexpr_pairs[] = {
-    { ST_STAR,  bin_star }, { ST_SLASH, bin_slash },
+    { ST_STAR,  bin_star }, { ST_SLASH, bin_slash }, { ST_PERCENT, bin_percent },
 };
 
 static inline struct Value *parse_multexpr(struct Parser *parser)
@@ -251,17 +251,18 @@ static struct Statement *parse_sfuncall(struct Parser *parser, Symbol symbol,
     return stmt;
 }
 
-static LValues *parse_lvalues(void)
-{
-    assert("TODO: write parser for lvalues\n" && false);
-    return NULL;
-}
+// static LValues *parse_lvalues(void)
+// {
+//     assert("TODO: write parser for lvalues\n" && false);
+//     return NULL;
+// }
 
 static struct Statement *parse_set(struct Parser* parser, Symbol symbol, LValues *lvalues,
     bool is_define)
 {
     struct Value *expr;
     if ((expr = parse_expr(parser))) {
+        printf("Set symbol: %lu, '%s'\n", symbol, lookup_symbol(symbol));
         return new_set(symbol, expr, lvalues, is_define);
     }
     return NULL;
@@ -269,12 +270,11 @@ static struct Statement *parse_set(struct Parser* parser, Symbol symbol, LValues
 
 static Definitions *parse_symbols(struct Parser *parser)
 {
-    Symbol symbol;
     Definitions *defs = linkedlist_new();
     do {
         struct LinkedListNode *old_head = parser->head;
         if (match(parser, T_SYMBOL)) {
-            symbol = nth_token(old_head, 1)->symbol;
+            Symbol symbol = nth_token(old_head, 1)->symbol;
             linkedlist_append(defs, new_define(symbol, TYPE_UNDEFINED));
         } else {
             printf("Error: unexpected token in definition\n");
@@ -292,18 +292,18 @@ static struct Statement *parse_line(struct Parser *parser)
         return NULL;
     }
     struct LinkedListNode *old_head = parser->head;
-    LValues *lvals = NULL;
+    // LValues *lvals = NULL;
     Definitions *defs = NULL;
     if (match(parser, T_SYMBOL)) {
         Symbol symbol = nth_token(old_head, 1)->symbol;
         if (match(parser, ST_EQ)) {
+            // TODO: handle accessors
             return parse_set(parser, symbol, NULL, false);
         } else if (match(parser, ST_OPEN_PAREN)) {
             return parse_sfuncall(parser, symbol, new_sfuncall);
-        // TODO: handle accessors
-        } else if ((lvals = parse_lvalues())) {
-            return parse_set(parser, symbol, lvals, false);
         }
+        printf("Error: expected start of statement\n");
+        return NULL;
     } else if (match(parser, ST_LET)) {
         enum TokenType matches[] = { T_SYMBOL, ST_EQ };
         if (match_multiple(parser, matches)) {

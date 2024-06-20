@@ -10,7 +10,7 @@
 #include <string.h>
 #include <assert.h>
 
-#define INSTRUCTIONS_SIZE 100
+#define INSTRUCTIONS_SIZE 10000
 #define STACK_SIZE 256
 #define STACK_SIZE 256
 #define HEAP_SIZE  1024
@@ -20,16 +20,16 @@ typedef uint64_t Symbol;
 
 /* Doublely linked list used for various types in the AST.
  * Should always point to elements of the same type. */
-struct List {
-    void *value;
-    uint64_t length; // number of "next" elements
-    struct List *prev;
-    struct List *next;
-};
+// struct List {
+//     void *value;
+//     uint64_t length; // number of "next" elements
+//     struct List *prev;
+//     struct List *next;
+// };
 
 struct Ast {
     // Used to store strings for each symbol
-    struct List *symbol_table; 
+    struct LinkedList *symbol_table; 
     // Keep track of number of functions and classes parsed
     uint64_t class_count;
     uint64_t function_count;
@@ -57,9 +57,9 @@ extern struct Ast ast;
 
 /* List functions */
 void init_symbol_table(void);
-struct List *new_list(void *value);
-struct List *append(struct List *list, void *value);
-struct List *seek_end(struct List *list);
+// struct List *new_list(void *value);
+// struct List *append(struct List *list, void *value);
+// struct List *seek_end(struct List *list);
 char *lookup_symbol(uint64_t symbol);
 
 #endif

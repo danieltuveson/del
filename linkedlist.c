@@ -9,6 +9,7 @@ struct LinkedList *linkedlist_new(void)
     ll->length = 0;
     ll->head = NULL;
     ll->tail = NULL;
+    return ll;
 }
 
 void linkedlist_append(struct LinkedList *ll, void *value)

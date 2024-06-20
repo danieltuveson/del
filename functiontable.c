@@ -59,7 +59,7 @@ struct FunctionCallTableNode *add_ft_node(struct FunctionCallTable *ft, Symbol f
 void add_callsite(struct FunctionCallTable *ft, Symbol function, uint64_t callsite)
 {
     struct FunctionCallTableNode *node = add_function_noloc(ft, function);
-    int *hcallsite = allocator_malloc(sizeof(uint64_t));
+    uint64_t *hcallsite = allocator_malloc(sizeof(uint64_t));
     *hcallsite = callsite;
     linkedlist_append(node->callsites, hcallsite);
 }
