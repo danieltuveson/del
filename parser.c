@@ -106,6 +106,7 @@ static struct Value *parse_binexp_help(struct Parser *parser, ExprParserFunction
         }
         break;
         continue_while:
+        continue;
     }
     return left;
 }
@@ -486,7 +487,7 @@ static struct Statement *parse_statement(struct Parser *parser)
         if (match(parser, ST_SEMICOLON)) {
             return stmt;
         }
-        printf(err);
+        printf("%s", err);
     } 
     return NULL;
 }

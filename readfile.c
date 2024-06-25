@@ -12,19 +12,19 @@ long readfile(char **buff, char *filename)
     }
     char *generic_error = "Error: encountered error while reading file\n";
     if (fseek(fp, 0, SEEK_END) != 0) {
-        printf(generic_error);
+        printf("%s", generic_error);
         return 0;
     }
     long length = ftell(fp);
     if (length == -1) {
-        printf(generic_error);
+        printf("%s", generic_error);
         return 0;
     }
     rewind(fp);
 
     *buff = allocator_malloc(length + 1);
     if ((long) fread(*buff, 1, length, fp) != length) {
-        printf(generic_error);
+        printf("%s", generic_error);
         return 0;
     }
     fclose(fp);
