@@ -256,6 +256,17 @@ static Type typecheck_expression(struct TypeCheckerContext *context, struct Expr
                 printf("Error: mismatched types for '%s' operands\n", op_str);
                 return TYPE_UNDEFINED;
             }
+        case OP_PERCENT:
+            if (op_str == NULL) op_str = "%";
+            if (are_both_int) {
+                return TYPE_INT;
+            } else if (are_both_float) {
+                printf("Error: cannot use %s on floats\n", op_str);
+                return TYPE_UNDEFINED;
+            } else {
+                printf("Error: mismatched types for '%s' operands\n", op_str);
+                return TYPE_UNDEFINED;
+            }
         case OP_UNARY_PLUS:
             op_str = "+";
             // fall through

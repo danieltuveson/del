@@ -5,10 +5,33 @@ This is probably the last time I will try to make a programming language
 
 The language is **not done**. It will hopefully be done in a few months.
 
+## Example
+``` js
+class Range {
+    start: int;
+    end: int;
+}
+
+function sum(r : Range) : int {
+    let sum = 0;
+    for (let i = r.start; i <= r.end; i = i + 1) {
+        sum = sum + i;
+    }
+    return sum;
+}
+
+function main() {
+    let range = new Range(0, 100);
+    let sum = sum(range);
+}
+```
+
 ## TODO
 - Clean up parser
+- Remove "default" options from switch statements and search for missing cases.
 - Fix string implementation
 - Finish implementing classes 
+- Fix scope issues
 - Implement arrays
 - Implement interfaces
 - Implement garbage collection

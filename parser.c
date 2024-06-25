@@ -330,9 +330,9 @@ static struct Statement *parse_lhs(struct Parser *parser, Symbol symbol)
         if (match(parser, ST_EQ)) {
             return parse_set(parser, symbol, lvalues, false);
         } else if (match(parser, ST_OPEN_PAREN)) {
-            assert("TODO: update parse_sfuncall to accept accessors\n" && false);
-            // return parse_sfuncall(parser, symbol, new_sfuncall);
-            return NULL;
+            // assert("TODO: update parse_sfuncall to accept accessors\n" && false);
+            // return NULL;
+            return parse_sfuncall(parser, symbol, new_sfuncall);
         }
         if (match(parser, ST_DOT)) {
             struct LinkedListNode *old_head = parser->head;

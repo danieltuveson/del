@@ -1,32 +1,17 @@
-// function addFive(arg: int, argg: int): int {
-//     return arg - argg;
-// }
-// 
-// function addFive(arg: int, argg: int): int {
-//     return arg + argg;
-// }
-
-class Thing {
-    stuff: int;
-    more: int;
-    // method(stuff: int) {
-    //     return stuff + 1;
-    // }
-    // function Thing(stuff: int) {
-    //     this.stuff = stuff;
-    //     this.more = stuff;
-    //     return;
-    // }
+class Range {
+    start: int;
+    end: int;
 }
 
-class ThingContainer {
-    thing: Thing;
+function sum(r : Range) : int {
+    let sum = 0;
+    for (let i = r.start; i <= r.end; i = i + 1) {
+        sum = sum + i;
+    }
+    return sum;
 }
 
-// Entrypoint
 function main() {
-    let tc = new ThingContainer(new Thing(123, 666));
-    tc.thing.more = 33;
-    let x = 1+2;
+    let range = new Range(0, 100);
+    let sum = sum(range);
 }
-
