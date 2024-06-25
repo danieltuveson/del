@@ -19,6 +19,15 @@ struct ExprPair {
 static struct Value *parse_subexpr(struct Parser *parser);
 static struct Statement *parse_statement(struct Parser *parser);
 
+static inline bool parser_peek(struct Parser *parser, enum TokenType match)
+{
+    if (parser->head == NULL) {
+        return false;
+    }
+    struct Token *token = parser->head->value;
+    return token->type == match;
+}
+
 // Parses one or more tokens on success, does not consume tokens on failure
 static bool parser_match(struct Parser *parser, enum TokenType *matches, size_t matches_length)
 {
@@ -202,6 +211,34 @@ static struct Value *parse_vfuncall(struct Parser *parser, Symbol symbol,
     return val;
 }
 
+static struct Value *parse_get(struct Parser *parser, Symbol symbol)
+{
+    struct LinkedList *lvalues = linkedlist_new();
+    while (true) {
+        if (match(parser, ST_DOT)) {
+            struct LinkedListNode *old_head = parser->head;
+            if (!match(parser, T_SYMBOL)) {
+                printf("Error: expected property or method name\n");
+                return NULL;
+            }
+            Symbol prop = nth_token(old_head, 1)->symbol;
+            linkedlist_append(lvalues, new_property(prop));
+        } else if (match(parser, ST_OPEN_BRACKET)) {
+            struct Value *expr = parse_expr(parser);
+            if (expr == NULL) {
+                return NULL;
+            } else if (!match(parser, ST_CLOSE_BRACKET)) {
+                printf("Error: expected closing bracket in accessor\n");
+                return NULL;
+            }
+            linkedlist_append(lvalues, new_index(expr));
+        } else {
+            break;
+        }
+    }
+    return new_get(symbol, lvalues);
+}
+
 // TODO: Add options for method call
 static struct Value *parse_subexpr(struct Parser *parser)
 {
@@ -233,6 +270,8 @@ static struct Value *parse_subexpr(struct Parser *parser)
         Symbol symbol = nth_token(old_head, 1)->symbol;
         if (match(parser, ST_OPEN_PAREN)) {
             return parse_vfuncall(parser, symbol, new_vfuncall);
+        } else if (parser_peek(parser, ST_DOT) || parser_peek(parser, ST_OPEN_BRACKET)) {
+            return parse_get(parser, symbol);
         } else {
             return new_symbol(symbol);
         }
@@ -251,18 +290,11 @@ static struct Statement *parse_sfuncall(struct Parser *parser, Symbol symbol,
     return stmt;
 }
 
-// static LValues *parse_lvalues(void)
-// {
-//     assert("TODO: write parser for lvalues\n" && false);
-//     return NULL;
-// }
-
 static struct Statement *parse_set(struct Parser* parser, Symbol symbol, LValues *lvalues,
     bool is_define)
 {
     struct Value *expr;
     if ((expr = parse_expr(parser))) {
-        printf("Set symbol: %lu, '%s'\n", symbol, lookup_symbol(symbol));
         return new_set(symbol, expr, lvalues, is_define);
     }
     return NULL;
@@ -284,7 +316,48 @@ static Definitions *parse_symbols(struct Parser *parser)
     return defs;
 }
 
+// accessors: accessor accessors { $$ = append($2, $1); }
+//          | accessor ST_EQ { $$ = new_list($1); }
+// 
+// accessor: ST_DOT T_SYMBOL { $$ = new_property($2); }
+//         | ST_OPEN_BRACKET T_INT ST_CLOSE_BRACKET { $$ = new_index(new_integer($2)); }
 // TODO: Add options for method call
+static struct Statement *parse_lhs(struct Parser *parser, Symbol symbol)
+{
+    struct LinkedList *lvalues = linkedlist_new();
+    while (true) {
+        if (match(parser, ST_EQ)) {
+            return parse_set(parser, symbol, lvalues, false);
+        } else if (match(parser, ST_OPEN_PAREN)) {
+            assert("TODO: update parse_sfuncall to accept accessors\n" && false);
+            // return parse_sfuncall(parser, symbol, new_sfuncall);
+            return NULL;
+        }
+        if (match(parser, ST_DOT)) {
+            struct LinkedListNode *old_head = parser->head;
+            if (!match(parser, T_SYMBOL)) {
+                printf("Error: expected property or method name\n");
+                return NULL;
+            }
+            Symbol prop = nth_token(old_head, 1)->symbol;
+            linkedlist_append(lvalues, new_property(prop));
+        } else if (match(parser, ST_OPEN_BRACKET)) {
+            struct Value *expr = parse_expr(parser);
+            if (expr == NULL) {
+                return NULL;
+            } else if (!match(parser, ST_CLOSE_BRACKET)) {
+                printf("Error: expected closing bracket in accessor\n");
+                return NULL;
+            }
+            linkedlist_append(lvalues, new_index(expr));
+        } else {
+            break;
+        }
+    }
+    printf("Error: unexpected value in accessor\n");
+    return NULL;
+}
+
 static struct Statement *parse_line(struct Parser *parser)
 {
     if (parser->head == NULL) {
@@ -292,23 +365,15 @@ static struct Statement *parse_line(struct Parser *parser)
         return NULL;
     }
     struct LinkedListNode *old_head = parser->head;
-    // LValues *lvals = NULL;
-    Definitions *defs = NULL;
     if (match(parser, T_SYMBOL)) {
         Symbol symbol = nth_token(old_head, 1)->symbol;
-        if (match(parser, ST_EQ)) {
-            // TODO: handle accessors
-            return parse_set(parser, symbol, NULL, false);
-        } else if (match(parser, ST_OPEN_PAREN)) {
-            return parse_sfuncall(parser, symbol, new_sfuncall);
-        }
-        printf("Error: expected start of statement\n");
-        return NULL;
+        return parse_lhs(parser, symbol);
     } else if (match(parser, ST_LET)) {
+        Definitions *defs = NULL;
         enum TokenType matches[] = { T_SYMBOL, ST_EQ };
         if (match_multiple(parser, matches)) {
             Symbol symbol = nth_token(old_head, 2)->symbol;
-            return parse_set(parser, symbol, NULL, true);
+            return parse_set(parser, symbol, linkedlist_new(), true);
         } else if ((defs = parse_symbols(parser))) {
             return new_let(defs);
         }
@@ -385,7 +450,8 @@ static struct Statement *parse_if(struct Parser *parser)
 
 static struct Statement *parse_statement(struct Parser *parser)
 {
-    char err[] = "Error: unexpected end of statement (you probably forgot to end it with a semicolon)";
+    char err[] = "Error: unexpected end of statement "
+                 "(you probably forgot to end it with a semicolon)\n";
     struct Value *expr = NULL;
     struct Statement *stmt = NULL;
     Statements *stmts = NULL;

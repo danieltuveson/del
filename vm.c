@@ -196,7 +196,7 @@ int vm_execute(uint64_t *instructions)
                 break;
             case PUSH_HEAP:
                 push_heap(&heap, &stack);
-                // print_heap(&heap);
+                print_heap(&heap);
                 break;
             case SET_HEAP:
                 set_heap(&heap, &stack);
@@ -221,7 +221,7 @@ int vm_execute(uint64_t *instructions)
                 push(&stack, (uint64_t) (-1 * val1)); break;
             case SET_LOCAL:
                 def(&stack, &locals);
-                // print_locals(&locals);
+                print_locals(&locals);
                 break;
             case GET_LOCAL:
                 ip++;
@@ -275,7 +275,7 @@ int vm_execute(uint64_t *instructions)
         }
         ip++;
         i++;
-        // print_stack(&stack);
+        print_stack(&stack);
         // if (i > 100) {
         //     printf("infinite loop detected, ending execution\n");
         //     break;

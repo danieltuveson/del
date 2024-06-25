@@ -97,7 +97,7 @@ struct LValue {
 struct Accessor {
     Symbol symbol;
     Type type;
-    LValues *lvalues; // May be null
+    LValues *lvalues;
 };
 
 struct Value {

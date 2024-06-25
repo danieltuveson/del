@@ -1,6 +1,8 @@
 #ifndef LINKEDLIST_H
 #define LINKEDLIST_H
 
+#include "common.h"
+
 struct LinkedListNode;
 
 struct LinkedListNode {
@@ -25,5 +27,6 @@ struct LinkedList *linkedlist_new(void);
 void linkedlist_append(struct LinkedList *ll, void *value);
 void linkedlist_print(struct LinkedList *ll, void (*printer)(void *));
 void linkedlist_reverse(struct LinkedList **ll_ptr);
+bool linkedlist_is_empty(struct LinkedList *ll);
 
 #endif

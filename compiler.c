@@ -49,6 +49,7 @@ static void compile_loadsym(struct CompilerContext *cc, Symbol symbol)
 // Pack 8 byte chunks of chars into longs to push onto stack
 static void compile_string(struct CompilerContext *cc, char *string)
 {
+    assert("Error: not implemented\n" && false);
     uint64_t packed = 0;
     uint64_t i = 0;
     uint64_t tmp;
@@ -124,9 +125,9 @@ static void compile_constructor(struct CompilerContext *cc, struct FunCall *func
 {
     linkedlist_foreach_reverse(lnode, funcall->args->tail) {
     // for (Values *args = seek_end(funcall->args); args != NULL; args = args->prev) {
-        // printf("...compiling constructor...\n");
-        // print_value(args->value);
-        // printf("\n");
+        printf("...compiling constructor...\n");
+        print_value(lnode->value);
+        printf("\n");
         compile_value(cc, lnode->value);
     }
     load(cc, PUSH);
@@ -136,7 +137,7 @@ static void compile_constructor(struct CompilerContext *cc, struct FunCall *func
 
 static void compile_get(struct CompilerContext *cc, struct Accessor *get)
 {
-    if (get->lvalues == NULL) {
+    if (linkedlist_is_empty(get->lvalues)) {
         load(cc, PUSH);
         load(cc, get->symbol);
         load(cc, GET_LOCAL);
@@ -224,7 +225,7 @@ static void compile_expr(struct CompilerContext *cc, struct Expr *expr)
 static void compile_set(struct CompilerContext *cc, struct Set *set)
 {
     compile_value(cc, set->val);
-    if (set->to_set->lvalues == NULL) {
+    if (linkedlist_is_empty(set->to_set->lvalues)) {
         load(cc, PUSH);
         load(cc, set->to_set->symbol);
         load(cc, SET_LOCAL);

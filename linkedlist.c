@@ -1,5 +1,4 @@
-#include <stdio.h>
-#include <stdlib.h>
+#include "common.h"
 #include "allocator.h"
 #include "linkedlist.h"
 
@@ -44,6 +43,11 @@ void linkedlist_reverse(struct LinkedList **ll_ptr)
     struct LinkedListNode *old_head = old_ll->head;
     (*ll_ptr)->head = (*ll_ptr)->tail;
     (*ll_ptr)->tail = old_head;
+}
+
+bool linkedlist_is_empty(struct LinkedList *ll)
+{
+    return ll->length == 0;
 }
 
 void linkedlist_print(struct LinkedList *ll, void (*printer)(void *))

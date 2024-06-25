@@ -377,7 +377,7 @@ static int typecheck_set(struct TypeCheckerContext *context, struct Set *set)
     Type lhs_type, rhs_type;
     // If this is a combo definition + set, add definition to scope
     if (set->is_define) {
-        assert(set->to_set->lvalues == NULL); // Not syntactically valid, should never happen
+        assert(linkedlist_is_empty(set->to_set->lvalues)); // Not syntactically valid, should never happen
         struct Definition *def = allocator_malloc(sizeof(*def));
         def->name = set->to_set->symbol;
         def->type = TYPE_UNDEFINED;
@@ -390,7 +390,7 @@ static int typecheck_set(struct TypeCheckerContext *context, struct Set *set)
         return 0;
     }
     // Typecheck left side of set
-    if (set->to_set->lvalues != NULL) {
+    if (!linkedlist_is_empty(set->to_set->lvalues)) {
         lhs_type = typecheck_lvalue(context, def, set->to_set->lvalues);
         if (lhs_type == TYPE_UNDEFINED) {
             return 0;
@@ -409,7 +409,7 @@ static int typecheck_set(struct TypeCheckerContext *context, struct Set *set)
                 lookup_symbol(rhs_type));
         return 0;
     }
-    if (set->to_set->lvalues == NULL) {
+    if (linkedlist_is_empty(set->to_set->lvalues)) {
         def->type = rhs_type;
         add_type(context->scope, def);
     }

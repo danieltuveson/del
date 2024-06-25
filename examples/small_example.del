@@ -4,11 +4,16 @@
 //     }
 // }
 
-// class Thing {
-//     arg1: int;
-//     arg2: string;
-// }
+class Thing {
+    arg1: int;
+    arg2: bool;
+    // arg2: string;
+}
 
 function main() {
-    let x = 4;
+    let thing = new Thing(11, false);
+    thing.arg1 = 4;
+    let thing2 = new Thing(66, true);
+    thing2.arg1 = thing2.arg1 + 4;
+    thing2.arg2 = thing.arg2;
 }

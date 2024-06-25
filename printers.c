@@ -276,21 +276,22 @@ static void print_funcall(Symbol funname, Values *vals)
     }
     printf(")");
 }
-// 
-// static void print_get(struct Accessor *get)
-// {
-//     printf("%s", lookup_symbol(get->symbol));
-//     for (LValues *lvalues = get->lvalues; lvalues != NULL; lvalues = lvalues->next) {
-//         struct LValue *lvalue = lvalues->value;
-//         if (lvalue->type == LV_PROPERTY) {
-//             printf(".%s", lookup_symbol(lvalue->property));
-//         } else {
-//             printf("[");
-//             print_value(lvalue->index);
-//             printf("]");
-//         }
-//     }
-// }
+
+static void print_get(struct Accessor *get)
+{
+    printf("%s", lookup_symbol(get->symbol));
+    linkedlist_foreach(lnode, get->lvalues->head) {
+    // for (LValues *lvalues = get->lvalues; lvalues != NULL; lvalues = lvalues->next) {
+        struct LValue *lvalue = lnode->value;
+        if (lvalue->type == LV_PROPERTY) {
+            printf(".%s", lookup_symbol(lvalue->property));
+        } else {
+            printf("[");
+            print_value(lvalue->index);
+            printf("]");
+        }
+    }
+}
 
 void print_value(struct Value *val)
 {
@@ -320,9 +321,9 @@ void print_value(struct Value *val)
         printf("new ");
         print_funcall(val->constructor->funname, val->constructor->args);
         break;
-    // case  VTYPE_GET:
-    //     print_get(val->get);
-    //     break;
+    case  VTYPE_GET:
+        print_get(val->get);
+        break;
     default:
         assert("Error, not implemented" && false);
         break;
