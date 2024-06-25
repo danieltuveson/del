@@ -8,9 +8,10 @@ The language is **not done**. It will hopefully be done in a few months.
 ## Building
 Requires GNU Make and a C compiler (as of writing this, it will compile with GCC, Clang, and TCC). I've only tested the most recent versions on Linux, but I assume it would work on Mac as well. `del` comes pre-installed on Windows ;)
 
-`make`
-
-`./del examples/example.del`
+``` bash
+make
+./del examples/example.del
+```
 
 
 ## Example
