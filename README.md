@@ -5,6 +5,11 @@ This is probably the last time I will try to make a programming language
 
 The language is **not done**. It will hopefully be done in a few months.
 
+## Building
+Requires GNU Make and a C compiler (as of writing this, it will compile with GCC, Clang, and TCC). I've only tested the most recent versions on Linux, but I assume it would work on Mac as well. `del` comes pre-installed on Windows ;)
+`make`
+`./del examples/example.del`
+
 ## Example
 ``` js
 class Range {
@@ -32,6 +37,7 @@ function main() {
 - Fix string implementation
 - Finish implementing classes 
 - Fix scope issues
+- Implement basic FFI, or at least add some simple IO
 - Implement arrays
 - Implement interfaces
 - Implement garbage collection
