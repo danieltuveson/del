@@ -25,7 +25,8 @@ struct TypeCheckerContext {
 
 static int typecheck_statements(struct TypeCheckerContext *context, Statements *stmts);
 static int typecheck_statement(struct TypeCheckerContext *context, struct Statement *stmt);
-static Type typecheck_funcall(struct TypeCheckerContext *context, struct FunCall *funcall);
+static bool typecheck_funcall(struct TypeCheckerContext *context, struct FunCall *funcall,
+                              struct FunDef *fundef);
 static Type typecheck_constructor(struct TypeCheckerContext *context, struct FunCall *constructor);
 
 #define table_lookup(table, length, symbol)\
@@ -308,8 +309,17 @@ static Type typecheck_value(struct TypeCheckerContext *context, struct Value *va
         case VTYPE_BOOL:        return TYPE_BOOL;
         case VTYPE_SYMBOL:      return typecheck_symbol(context, val->symbol);
         case VTYPE_EXPR:        return typecheck_expression(context, val->expr);
-        case VTYPE_FUNCALL:     return typecheck_funcall(context, val->funcall);
-        case VTYPE_CONSTRUCTOR: return typecheck_constructor(context, val->funcall);
+        case VTYPE_FUNCALL: {
+            struct FunDef *fundef = lookup_fun(context->fun_table, val->funcall->funname);
+            if (fundef != NULL && fundef->rettype == TYPE_UNDEFINED) {
+                printf("Error: function %s does not return a value\n", lookup_symbol(fundef->name));
+                return TYPE_UNDEFINED;
+            } else if (typecheck_funcall(context, val->funcall, fundef)) {
+                return fundef->rettype;
+            } else {
+                return TYPE_UNDEFINED;
+            }
+        }
         case VTYPE_GET:         return typecheck_get(context, val->get);
     }
     return TYPE_UNDEFINED; // Doing this to silence compiler warning, should never happen
@@ -504,45 +514,47 @@ static int typecheck_for(struct TypeCheckerContext *context, struct For *for_stm
     return ret;
 }
 
-static int typecheck_return(struct TypeCheckerContext *context, struct Value *val)
+static bool typecheck_return(struct TypeCheckerContext *context, struct Value *val)
 {
-    char *errmsg = "Error: function return type is %s but returning value of type %s\n";
     Type rettype = context->enclosing_func->rettype;
     if (val == NULL) {
         if (rettype == TYPE_UNDEFINED) {
-            return 1;
+            return true;
         } else {
-            printf(errmsg, "void", lookup_symbol(rettype));
-            return 0;
+            printf("Error: function should return %s but is returning nothing\n",
+                   lookup_symbol(rettype));
+            return false;
         }
     }
     Type val_type = typecheck_value(context, val);
     if (val_type == TYPE_UNDEFINED) {
-        return 0;
+        return false;
     } else if (rettype != val_type) {
-        printf(errmsg, lookup_symbol(rettype), lookup_symbol(val_type));
-        return 0;
+        printf("Error: function return type is %s but returning value of type %s\n",
+               lookup_symbol(rettype), lookup_symbol(val_type));
+        return false;
     }
-    return 1;
+    return true;
 }
 
-static Type typecheck_funcall(struct TypeCheckerContext *context, struct FunCall *funcall)
+static bool typecheck_funcall(struct TypeCheckerContext *context, struct FunCall *funcall,
+                              struct FunDef *fundef)
 {
-    struct FunDef *fundef = lookup_fun(context->fun_table, funcall->funname);
+    // struct FunDef *fundef = lookup_fun(context->fun_table, funcall->funname);
     if (fundef == NULL) {
         printf("Error: no function named %s\n", lookup_symbol(funcall->funname));
-        return TYPE_UNDEFINED;
+        return false;
     } 
 
     uint64_t fundef_arg_count  = fundef->args  == NULL ? 0 : fundef->args->length;
     uint64_t funcall_arg_count = funcall->args == NULL ? 0 : funcall->args->length;
     if (fundef_arg_count == 0 && funcall_arg_count == 0) {
-        return 1;
+        return true;
     } else if (fundef_arg_count != funcall_arg_count) {
         printf("Error: %s expects %" PRIu64 " arguments but got %" PRIu64 "\n",
                 lookup_symbol(fundef->name),
                 fundef_arg_count, funcall_arg_count);
-        return TYPE_UNDEFINED;
+        return false;
     }
 
     // Validate arguments
@@ -558,12 +570,12 @@ static Type typecheck_funcall(struct TypeCheckerContext *context, struct FunCall
                     i + 1, lookup_symbol(fundef->name),
                     lookup_symbol(fun_arg_def->type),
                     lookup_symbol(val_type));
-            return TYPE_UNDEFINED;
+            return false;
         }
         vals = vals->next;
         defs = defs->next;
     }
-    return fundef->rettype;
+    return true;
 }
 
 // struct Class {
@@ -620,7 +632,12 @@ static int typecheck_statement(struct TypeCheckerContext *context, struct Statem
         case STMT_IF:      return typecheck_if(context, stmt->if_stmt);
         case STMT_WHILE:   return typecheck_while(context, stmt->while_stmt);
         case STMT_FOR:     return typecheck_for(context, stmt->for_stmt);
-        case STMT_FUNCALL: return typecheck_funcall(context, stmt->funcall) != TYPE_UNDEFINED;
+        case STMT_FUNCALL: {
+            struct FunDef *fundef = lookup_fun(context->fun_table, stmt->funcall->funname);
+            bool ret = typecheck_funcall(context, stmt->funcall, fundef);
+            return ret;
+            // return typecheck_funcall(context, stmt->funcall) != TYPE_UNDEFINED; 
+        }
         case STMT_RETURN:  return typecheck_return(context, stmt->ret);
         case STMT_FOREACH: printf("Error: not implemented\n");
                            return 0;
@@ -659,7 +676,7 @@ static int typecheck_tld(struct TypeCheckerContext *context, struct TopLevelDecl
     switch (tld->type) {
         case TLD_TYPE_CLASS:
             // typecheck_class(context, tld->cls);
-            // printf("Error: not implemented\n");
+            assert("Error: not implemented\n" && 1);
             return 1;
         case TLD_TYPE_FUNDEF:
             if (!typecheck_fundef(context, tld->fundef)) {

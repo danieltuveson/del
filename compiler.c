@@ -267,8 +267,10 @@ static void compile_set(struct CompilerContext *cc, struct Set *set)
 
 static void compile_return(struct CompilerContext *cc, struct Value *ret)
 {
-    compile_value(cc, ret);
-    load(cc, SWAP);
+    if (ret != NULL) {
+        compile_value(cc, ret);
+        load(cc, SWAP);
+    }
     load(cc, JMP);
 }
 
@@ -320,12 +322,13 @@ static void compile_for(struct CompilerContext *cc, struct For *for_stmt)
 static void compile_statement(struct CompilerContext *cc, struct Statement *stmt)
 {
     switch (stmt->type) {
-        case STMT_SET:    compile_set(cc,    stmt->set);          break;
-        case STMT_RETURN: compile_return(cc, stmt->ret);          break;
-        case STMT_IF:     compile_if(cc,     stmt->if_stmt);      break;
-        case STMT_WHILE:  compile_while(cc,  stmt->while_stmt);   break;
-        case STMT_FOR:    compile_for(cc,    stmt->for_stmt);     break;
-        case STMT_LET: /* Currently just used for typechecking */ break;
+        case STMT_SET:     compile_set(cc,     stmt->set);         break;
+        case STMT_RETURN:  compile_return(cc,  stmt->ret);         break;
+        case STMT_IF:      compile_if(cc,      stmt->if_stmt);     break;
+        case STMT_WHILE:   compile_while(cc,   stmt->while_stmt);  break;
+        case STMT_FOR:     compile_for(cc,     stmt->for_stmt);    break;
+        case STMT_FUNCALL: compile_funcall(cc, stmt->funcall);     break;
+        case STMT_LET: /* Currently just used for typechecking */  break;
         default: printf("Error cannot compile statement type: not implemented\n"); break;
     }
 }

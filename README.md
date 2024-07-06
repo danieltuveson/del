@@ -37,6 +37,8 @@ function main() {
 
 ## TODO
 - Clean up parser
+- Make typechecker validate that functions return values for all paths
+- Improve error messages in lex / parse / typechecking stages
 - Remove "default" options from switch statements and search for missing cases.
 - Fix string implementation
 - Finish implementing classes 

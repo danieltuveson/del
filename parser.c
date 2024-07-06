@@ -381,8 +381,7 @@ static struct Statement *parse_line(struct Parser *parser)
         return NULL;
     } else if (match(parser, ST_RETURN)) {
         struct Value *expr = NULL;
-        if (match(parser, ST_SEMICOLON)) {
-            parser->head = old_head; // don't want to consume semicolon yet
+        if (parser_peek(parser, ST_SEMICOLON)) {
             return new_return(NULL);
         } else if ((expr = parse_expr(parser))) {
             return new_return(expr);
