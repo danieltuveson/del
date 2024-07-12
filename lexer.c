@@ -1,4 +1,5 @@
 #include "common.h"
+#include "readfile.h"
 #include "allocator.h"
 #include "linkedlist.h"
 #include "lexer.h"
@@ -60,25 +61,27 @@ struct TokenMapping symbols1[] = {
     {".",        ST_DOT }
 };
 
-static struct Token *new_token(int start, int end, enum TokenType type)
+static struct Token *new_token(struct Lexer *lexer, int start, int end, enum TokenType type)
 {
     struct Token *token = allocator_malloc(sizeof(*token));
     token->start = start;
     token->end = end;
+    token->line_number = lexer->error.line_number;
+    token->column_number = lexer->error.column_number;
     token->type = type;
     return token;
 }
 
-static struct Token *new_symbol_token(int start, int end, Symbol symbol)
+static struct Token *new_symbol_token(struct Lexer *lexer, int start, int end, Symbol symbol)
 {
-    struct Token *token = new_token(start, end, T_SYMBOL);
+    struct Token *token = new_token(lexer, start, end, T_SYMBOL);
     token->symbol = symbol;
     return token;
 }
 
-static struct Token *new_integer_token(int start, int end, uint64_t integer)
+static struct Token *new_integer_token(struct Lexer *lexer, int start, int end, uint64_t integer)
 {
-    struct Token *token = new_token(start, end, T_INT);
+    struct Token *token = new_token(lexer, start, end, T_INT);
     token->integer = integer;
     return token;
 }
@@ -90,9 +93,9 @@ static struct Token *new_integer_token(int start, int end, uint64_t integer)
 //     return token;
 // }
 
-static struct Token *new_string_token(int start, int end, char *str)
+static struct Token *new_string_token(struct Lexer *lexer, int start, int end, char *str)
 {
-    struct Token *token = new_token(start, end, T_STRING);
+    struct Token *token = new_token(lexer, start, end, T_STRING);
     token->string = str;
     return token;
 }
@@ -116,22 +119,22 @@ static inline bool is_terminal(char c)
 
 static inline char peek(struct Lexer *lexer)
 {
-    return lexer->input[lexer->offset];
+    return globals.file->input[lexer->offset];
 }
 
 static inline bool has_next(struct Lexer *lexer)
 {
-    return lexer->offset <= lexer->input_length && peek(lexer) != '\0';
+    return lexer->offset <= globals.file->length && peek(lexer) != '\0';
 }
 
 static inline char next(struct Lexer *lexer)
 {
     lexer->error.column_number++;
-    if (lexer->input[lexer->offset] == '\n') {
+    if (globals.file->input[lexer->offset] == '\n') {
         lexer->error.column_number = 1;
         lexer->error.line_number++;
     }
-    return lexer->input[lexer->offset++];
+    return globals.file->input[lexer->offset++];
 }
 
 // Checks if lexer matches given string, consuming the characters it reads on success
@@ -145,7 +148,7 @@ static int match(struct Lexer *lexer, char *str, bool require_terminal)
     int init_offset = lexer->offset;
     int i = lexer->offset;
     while (true) {
-        char c = lexer->input[i];
+        char c = globals.file->input[i];
         char strc = str[i - init_offset];
         if (strc == '\0' && (!require_terminal || is_terminal(c))) {
             break;
@@ -169,9 +172,9 @@ static void tokenize_comment(struct Lexer *lexer)
     }
     if (lexer->include_comments) {
         if (c == '\r') {
-            linkedlist_append(lexer->tokens, new_token(init_offset, lexer->offset - 1, T_COMMENT));
+            linkedlist_append(lexer->tokens, new_token(lexer, init_offset, lexer->offset - 1, T_COMMENT));
         } else {
-            linkedlist_append(lexer->tokens, new_token(init_offset, lexer->offset, T_COMMENT));
+            linkedlist_append(lexer->tokens, new_token(lexer, init_offset, lexer->offset, T_COMMENT));
         }
     }
 }
@@ -197,8 +200,8 @@ static void tokenize_string(struct Lexer *lexer)
         }
         next(lexer);
     }
-    char *str = make_string(lexer->input, init_offset, lexer->offset);
-    linkedlist_append(lexer->tokens, new_string_token(init_offset, lexer->offset, str));
+    char *str = make_string(globals.file->input, init_offset, lexer->offset);
+    linkedlist_append(lexer->tokens, new_string_token(lexer, init_offset, lexer->offset, str));
     next(lexer);
 }
 
@@ -209,7 +212,7 @@ static bool match_simple_token_list(struct Lexer *lexer, struct TokenMapping *tm
     for (size_t i = 0; i < length; i++) {
         struct TokenMapping tm = tm_list[i];
         if (match(lexer, tm.string, require_terminal)) {
-            linkedlist_append(lexer->tokens, new_token(init_offset, lexer->offset, tm.type));
+            linkedlist_append(lexer->tokens, new_token(lexer, init_offset, lexer->offset, tm.type));
             return true;
         }
     }
@@ -236,7 +239,7 @@ static int64_t str_to_int64(struct Lexer *lexer, int init_offset, int count)
     const int64_t INT64_MAX_LOWPART  = 7;
     int64_t num = 0;
     for (int i = init_offset; i < init_offset + count; i++) {
-        int64_t digit = lexer->input[i] - '0';
+        int64_t digit = globals.file->input[i] - '0';
         // If we're about to overflow, return with an error
         if (num > INT64_MAX_HIGHPART || (num == INT64_MAX_HIGHPART && digit > INT64_MAX_LOWPART)) {
             lexer->error.message = "integer literal exceeds maximum allowed size of integer";
@@ -261,7 +264,7 @@ static void tokenize_number(struct Lexer *lexer)
     int count = lexer->offset - init_offset;
     int64_t num = str_to_int64(lexer, init_offset, count);
     if (!lexer->error.message) {
-        linkedlist_append(lexer->tokens, new_integer_token(init_offset, lexer->offset, num));
+        linkedlist_append(lexer->tokens, new_integer_token(lexer, init_offset, lexer->offset, num));
     }
 }
 
@@ -273,9 +276,9 @@ static bool is_symbol_token(char c)
 // TODO: rewrite this to use globals
 static Symbol add_symbol(char *yytext, int yyleng)
 {
-    if (ast.symbol_table == NULL) init_symbol_table();
+    if (globals.symbol_table == NULL) init_symbol_table();
     /* Adds symbols to symbol table */
-    struct LinkedListNode *symbol_table = ast.symbol_table->head;
+    struct LinkedListNode *symbol_table = globals.symbol_table->head;
     uint64_t cnt = 0;
     char *symbol;
     while (1) {
@@ -292,10 +295,10 @@ static Symbol add_symbol(char *yytext, int yyleng)
     symbol = allocator_malloc((yyleng + 1) * sizeof(char));
     strcpy(symbol, yytext);
     // symbol_table->next = new_list(symbol);
-    linkedlist_append(ast.symbol_table, symbol);
+    linkedlist_append(globals.symbol_table, symbol);
 addsymbol:
     if (strcmp(yytext, "main") == 0) {
-        ast.entrypoint = cnt;
+        globals.entrypoint = cnt;
     }
     return cnt;
 }
@@ -312,19 +315,19 @@ static void tokenize_symbol(struct Lexer *lexer)
     }
     int count = lexer->offset - init_offset;
     char *text = allocator_malloc(count + 1);
-    memcpy(text, lexer->input + init_offset, count);
+    memcpy(text, globals.file->input + init_offset, count);
     text[count] = '\0';
     Symbol symbol = add_symbol(text, count);
-    linkedlist_append(lexer->tokens, new_symbol_token(init_offset, lexer->offset, symbol));
+    linkedlist_append(lexer->tokens, new_symbol_token(lexer, init_offset, lexer->offset, symbol));
 }
 
 void print_token(struct Lexer *lexer, struct Token *token)
 {
     printf("Type: %d, Start: %d, End: %d, Content: '", token->type, token->start, token->end);
     for (int i = token->start; i < token->end; i++) {
-        if (lexer->input[i] == '\0') printf("**NULL**");
-        if (lexer->input[i] == '\n') printf("**NEWLINE**");
-        printf("%c", lexer->input[i]);
+        if (globals.file->input[i] == '\0') printf("**NULL**");
+        if (globals.file->input[i] == '\n') printf("**NEWLINE**");
+        printf("%c", globals.file->input[i]);
     }
     printf("'");
     switch (token->type) {
@@ -355,18 +358,13 @@ void print_lexer(struct Lexer *lexer)
     printf("}\n");
 }
 
-void print_error(struct CompilerError *error)
-{
-    printf("Error at line %d column %d: %s\n", error->line_number, error->column_number, error->message);
-}
-
 void lexer_init(struct Lexer *lexer, char *input, int input_length, bool include_comments)
 {
     lexer->error.message = NULL;
     lexer->error.line_number = 1;
     lexer->error.column_number = 1;
-    lexer->input = input;
-    lexer->input_length = input_length;
+    // lexer->input = input;
+    // lexer->input_length = input_length;
     lexer->include_comments = include_comments;
     lexer->offset = 0;
     lexer->tokens = linkedlist_new();

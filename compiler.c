@@ -410,7 +410,7 @@ static void compile_entrypoint(struct CompilerContext *cc, TopLevelDecls *tlds)
     linkedlist_foreach(lnode, tlds->head) {
     // for (; tlds != NULL; tlds = tlds->next) {
         struct TopLevelDecl *tld = lnode->value;
-        if (tld->type == TLD_TYPE_FUNDEF && tld->fundef->name == ast.entrypoint) {
+        if (tld->type == TLD_TYPE_FUNDEF && tld->fundef->name == globals.entrypoint) {
             compile_statements(cc, tld->fundef->stmts);
             load(cc, EXIT);
             break;
@@ -425,7 +425,7 @@ static void compile_tld(struct CompilerContext *cc, struct TopLevelDecl *tld)
             // compile_class(cc, tld->cls);
             break;
         case TLD_TYPE_FUNDEF:
-            if (tld->fundef->name != ast.entrypoint) {
+            if (tld->fundef->name != globals.entrypoint) {
                 compile_fundef(cc, tld->fundef);
             }
             break;

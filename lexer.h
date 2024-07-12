@@ -55,6 +55,8 @@ enum TokenType {
 
 struct Token {
     int start, end;
+    int line_number;
+    int column_number;
     enum TokenType type;
     union {
         Symbol symbol;
@@ -66,16 +68,14 @@ struct Token {
 
 typedef struct LinkedList Tokens;
 
-struct CompilerError {
+struct LexerError {
     char *message;
     int line_number;
     int column_number;
 };
 
 struct Lexer {
-    struct CompilerError error;
-    int input_length; // Excludes null terminator
-    char *input;
+    struct LexerError error;
     bool include_comments;
     int offset;
     Tokens *tokens;
@@ -83,7 +83,6 @@ struct Lexer {
 
 void lexer_init(struct Lexer *lexer, char *input, int input_length, bool include_comments);
 bool tokenize(struct Lexer *lexer);
-void print_error(struct CompilerError *error); 
 void print_token(struct Lexer *lexer, struct Token *token);
 void print_lexer(struct Lexer *lexer);
 

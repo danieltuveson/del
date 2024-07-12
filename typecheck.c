@@ -698,10 +698,10 @@ static int typecheck_tlds(struct TypeCheckerContext *context, TopLevelDecls *tld
     return 1;
 }
 
-int typecheck(struct Ast *ast, struct ClassTable *class_table,
+bool typecheck(struct ClassTable *class_table,
         struct FunctionTable *function_table)
 {
-    if (!add_types(ast->ast, class_table, function_table)) {
+    if (!add_types(globals.ast, class_table, function_table)) {
         return 0;
     }
     // for (uint64_t i = 0; i < ast->class_count; i++) {
@@ -713,7 +713,7 @@ int typecheck(struct Ast *ast, struct ClassTable *class_table,
     //     printf("\n");
     // }
     struct TypeCheckerContext context = { NULL, function_table, class_table, NULL };
-    return typecheck_tlds(&context, ast->ast);
+    return typecheck_tlds(&context, globals.ast);
 }
 
 #undef find_open_loc

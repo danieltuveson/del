@@ -1,34 +1,34 @@
 #include "common.h"
 #include "allocator.h"
+#include "readfile.h"
 
-// Populates buffer with contents of file
-// Returns 0 on failure, returns length of buffer (excluding null terminator) on success
-long readfile(char **buff, char *filename)
+// Populates FileContext on success
+bool readfile(struct FileContext *file)
 {
-    FILE *fp = fopen(filename, "r");
+    FILE *fp = fopen(file->filename, "r");
     if (!fp) {
-        printf("Error: could not open file '%s'\n", filename);
-        return 0;
+        printf("Error: could not open file '%s'\n", file->filename);
+        return false;
     }
     char *generic_error = "Error: encountered error while reading file\n";
     if (fseek(fp, 0, SEEK_END) != 0) {
         printf("%s", generic_error);
-        return 0;
+        return false;
     }
-    long length = ftell(fp);
-    if (length == -1) {
+    file->length = ftell(fp);
+    if (file->length == -1) {
         printf("%s", generic_error);
-        return 0;
+        return false;
     }
     rewind(fp);
 
-    *buff = allocator_malloc(length + 1);
-    if ((long) fread(*buff, 1, length, fp) != length) {
+    file->input = allocator_malloc(file->length + 1);
+    if ((long) fread(file->input, 1, file->length, fp) != file->length) {
         printf("%s", generic_error);
-        return 0;
+        return false;
     }
     fclose(fp);
 
-    (*buff)[length] = '\0';
-    return length;
+    (file->input)[file->length] = '\0';
+    return true;
 }

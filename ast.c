@@ -7,7 +7,7 @@
 /* Functions to create top level definitions */
 struct TopLevelDecl *new_class(Symbol symbol, Definitions *definitions, Methods *methods)
 {
-    ast.class_count++;
+    globals.class_count++;
     struct TopLevelDecl *tld = allocator_malloc(sizeof(struct TopLevelDecl));
     tld->type = TLD_TYPE_CLASS;
     tld->cls = allocator_malloc(sizeof(struct Class));
@@ -67,7 +67,7 @@ struct FunDef *new_fundef(Symbol symbol, Type rettype, Definitions *args, Statem
 struct TopLevelDecl *new_tld_fundef(Symbol symbol, Type rettype, Definitions *args,
         Statements *stmts)
 {
-    ast.function_count++;
+    globals.function_count++;
     struct TopLevelDecl *tld = allocator_malloc(sizeof(struct TopLevelDecl));
     tld->type = TLD_TYPE_FUNDEF;
     tld->fundef = new_fundef(symbol, rettype, args, stmts);

@@ -2,6 +2,7 @@
 #include "allocator.h"
 #include "readfile.h"
 #include "lexer.h"
+#include "error.h"
 #include "ast.h"
 #include "parser.h"
 #include "typecheck.h"
@@ -19,65 +20,68 @@ int main(int argc, char *argv[])
     }
 
     printf("........ READING FILE : %s ........\n", argv[1]);
-    char *input = NULL;
-    long input_length = readfile(&input, argv[1]);
-    if (input_length == 0) {
+
+    struct FileContext file = { argv[1], 0, NULL };
+    if (!readfile(&file)) {
         printf("Error: could not read contents of empty file\n");
         goto FAIL;
     }
-    printf("%s\n", input);
+    globals.file = &file;
+    printf("%s\n", globals.file->input);
     print_memory_usage();
 
     printf("........ TOKENIZING INPUT ........\n");
     struct Lexer lexer;
-    lexer_init(&lexer, input, input_length, false);
+    lexer_init(&lexer, globals.file->input, globals.file->length, false);
     if (!tokenize(&lexer)) {
-        print_error(&(lexer.error));
+        // print_error(&(lexer.error));
+        printf("Error at line %d column %d: %s\n", lexer.error.line_number, lexer.error.column_number,
+                lexer.error.message);
         goto FAIL;
     }
+    globals.lexer = &lexer;
     print_lexer(&lexer);
     print_memory_usage();
 
-
     printf("........ PRINTING ALL SYMBOLS ........\n");
-    linkedlist_foreach(lnode, ast.symbol_table->head) {
+    linkedlist_foreach(lnode, globals.symbol_table->head) {
         printf("symbol: '%s'\n", (char *) lnode->value);
     }
 
     printf("........ PARSING AST FROM TOKENS ........\n");
     struct Parser parser = { lexer.tokens->head, &lexer };
-    TopLevelDecls *tlds = parse_tlds(&parser);
-    if (tlds) {
-        print_tlds(tlds);
+    globals.parser = &parser;
+    globals.ast = parse_tlds(&parser);
+
+    if (globals.ast) {
+        print_tlds(globals.ast);
         printf("\n");
     } else {
-        printf("no value. sad\n");
+        error_print();
         goto FAIL;
     }
     print_memory_usage();
 
-    ast.ast = tlds;
-
     printf("````````````````` CODE `````````````````\n");
-    struct Class *clst = allocator_malloc(ast.class_count * sizeof(*clst));
-    struct FunDef *ft = allocator_malloc(ast.function_count * sizeof(*ft));
-    struct ClassTable class_table = { ast.class_count, clst };
-    struct FunctionTable function_table = { ast.function_count, ft };
+    struct Class *clst = allocator_malloc(globals.class_count * sizeof(*clst));
+    struct FunDef *ft = allocator_malloc(globals.function_count * sizeof(*ft));
+    struct ClassTable class_table = { globals.class_count, clst };
+    struct FunctionTable function_table = { globals.function_count, ft };
     uint64_t instructions[INSTRUCTIONS_SIZE];
     struct CompilerContext cc = { instructions, 0, NULL, &class_table };
-    assert(ast.ast != NULL);
-    print_tlds(ast.ast);
+    assert(globals.ast != NULL);
+    print_tlds(globals.ast);
     printf("\n");
 
     printf("`````````````` TYPECHECK ```````````````\n");
-    if (typecheck(&ast, &class_table, &function_table)) {
+    if (typecheck(&class_table, &function_table)) {
         printf("program has typechecked\n");
     } else {
         printf("program failed to typecheck\n");
         goto FAIL;
     }
     printf("`````````````` COMPILE ```````````````\n");
-    compile(&cc, ast.ast);
+    compile(&cc, globals.ast);
     printf("\n");
     printf("````````````` INSTRUCTIONS `````````````\n");
     printf("function table:\n");

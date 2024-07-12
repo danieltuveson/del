@@ -542,8 +542,8 @@ static void print_tld_indent(struct TopLevelDecl *tld, int indent)
 
 static void print_tlds_indent(TopLevelDecls *tlds, int indent)
 {
-    printf("%" PRIu64 " functions defined\n", ast.function_count);
-    printf("%" PRIu64 " classes defined\n", ast.class_count);
+    printf("%" PRIu64 " functions defined\n", globals.function_count);
+    printf("%" PRIu64 " classes defined\n", globals.class_count);
     // while (tlds != NULL)
     linkedlist_foreach(tld, tlds->head) {
         print_tld_indent(tld->value, indent);

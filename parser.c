@@ -1,6 +1,7 @@
 #include "common.h"
 #include "linkedlist.h"
 #include "lexer.h"
+#include "error.h"
 #include "ast.h"
 #include "printers.h"
 #include "parser.h"
@@ -186,7 +187,7 @@ static Values *parse_args(struct Parser *parser)
         }
     } while (match(parser, ST_COMMA));
     if (!match(parser, ST_CLOSE_PAREN)) {
-        printf("Error: unexpected end of argument list\n");
+        error_parser("Unexpected end of argument list");
         return NULL;
     }
     return vals;
@@ -219,7 +220,7 @@ static struct Value *parse_get(struct Parser *parser, Symbol symbol)
         if (match(parser, ST_DOT)) {
             struct LinkedListNode *old_head = parser->head;
             if (!match(parser, T_SYMBOL)) {
-                printf("Error: expected property or method name\n");
+                error_parser("Expected property or method name");
                 return NULL;
             }
             Symbol prop = nth_token(old_head, 1)->symbol;
@@ -229,7 +230,7 @@ static struct Value *parse_get(struct Parser *parser, Symbol symbol)
             if (expr == NULL) {
                 return NULL;
             } else if (!match(parser, ST_CLOSE_BRACKET)) {
-                printf("Error: expected closing bracket in accessor\n");
+                error_parser("Expected closing bracket in accessor");
                 return NULL;
             }
             linkedlist_append(lvalues, new_index(expr));
@@ -244,7 +245,7 @@ static struct Value *parse_get(struct Parser *parser, Symbol symbol)
 static struct Value *parse_subexpr(struct Parser *parser)
 {
     if (parser->head == NULL) {
-        printf("Error: unexpected end of expression\n");
+        error_parser("Unexpected end of expression");
         return NULL;
     }
     struct Value *val = NULL;
@@ -279,7 +280,7 @@ static struct Value *parse_subexpr(struct Parser *parser)
     } else if (match(parser, ST_NEW) && match(parser, T_SYMBOL) && match(parser, ST_OPEN_PAREN)) {
         return parse_vfuncall(parser, nth_token(old_head, 2)->symbol, new_constructor);
     }
-    printf("Error: unexpected token in expression\n");
+    error_parser("Unexpected token in expression");
     return NULL;
 }
 
@@ -310,7 +311,7 @@ static Definitions *parse_symbols(struct Parser *parser)
             Symbol symbol = nth_token(old_head, 1)->symbol;
             linkedlist_append(defs, new_define(symbol, TYPE_UNDEFINED));
         } else {
-            printf("Error: unexpected token in definition\n");
+            error_parser("Unexpected token in definition");
             return NULL;
         }
     } while (match(parser, ST_COMMA));
@@ -330,14 +331,14 @@ static struct Statement *parse_lhs(struct Parser *parser, Symbol symbol)
         if (match(parser, ST_EQ)) {
             return parse_set(parser, symbol, lvalues, false);
         } else if (match(parser, ST_OPEN_PAREN)) {
-            // assert("TODO: update parse_sfuncall to accept accessors\n" && false);
+            // assert("TODO: update parse_sfuncall to accept accessors" && false);
             // return NULL;
             return parse_sfuncall(parser, symbol, new_sfuncall);
         }
         if (match(parser, ST_DOT)) {
             struct LinkedListNode *old_head = parser->head;
             if (!match(parser, T_SYMBOL)) {
-                printf("Error: expected property or method name\n");
+                error_parser("Expected property or method name");
                 return NULL;
             }
             Symbol prop = nth_token(old_head, 1)->symbol;
@@ -347,7 +348,7 @@ static struct Statement *parse_lhs(struct Parser *parser, Symbol symbol)
             if (expr == NULL) {
                 return NULL;
             } else if (!match(parser, ST_CLOSE_BRACKET)) {
-                printf("Error: expected closing bracket in accessor\n");
+                error_parser("Expected closing bracket in accessor");
                 return NULL;
             }
             linkedlist_append(lvalues, new_index(expr));
@@ -355,14 +356,14 @@ static struct Statement *parse_lhs(struct Parser *parser, Symbol symbol)
             break;
         }
     }
-    printf("Error: unexpected value in accessor\n");
+    error_parser("Unexpected value in accessor");
     return NULL;
 }
 
 static struct Statement *parse_line(struct Parser *parser)
 {
     if (parser->head == NULL) {
-        printf("Error: unexpected end of input. Expected start of statement\n");
+        error_parser("Unexpected end of input. Expected start of statement");
         return NULL;
     }
     struct LinkedListNode *old_head = parser->head;
@@ -388,14 +389,14 @@ static struct Statement *parse_line(struct Parser *parser)
         }
         return NULL;
     }
-    printf("Error: unexpected token in statement\n");
+    error_parser("Unexpected token in statement");
     return NULL;
 }
 
 static Statements *parse_block(struct Parser *parser, char *type)
 {
     if (!match(parser, ST_OPEN_BRACE)) {
-        printf("Error: %s missing opening brace\n", type);
+        error_parser("%s missing opening brace", type);
         return NULL;
     }
     struct Statement *stmt = NULL;
@@ -450,8 +451,6 @@ static struct Statement *parse_if(struct Parser *parser)
 
 static struct Statement *parse_statement(struct Parser *parser)
 {
-    char err[] = "Error: unexpected end of statement "
-                 "(you probably forgot to end it with a semicolon)\n";
     struct Value *expr = NULL;
     struct Statement *stmt = NULL;
     Statements *stmts = NULL;
@@ -468,7 +467,7 @@ static struct Statement *parse_statement(struct Parser *parser)
                 && (expr = parse_expr(parser)) && match(parser, ST_SEMICOLON) 
                 && (increment = parse_line(parser))) {
             if (redundant_paren != match(parser, ST_CLOSE_PAREN)) {
-                printf("Error: mismatched parenthesis\n");
+                error_parser("mismatched parenthesis");
                 return NULL;
             } else if ((stmts = parse_block(parser, "for block"))) {
                 return new_for(init, expr, increment, stmts);
@@ -486,7 +485,7 @@ static struct Statement *parse_statement(struct Parser *parser)
         if (match(parser, ST_SEMICOLON)) {
             return stmt;
         }
-        printf("%s", err);
+        error_parser("Unexpected end of statement");
     } 
     return NULL;
 }
@@ -511,7 +510,7 @@ static Type parse_type(struct Parser *parser)
     } else if (match(parser, T_SYMBOL)) {
         return nth_token(old_head, 1)->symbol;
     }
-    printf("Error: invalid type\n");
+    error_parser("invalid type");
     return TYPE_UNDEFINED;
 }
 
@@ -525,16 +524,16 @@ static struct Definition *parse_definition(struct Parser *parser)
     struct LinkedListNode *old_head = parser->head;
     Type type = TYPE_UNDEFINED;
     if (!match(parser, T_SYMBOL)) {
-        printf("Error: expected variable name\n");
+        error_parser("expected variable name");
         return NULL;
     } else if (match(parser, ST_COMMA) || match(parser, ST_CLOSE_PAREN)) {
-        printf("Error: function argument is missing a type\n");
+        error_parser("function argument is missing a type");
         return NULL;
     } else if (!(match(parser, ST_COLON))) {
-        printf("Error: expected colon\n");
+        error_parser("expected colon");
         return NULL;
     } else if ((type = parse_type(parser)) == TYPE_UNDEFINED) {
-        printf("Error: invalid type\n");
+        error_parser("invalid type");
         return NULL;
     }
     return new_define(nth_token(old_head, 1)->symbol, type);
@@ -546,7 +545,7 @@ static struct Definition *parse_definition(struct Parser *parser)
 static Definitions *parse_fundef_args(struct Parser *parser)
 {
     if (!match(parser, ST_OPEN_PAREN)) {
-        printf("Error: expected list of function arguments\n");
+        error_parser("expected list of function arguments");
         return NULL;
     }
     Definitions *definitions = linkedlist_new();
@@ -561,7 +560,7 @@ static Definitions *parse_fundef_args(struct Parser *parser)
         linkedlist_append(definitions, definition);
     } while (match(parser, ST_COMMA));
     if (!match(parser, ST_CLOSE_PAREN)) {
-        printf("Error: unexpected end of argument list\n");
+        error_parser("Unexpected end of argument list");
         return NULL;
     }
     return definitions;
@@ -593,7 +592,7 @@ static struct TopLevelDecl *parse_fundef(struct Parser *parser)
         }
         return new_tld_fundef(funname, rettype, defs, stmts);
     }
-    printf("Error: could not parse function\n");
+    error_parser("could not parse function");
     return NULL;
 }
 
@@ -602,16 +601,16 @@ static struct Definition *parse_class_definition(struct Parser *parser)
     struct LinkedListNode *old_head = parser->head;
     Type type = TYPE_UNDEFINED;
     if (!match(parser, T_SYMBOL)) {
-        printf("Error: expected property name\n");
+        error_parser("expected property name");
         return NULL;
     } else if (match(parser, ST_SEMICOLON)) {
-        printf("Error: class property is missing a type\n");
+        error_parser("class property is missing a type");
         return NULL;
     } else if (!(match(parser, ST_COLON))) {
-        printf("Error: expected colon\n");
+        error_parser("expected colon");
         return NULL;
     } else if ((type = parse_type(parser)) == TYPE_UNDEFINED) {
-        printf("Error: invalid type\n");
+        error_parser("invalid type");
         return NULL;
     }
     return new_define(nth_token(old_head, 1)->symbol, type);
@@ -623,7 +622,7 @@ static struct Definition *parse_class_definition(struct Parser *parser)
 static Definitions *parse_class_defs(struct Parser *parser)
 {
     if (!match(parser, ST_OPEN_BRACE)) {
-        printf("Error: expected list of class properties\n");
+        error_parser("expected list of class properties");
         return NULL;
     }
     Definitions *definitions = linkedlist_new();
@@ -638,7 +637,7 @@ static Definitions *parse_class_defs(struct Parser *parser)
         linkedlist_append(definitions, definition);
     } while (match(parser, ST_SEMICOLON));
     if (!match(parser, ST_CLOSE_BRACE)) {
-        printf("Error: unexpected end of property list\n");
+        error_parser("Unexpected end of property list");
         return NULL;
     }
     return definitions;
@@ -662,7 +661,7 @@ static struct TopLevelDecl *parse_class(struct Parser *parser)
         }
         return new_class(class_name, defs, NULL);
     }
-    printf("Error: could not parse class\n");
+    error_parser("could not parse class");
     return NULL;
 }
 
@@ -674,7 +673,7 @@ static struct TopLevelDecl *parse_tld(struct Parser *parser)
     } else if (match(parser, ST_CLASS)) {
         tld = parse_class(parser);
     } else {
-        printf("Error: expected function or class.\n");
+        error_parser("expected function or class.");
     }
     return tld;
 }

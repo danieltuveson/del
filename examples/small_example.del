@@ -12,7 +12,8 @@
 
 function otherFunction(blah : int) {
     let x = blah + 2;
-    return;
+    let y = "oijoij" + 4444;
+    return 1111;
 }
 
 function main() {
