@@ -60,7 +60,6 @@ void print_scope(struct Scope *scope)
     }
     printf("<- { ");
     linkedlist_foreach(lnode, scope->definitions->head) {
-    // for (Definitions *defs = scope->definitions; defs != NULL; defs = defs->next) {
         struct Definition *def = lnode->value;
         printf("%s: %s", lookup_symbol(def->name), lookup_symbol(def->type));
         if (lnode->next != NULL) {
@@ -85,18 +84,12 @@ static void exit_scope(struct Scope **current)
 
 static void add_var(struct Scope *current, struct Definition *def)
 {
-    // if (current->definitions == NULL) {
-    //     current->definitions = linkedlist_new(def);
-    // } else {
-    //     current->definitions = linkedlist_append(current->definitions, def);
-    // }
     linkedlist_append(current->definitions, def);
 }
 
 static int add_type(struct Scope *current, struct Definition *def)
 {
     linkedlist_foreach(lnode, current->definitions->head) {
-    // for (Definitions *defs = current->definitions; defs != NULL; defs = defs->next) {
         struct Definition *lookup_def = lnode->value;
         if (lookup_def->name == def->name) {
             lookup_def->type = def->type;
@@ -113,7 +106,6 @@ static int add_type(struct Scope *current, struct Definition *def)
 static struct Definition *lookup_var(struct Scope *scope, Symbol name)
 {
     linkedlist_foreach(lnode, scope->definitions->head) {
-    // for (Definitions *defs = scope->definitions; defs != NULL; defs = defs->next) {
         struct Definition *def = lnode->value;
         if (def->name == name) {
             return def;
@@ -155,7 +147,6 @@ static int add_function(struct FunctionTable *ft, struct FunDef *fundef)
 static int add_types(TopLevelDecls *tlds, struct ClassTable *clst, struct FunctionTable *ft)
 {
     linkedlist_foreach(lnode, tlds->head) {
-    // for (; tlds != NULL; tlds = tlds->next) {
         struct TopLevelDecl *tld = lnode->value;
         if (tld->type == TLD_TYPE_FUNDEF) {
             add_function(ft, tld->fundef);
@@ -331,7 +322,6 @@ void print_lhs(Symbol symbol, LValues *lvalues, int n)
     printf("%s", lookup_symbol(symbol));
     int i = 0;
     linkedlist_foreach(lnode, lvalues->head) {
-    // for (; lvalues != NULL; lvalues = lvalues->next) {
         if (i > n) {
             return;
         }
@@ -365,7 +355,6 @@ static Type typecheck_lvalue(struct TypeCheckerContext *context, struct Definiti
         return TYPE_UNDEFINED;
     }
     linkedlist_foreach(lnode, lvalues->head) {
-    // for (; lvalues != NULL; lvalues = lvalues->next) {
         struct LValue *lvalue = lnode->value;
         struct Class *cls = NULL;
         switch (lvalue->type) {
@@ -460,7 +449,6 @@ static Type typecheck_get(struct TypeCheckerContext *context, struct Accessor *g
 static void scope_vars(struct Scope *scope, Definitions *defs)
 {
     linkedlist_foreach(lnode, defs->head) {
-    // for (; defs != NULL; defs = defs->next) {
         struct Definition *def = lnode->value;
         add_var(scope, def);
     }
@@ -650,7 +638,6 @@ static int typecheck_statement(struct TypeCheckerContext *context, struct Statem
 static int typecheck_statements(struct TypeCheckerContext *context, Statements *stmts)
 {
     linkedlist_foreach(lnode, stmts->head) {
-    // for (; stmts != NULL; stmts = stmts->next) {
         struct Statement *stmt = lnode->value;
         if (!typecheck_statement(context, stmt)) {
             return 0;
@@ -690,7 +677,6 @@ static int typecheck_tld(struct TypeCheckerContext *context, struct TopLevelDecl
 static int typecheck_tlds(struct TypeCheckerContext *context, TopLevelDecls *tlds)
 {
     linkedlist_foreach(lnode, tlds->head) {
-    // for (;tlds != NULL; tlds = tlds->next) {
         if (!typecheck_tld(context, lnode->value)) {
             return 0;
         }
@@ -704,14 +690,6 @@ bool typecheck(struct ClassTable *class_table,
     if (!add_types(globals.ast, class_table, function_table)) {
         return 0;
     }
-    // for (uint64_t i = 0; i < ast->class_count; i++) {
-    //     print_class(&(clst[i]), 0);
-    //     printf("\n");
-    // }
-    // for (uint64_t i = 0; i < ast->function_count; i++) {
-    //     print_fundef(&(ft[i]), 0, 0);
-    //     printf("\n");
-    // }
     struct TypeCheckerContext context = { NULL, function_table, class_table, NULL };
     return typecheck_tlds(&context, globals.ast);
 }

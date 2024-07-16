@@ -99,7 +99,6 @@ static void compile_unary_op(struct CompilerContext *cc, struct Value *val, enum
 static void compile_funargs(struct CompilerContext *cc, Definitions *defs)
 {
     linkedlist_foreach(lnode, defs->head) {
-    // for (; defs != NULL; defs = defs->next) {
         struct Definition *def = lnode->value;
         load(cc, PUSH);
         load(cc, def->name);
@@ -124,7 +123,6 @@ static void compile_fundef(struct CompilerContext *cc, struct FunDef *fundef)
 static void compile_constructor(struct CompilerContext *cc, struct FunCall *funcall)
 {
     linkedlist_foreach_reverse(lnode, funcall->args->tail) {
-    // for (Values *args = seek_end(funcall->args); args != NULL; args = args->prev) {
         printf("...compiling constructor...\n");
         print_value(lnode->value);
         printf("\n");
@@ -146,7 +144,6 @@ static void compile_get(struct CompilerContext *cc, struct Accessor *get)
     compile_loadsym(cc, get->symbol);
     Type parent_value_type = get->type;
     linkedlist_foreach(lnode, get->lvalues->head) {
-    // for (LValues *lvalues = get->lvalues; lvalues != NULL; lvalues = lvalues->next) {
         struct Class *cls = lookup_class(cc->class_table, parent_value_type);
         struct LValue *lvalue = lnode->value;
         switch (lvalue->lvtype) {
@@ -171,7 +168,6 @@ static void compile_funcall(struct CompilerContext *cc, struct FunCall *funcall)
     load(cc, PUSH);
     int bookmark = next(cc);
     linkedlist_foreach_reverse(lnode, funcall->args->tail) {
-    // for (Values *args = seek_end(funcall->args); args != NULL; args = args->prev) {
         compile_value(cc, lnode->value);
     }
     load(cc, PUSH);
@@ -238,7 +234,6 @@ static void compile_set(struct CompilerContext *cc, struct Set *set)
     compile_loadsym(cc, set->to_set->symbol);
     Type parent_value_type = set->to_set->type;
     linkedlist_foreach(lnode, set->to_set->lvalues->head) {
-    // for (LValues *lvalues = set->to_set->lvalues; lvalues != NULL; lvalues = lvalues->next) {
         struct Class *cls = lookup_class(cc->class_table, parent_value_type);
         struct LValue *lvalue = lnode->value;
         switch (lvalue->lvtype) {
@@ -336,7 +331,6 @@ static void compile_statement(struct CompilerContext *cc, struct Statement *stmt
 static void compile_statements(struct CompilerContext *cc, Statements *stmts)
 {
     linkedlist_foreach(lnode, stmts->head) {
-    // for (; stmts != NULL; stmts = stmts->next) {
         compile_statement(cc, lnode->value);
     }
 }
