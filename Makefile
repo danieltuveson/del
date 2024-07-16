@@ -5,7 +5,7 @@
 CFLAGS = -O0 -g -Wall -Wextra
 # CFLAGS = -O2 -g -Wall -Wextra
 objects = common.o allocator.o lexer.o readfile.o linkedlist.o ast.o printers.o parser.o \
-		  typecheck.o functiontable.o compiler.o vm.o error.o
+		  typecheck.o functiontable.o compiler.o vm.o error.o arraylist.o
 main = main.o
 tests = tests.o
 
