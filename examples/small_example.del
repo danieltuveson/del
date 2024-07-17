@@ -11,7 +11,17 @@
 // }
 
 function otherFunction(blah : int) {
-    let x = blah + 2;
+    let y;
+    if 0 == 0 {
+        let z = 44;
+        y = 5;
+    }
+    while (y > 4) {
+        y = 4;
+    }
+    // for (let i = 0; i < 4; i = i + 1) {
+    //     y = 4;
+    // }
     return;
 }
 

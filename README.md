@@ -47,4 +47,5 @@ function main() {
 - Implement arrays
 - Implement interfaces
 - Implement garbage collection
+- Implement module / namespace solutions
 - Improve performance (maybe require redesigning the VM)
