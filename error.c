@@ -17,7 +17,8 @@ static void get_bad_line(char *text, char *underline, struct Token *token)
     // Start / end indices
     int line_end = line_start;
     char *c = globals.file->input + line_start;
-    while (*c != '\n' && *c != '\0') {
+    // while (*c != '\n' && *c != '\0') {
+    for (char *c = globals.file->input + line_start; *c != '\n'; c++) {
         line_end++;
     }
     int length = line_end - line_start;
@@ -29,7 +30,6 @@ static void get_bad_line(char *text, char *underline, struct Token *token)
     int i_arr = 0;
     for (int i = line_start; i < line_end && i_arr < MAX_ERROR_MESSAGE_LENGTH - 1; i++) {
         i_arr = i - line_start;
-        printf("i: %d, i_arr: %d\n", i, i_arr);
         if (i < token->start) {
             underline[i_arr] = ' ';
         } else if (i == token->start) {
