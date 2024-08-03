@@ -16,7 +16,8 @@ static void get_bad_line(char *text, char *underline, struct Token *token)
     }
     // Start / end indices
     int line_end = line_start;
-    for (char *c = globals.file->input + line_start; *c != '\n'; *c++) {
+    char *c = globals.file->input + line_start;
+    while (*c != '\n' && *c != '\0') {
         line_end++;
     }
     int length = line_end - line_start;
@@ -41,16 +42,19 @@ static void get_bad_line(char *text, char *underline, struct Token *token)
     }
 }
 
+// Making the intermediate arrays smaller to the truncation warnings go away
+#define PRINTF_FUDGE_FACTOR_LENGTH MAX_ERROR_MESSAGE_LENGTH / 4
+
 void error_parser(char *message, ...)
 {
-    char errormsg[MAX_ERROR_MESSAGE_LENGTH];
+    char errormsg[PRINTF_FUDGE_FACTOR_LENGTH];
     va_list args;
     va_start(args, message);
     vsnprintf(errormsg, MAX_ERROR_MESSAGE_LENGTH, message, args);
     va_end(args);
     struct Token *token = globals.parser->head->value;
-    char text[MAX_ERROR_MESSAGE_LENGTH] = {0};
-    char underline[MAX_ERROR_MESSAGE_LENGTH] = {0};
+    char text[PRINTF_FUDGE_FACTOR_LENGTH] = {0};
+    char underline[PRINTF_FUDGE_FACTOR_LENGTH] = {0};
     get_bad_line(text, underline, token);
     snprintf(
         globals.error,
