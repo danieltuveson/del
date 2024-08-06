@@ -27,11 +27,26 @@
 //     uint64_t *object;
 // };
 
-struct Locals {
+// Stores info about local variables
+// struct StackFrame {
+//     Symbol name;
+//     uint64_t value;
+//     int count;
+//     int frame_start;
+// };
+
+// Struct of arrays storing stack frames
+// - names: stores "hashes" of variable names.
+// - values: stores corresponding values (names[i] corresponds to values[i]).
+// - index: is just the current index of the top of the names / values stacks.
+// - frame_offsets: stores a list of the starting indices of each stack frame. 
+// - frame_offsets_index: stores the index of the top of frame_start
+struct StackFrames {
+    size_t index;
     Symbol names[HEAP_SIZE];
     uint64_t values[HEAP_SIZE];
-    int count;
-    int stack_depth;
+    size_t frame_offsets_index;
+    size_t frame_offsets[HEAP_SIZE];
 };
 
 /* The stack stores almost all data used by the VM */

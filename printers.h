@@ -24,7 +24,7 @@ void print_ft(struct FunctionCallTable *ft);
 void print_instructions(struct CompilerContext *cc);
 void print_stack(struct Stack *stack);
 void print_heap(struct Heap *heap);
-void print_locals(struct Locals *locals);
+void print_frames(struct StackFrames *sfs);
 
 #endif
 

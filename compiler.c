@@ -167,13 +167,19 @@ static void compile_funcall(struct CompilerContext *cc, struct FunCall *funcall)
 {
     load(cc, PUSH);
     int bookmark = next(cc);
-    linkedlist_foreach_reverse(lnode, funcall->args->tail) {
-        compile_value(cc, lnode->value);
+    if (funcall->args != NULL) {
+        linkedlist_foreach_reverse(lnode, funcall->args->tail) {
+            struct Value *val = lnode->value;
+            printf("compiling arg %s...\n", lookup_symbol(val->symbol));
+            compile_value(cc, lnode->value);
+        }
     }
+    load(cc, PUSH_SCOPE);
     load(cc, PUSH);
     add_callsite(cc->funcall_table, funcall->funname, next(cc));
     load(cc, JMP);
     cc->instructions[bookmark] = cc->offset;
+    load(cc, POP_SCOPE);
 }
 
 static void compile_value(struct CompilerContext *cc, struct Value *val)
@@ -402,10 +408,11 @@ static void compile_statements(struct CompilerContext *cc, Statements *stmts)
 static void compile_entrypoint(struct CompilerContext *cc, TopLevelDecls *tlds)
 {
     linkedlist_foreach(lnode, tlds->head) {
-    // for (; tlds != NULL; tlds = tlds->next) {
         struct TopLevelDecl *tld = lnode->value;
         if (tld->type == TLD_TYPE_FUNDEF && tld->fundef->name == globals.entrypoint) {
+            load(cc, PUSH_SCOPE);
             compile_statements(cc, tld->fundef->stmts);
+            load(cc, POP_SCOPE);
             load(cc, EXIT);
             break;
         }

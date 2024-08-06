@@ -98,6 +98,12 @@ void print_instructions(struct CompilerContext *cc)
             case SWAP:
                 printf("SWAP\n");
                 break;
+            case PUSH_SCOPE:
+                printf("PUSH_SCOPE\n");
+                break;
+            case POP_SCOPE:
+                printf("POP_SCOPE\n");
+                break;
             default:
                 printf("***non-printable instruction***\n");
         }
@@ -118,14 +124,32 @@ void print_stack(struct Stack *stack)
     printf("]\n");
 }
 
-void print_locals(struct Locals *locals)
+void print_frames(struct StackFrames *sfs)
 {
-    printf("locals: [");
-    for (int i = 0; i < locals->count; i++) {
-        printf(" { %s: ", lookup_symbol(locals->names[i]));
-        printf("%" PRIi64 " }, ", (int64_t) locals->values[i]);
+    printf("all variables:");
+    for (size_t i = 0; i < sfs->index; i++) {
+        printf(" { %s: ", lookup_symbol(sfs->names[i]));
+        printf("%" PRIi64 " }, ", (int64_t) sfs->values[i]);
     }
-    printf("]\n");
+    printf("\n");
+    printf("frame offsets: ");
+    for (size_t i = 0; i < sfs->frame_offsets_index; i++) {
+        printf("%lu, ", sfs->frame_offsets[i]);
+    }
+    printf("\n");
+    size_t lower = 0;
+    for (size_t i = 1; i <= sfs->frame_offsets_index; i++) {
+        size_t upper = i == sfs->frame_offsets_index
+                  ? sfs->index
+                  : sfs->frame_offsets[i];
+        printf("frame %ld: [ ", (unsigned long) i);
+        for (size_t j = lower; j < upper; j++) {
+            printf(" { %s: ", lookup_symbol(sfs->names[j]));
+            printf("%" PRIi64 " }, ", (int64_t) sfs->values[j]);
+        }
+        printf("] \n");
+        lower = upper;
+    }
 }
 
 void print_heap(struct Heap *heap)
@@ -466,11 +490,11 @@ static void print_statement_indent(struct Statement *stmt, int indent)
         case STMT_FUNCALL:
             printf("%s", lookup_symbol(stmt->funcall->funname));
             printf("(");
-            linkedlist_foreach(vals, stmt->funcall->args->head) {
-            // for (Values *vals = stmt->funcall->args; vals != NULL;
-            //         vals = vals->next) {
-                print_value(vals->value);
-                if (vals->next != NULL) printf(", ");
+            if (stmt->funcall->args != NULL) {
+                linkedlist_foreach(lnode, stmt->funcall->args->head) {
+                    print_value(lnode->value);
+                    if (lnode->next != NULL) printf(", ");
+                }
             }
             printf(");");
             break;
@@ -483,11 +507,8 @@ static void print_statement_indent(struct Statement *stmt, int indent)
 
 static void print_statements_indent(Statements *stmts, int indent)
 {
-    // while (stmts != NULL)
     linkedlist_foreach(stmt, stmts->head) {
-        // print_statement_indent(stmts->value, indent);
         print_statement_indent(stmt->value, indent);
-        // stmts = stmts->next;
     }
 }
 

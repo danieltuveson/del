@@ -52,7 +52,9 @@ enum Code {
     GET_HEAP,
     SET_HEAP,
     CALL,
-    SWAP
+    SWAP,
+    PUSH_SCOPE,
+    POP_SCOPE
 };
 
 int compile(struct CompilerContext *cc, TopLevelDecls *tlds);

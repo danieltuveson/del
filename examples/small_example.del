@@ -10,24 +10,42 @@
 //     // arg2: string;
 // }
 
-function otherFunction(blah : int) {
-    let y;
+function otherFunction(blah : int) : int {
     if 0 == 0 {
         let z = 44;
-        y = 5;
+        let y = 4;
+        z = y + -5;
+        return anotherFunction(z);
     }
-    while (y > 4) {
-        y = 4;
-    }
+    // while (y > 4) {
+    //     y = 4;
+    // }
     // for (let i = 0; i < 4; i = i + 1) {
     //     y = 4;
     // }
-    return;
+    let oijoij = 2222222222;
+    if (oijoij > 1) {
+        let oij = 444;
+    }
+    return 1;
+}
+
+function anotherFunction(baaalh: int) : int {
+    let thing = baaalh + 7;
+    let thing2 = nothing();
+    let thing3 = 777;
+    return thing2;
+}
+
+function nothing() : int {
+    let x = 666;
+    return x;
 }
 
 function main() {
     let x = 5;
-    otherFunction(x);
+    let ret = otherFunction(x);
+    x = 1;
 }
 
 // function fib(n : int) : int {

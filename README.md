@@ -35,17 +35,22 @@ function main() {
 }
 ```
 
+## In progress / next item to do
+- print builtin function
+
+
 ## TODO
 - Clean up parser
 - Make typechecker validate that functions return values for all paths
-- Improve error messages in lex / parse / typechecking stages
 - Remove "default" options from switch statements and search for missing cases.
 - Fix string implementation
 - Finish implementing classes 
-- Fix scope issues
 - Implement basic FFI, or at least add some simple IO
 - Implement arrays
 - Implement interfaces
 - Implement garbage collection
 - Implement module / namespace solutions
 - Improve performance (maybe require redesigning the VM)
+
+## Things to continuously improve
+- Improve error messages in lex / parse / typechecking stages

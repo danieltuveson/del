@@ -116,31 +116,48 @@ static inline void set_heap(struct Heap *heap, struct Stack *stack)
     printf("done setting heap\n");
 }
 
-static int lookup_local(struct Locals *locals, Symbol lookup_val, uint64_t *val)
+static inline void stack_frame_enter(struct StackFrames *sfs)
 {
-    for (int i = 0; i < locals->count; i++) {
-        if (lookup_val == locals->names[i]) {
-            *val = locals->values[i];
-            return 1;
-        }
-    }
-    return 0;
+    sfs->frame_offsets[sfs->frame_offsets_index++] = sfs->index;
 }
 
-static void def(struct Stack *stack, struct Locals *locals)
+static inline void stack_frame_exit(struct StackFrames *sfs)
+{
+    sfs->frame_offsets_index--;
+    sfs->index = sfs->frame_offsets[sfs->frame_offsets_index];
+}
+
+static inline size_t stack_frame_offset(struct StackFrames *sfs)
+{
+    return sfs->frame_offsets[sfs->frame_offsets_index-1];
+}
+
+static bool lookup_local(struct StackFrames *sfs, Symbol lookup_val, uint64_t *val)
+{
+    for (size_t i = stack_frame_offset(sfs); i < sfs->index; i++) {
+        if (lookup_val == sfs->names[i]) {
+            *val = sfs->values[i];
+            return true;
+        }
+    }
+    return false;
+}
+
+static void def(struct Stack *stack, struct StackFrames *sfs)
 {
     Symbol symbol = (Symbol) pop(stack);
     uint64_t val = (uint64_t) pop(stack);
-    int i;
-    for (i = 0; i < locals->count; i++) {
-        if (symbol == locals->names[i]) {
-            locals->values[i] = val;
+    size_t i = stack_frame_offset(sfs);
+    while (i < sfs->index) {
+        if (symbol == sfs->names[i]) {
+            sfs->values[i] = val;
             return;
         }
+        i++;
     }
-    locals->count++;
-    locals->names[i] = symbol;
-    locals->values[i] = val;
+    sfs->names[i] = symbol;
+    sfs->values[i] = val;
+    sfs->index++;
 }
 
 // static char *get_string(struct Heap *heap, uint64_t heap_loc)
@@ -180,7 +197,8 @@ static void def(struct Stack *stack, struct Locals *locals)
 
 int vm_execute(uint64_t *instructions)
 {
-    struct Locals locals = { {0}, {0}, 0, 0 };
+    // struct Locals locals = { {0}, {0}, 0, 0 };
+    struct StackFrames sfs = {0, {0}, {0}, 0, {0}};
     struct Stack stack = {0, {0}};
     struct Heap heap = {0, 0, {0}};
     uint64_t ip = 0;
@@ -196,7 +214,7 @@ int vm_execute(uint64_t *instructions)
                 break;
             case PUSH_HEAP:
                 push_heap(&heap, &stack);
-                print_heap(&heap);
+                // print_heap(&heap);
                 break;
             case SET_HEAP:
                 set_heap(&heap, &stack);
@@ -220,13 +238,13 @@ int vm_execute(uint64_t *instructions)
             case UNARY_MINUS: val1 = (int64_t) pop(&stack);
                 push(&stack, (uint64_t) (-1 * val1)); break;
             case SET_LOCAL:
-                def(&stack, &locals);
-                print_locals(&locals);
+                def(&stack, &sfs);
+                // print_frames(&sfs);
                 break;
             case GET_LOCAL:
                 ip++;
                 symbol = instructions[ip];
-                lookup_local(&locals, symbol, &val1);
+                lookup_local(&sfs, symbol, &val1);
                 push(&stack, (uint64_t) val1);
                 // if (lookup_local(&locals, symbol, &val1)) {
                 //     push(&stack, (uint64_t) val1);
@@ -236,6 +254,7 @@ int vm_execute(uint64_t *instructions)
                 // }
                 break;
             case JE:
+                assert("JE note implemented\n" && false);
                 break;
             case JNE:
                 val1 = (uint64_t) pop(&stack);
@@ -269,22 +288,27 @@ int vm_execute(uint64_t *instructions)
             case SWAP:
                 swap(&stack);
                 break;
+            case PUSH_SCOPE:
+                stack_frame_enter(&sfs);
+                break;
+            case POP_SCOPE:
+                stack_frame_exit(&sfs);
+                break;
             default:
                 printf("unknown instruction encountered: '%" PRIu64 "'", instructions[ip]);
                 break;
         }
         ip++;
         i++;
-        print_stack(&stack);
-        if (i > 100) {
-            printf("infinite loop detected, ending execution\n");
-            break;
-        }
-        // break;
+        // print_stack(&stack);
+        // if (i > 100) {
+        //     printf("infinite loop detected, ending execution\n");
+        //     break;
+        // }
     }
 exit_loop:
     print_stack(&stack);
-    print_locals(&locals);
+    print_frames(&sfs);
     print_heap(&heap);
     return ret;
 }

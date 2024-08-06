@@ -1,3 +1,3 @@
 make clean && \
-make CFLAGS='-O0' && \
+make && \
 valgrind ./del examples/small_example.del
