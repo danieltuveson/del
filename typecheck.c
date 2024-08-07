@@ -305,6 +305,7 @@ static Type typecheck_value(struct TypeCheckerContext *context, struct Value *va
         case VTYPE_BOOL:        return TYPE_BOOL;
         case VTYPE_SYMBOL:      return typecheck_symbol(context, val->symbol);
         case VTYPE_EXPR:        return typecheck_expression(context, val->expr);
+        case VTYPE_CONSTRUCTOR: return typecheck_constructor(context, val->constructor);
         case VTYPE_FUNCALL: {
             struct FunDef *fundef = lookup_fun(context->fun_table, val->funcall->funname);
             if (fundef != NULL && fundef->rettype == TYPE_UNDEFINED) {
@@ -589,7 +590,7 @@ static Type typecheck_constructor(struct TypeCheckerContext *context, struct Fun
     uint64_t class_def_count       = cls->definitions  == NULL ? 0 : cls->definitions->length;
     uint64_t constructor_arg_count = constructor->args == NULL ? 0 : constructor->args->length;
     if (class_def_count == 0 && constructor_arg_count == 0) {
-        return 1;
+        return cls->name;
     } else if (class_def_count != constructor_arg_count) {
         printf("Error: %s expects %" PRIu64 " arguments but got %" PRIu64 "\n",
                 lookup_symbol(cls->name),
