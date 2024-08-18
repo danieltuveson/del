@@ -272,11 +272,13 @@ static struct Value *parse_subexpr(struct Parser *parser)
         Symbol symbol = nth_token(old_head, 1)->symbol;
         if (match(parser, ST_OPEN_PAREN)) {
             return parse_vfuncall(parser, symbol, new_vfuncall);
-        } else if (parser_peek(parser, ST_DOT) || parser_peek(parser, ST_OPEN_BRACKET)) {
+        // } else if (parser_peek(parser, ST_DOT) || parser_peek(parser, ST_OPEN_BRACKET)) {
+        } else { // if (parser_peek(parser, ST_DOT) || parser_peek(parser, ST_OPEN_BRACKET)) {
             return parse_get(parser, symbol);
-        } else {
-            return new_symbol(symbol);
         }
+        // } else {
+        //     return new_symbol(symbol);
+        // }
     } else if (match(parser, ST_NEW) && match(parser, T_SYMBOL) && match(parser, ST_OPEN_PAREN)) {
         return parse_vfuncall(parser, nth_token(old_head, 2)->symbol, new_constructor);
     }

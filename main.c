@@ -20,7 +20,6 @@ int main(int argc, char *argv[])
     }
 
     printf("........ READING FILE : %s ........\n", argv[1]);
-
     struct FileContext file = { argv[1], 0, NULL };
     if (!readfile(&file)) {
         printf("Error: could not read contents of empty file\n");

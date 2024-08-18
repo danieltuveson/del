@@ -43,7 +43,7 @@
 // - frame_offsets_index: stores the index of the top of frame_start
 struct StackFrames {
     size_t index;
-    Symbol names[HEAP_SIZE];
+    // Symbol names[HEAP_SIZE];
     uint64_t values[HEAP_SIZE];
     size_t frame_offsets_index;
     size_t frame_offsets[HEAP_SIZE];

@@ -132,32 +132,39 @@ static inline size_t stack_frame_offset(struct StackFrames *sfs)
     return sfs->frame_offsets[sfs->frame_offsets_index-1];
 }
 
-static bool lookup_local(struct StackFrames *sfs, Symbol lookup_val, uint64_t *val)
+static uint64_t get_local(struct StackFrames *sfs, size_t scope_offset)
+// static uint64_t lookup_local(struct StackFrames *sfs, Symbol lookup_val)
 {
-    for (size_t i = stack_frame_offset(sfs); i < sfs->index; i++) {
-        if (lookup_val == sfs->names[i]) {
-            *val = sfs->values[i];
-            return true;
-        }
-    }
-    return false;
+    // for (size_t i = stack_frame_offset(sfs); i < sfs->index; i++) {
+    //     if (lookup_val == sfs->names[i]) {
+    //         return sfs->values[i];
+    //     }
+    // }
+    // return 0;
+    size_t sf_offset = stack_frame_offset(sfs);
+    return sfs->values[sf_offset + scope_offset];
 }
 
-static void def(struct Stack *stack, struct StackFrames *sfs)
+static void set_local(struct Stack *stack, struct StackFrames *sfs)
+// static void def(struct Stack *stack, struct StackFrames *sfs)
 {
-    Symbol symbol = (Symbol) pop(stack);
-    uint64_t val = (uint64_t) pop(stack);
-    size_t i = stack_frame_offset(sfs);
-    while (i < sfs->index) {
-        if (symbol == sfs->names[i]) {
-            sfs->values[i] = val;
-            return;
-        }
-        i++;
-    }
-    sfs->names[i] = symbol;
-    sfs->values[i] = val;
-    sfs->index++;
+    size_t scope_offset = (size_t) pop(stack);
+    uint64_t val = pop(stack);
+    size_t sf_offset = stack_frame_offset(sfs);
+    sfs->values[sf_offset + scope_offset] = val;
+    // Symbol symbol = (Symbol) pop(stack);
+    // uint64_t val = pop(stack);
+    // size_t i = stack_frame_offset(sfs);
+    // while (i < sfs->index) {
+    //     if (symbol == sfs->names[i]) {
+    //         sfs->values[i] = val;
+    //         return;
+    //     }
+    //     i++;
+    // }
+    // sfs->names[i] = symbol;
+    // sfs->values[i] = val;
+    // sfs->index++;
 }
 
 // static char *get_string(struct Heap *heap, uint64_t heap_loc)
@@ -197,7 +204,6 @@ static void def(struct Stack *stack, struct StackFrames *sfs)
 
 int vm_execute(uint64_t *instructions)
 {
-    // struct Locals locals = { {0}, {0}, 0, 0 };
     struct StackFrames sfs = {0, {0}, {0}, 0, {0}};
     struct Stack stack = {0, {0}};
     struct Heap heap = {0, 0, {0}};
@@ -214,7 +220,9 @@ int vm_execute(uint64_t *instructions)
                 break;
             case PUSH_HEAP:
                 push_heap(&heap, &stack);
-                // print_heap(&heap);
+#if DEBUG
+                print_heap(&heap);
+#endif
                 break;
             case SET_HEAP:
                 set_heap(&heap, &stack);
@@ -238,13 +246,20 @@ int vm_execute(uint64_t *instructions)
             case UNARY_MINUS: val1 = (int64_t) pop(&stack);
                 push(&stack, (uint64_t) (-1 * val1)); break;
             case SET_LOCAL:
-                def(&stack, &sfs);
-                // print_frames(&sfs);
+                set_local(&stack, &sfs);
+#if DEBUG
+                print_frames(&sfs);
+#endif
+                break;
+            case DEFINE:
+                sfs.index++;
                 break;
             case GET_LOCAL:
                 ip++;
-                symbol = instructions[ip];
-                lookup_local(&sfs, symbol, &val1);
+                size_t scope_offset = (size_t) instructions[ip];
+                val1 = get_local(&sfs, scope_offset);
+                // symbol = instructions[ip];
+                // val1 = lookup_local(&sfs, symbol);
                 push(&stack, (uint64_t) val1);
                 // if (lookup_local(&locals, symbol, &val1)) {
                 //     push(&stack, (uint64_t) val1);
@@ -278,12 +293,12 @@ int vm_execute(uint64_t *instructions)
             case EXIT:
                 goto exit_loop;
             case CALL:
-                symbol = (Symbol) pop(&stack);
-                if (strcmp(lookup_symbol(symbol), "print") == 0) {
-                    printf("%s\n", (char *) pop(&stack));
-                } else {
-                    assert("unknown function encountered\n" && 0);
-                }
+                // symbol = (Symbol) pop(&stack);
+                // if (strcmp(lookup_symbol(symbol), "print") == 0) {
+                //     printf("%s\n", (char *) pop(&stack));
+                // } else {
+                assert("unknown function encountered\n" && 0);
+                // }
                 break;
             case SWAP:
                 swap(&stack);
@@ -300,11 +315,14 @@ int vm_execute(uint64_t *instructions)
         }
         ip++;
         i++;
-        // print_stack(&stack);
-        // if (i > 100) {
-        //     printf("infinite loop detected, ending execution\n");
-        //     break;
-        // }
+#if DEBUG
+        print_stack(&stack);
+        // print_heap(&heap);
+        if (i > 200) {
+            printf("infinite loop detected, ending execution\n");
+            break;
+        }
+#endif
     }
 exit_loop:
     print_stack(&stack);

@@ -128,7 +128,8 @@ void print_frames(struct StackFrames *sfs)
 {
     printf("all variables:");
     for (size_t i = 0; i < sfs->index; i++) {
-        printf(" { %s: ", lookup_symbol(sfs->names[i]));
+        // printf(" { %s: ", lookup_symbol(sfs->names[i]));
+        printf(" { %lu: ", i);
         printf("%" PRIi64 " }, ", (int64_t) sfs->values[i]);
     }
     printf("\n");
@@ -144,7 +145,8 @@ void print_frames(struct StackFrames *sfs)
                   : sfs->frame_offsets[i];
         printf("frame %ld: [ ", (unsigned long) i);
         for (size_t j = lower; j < upper; j++) {
-            printf(" { %s: ", lookup_symbol(sfs->names[j]));
+            // printf(" { %s: ", lookup_symbol(sfs->names[j]));
+            printf(" { %lu: ", j);
             printf("%" PRIi64 " }, ", (int64_t) sfs->values[j]);
         }
         printf("] \n");
@@ -303,7 +305,7 @@ static void print_funcall(Symbol funname, Values *vals)
 
 static void print_get(struct Accessor *get)
 {
-    printf("%s", lookup_symbol(get->symbol));
+    printf("%s", lookup_symbol(get->definition->name));
     linkedlist_foreach(lnode, get->lvalues->head) {
     // for (LValues *lvalues = get->lvalues; lvalues != NULL; lvalues = lvalues->next) {
         struct LValue *lvalue = lnode->value;
@@ -320,9 +322,9 @@ static void print_get(struct Accessor *get)
 void print_value(struct Value *val)
 {
     switch (val->vtype) {
-    case VTYPE_SYMBOL:
-        printf("%s", lookup_symbol(val->symbol));
-        break;
+    // case VTYPE_SYMBOL:
+    //     printf("%s", lookup_symbol(val->symbol));
+    //     break;
     case VTYPE_STRING:
         printf("\"%s\"", val->string);
         break;
@@ -390,7 +392,7 @@ static void print_definitions(struct LinkedList *lst, char sep, int indent)
 static void print_set(struct Set *set)
 {
     if (set->is_define) printf("let ");
-    Symbol symbol = set->to_set->symbol;
+    Symbol symbol = set->to_set->definition->name;
     char *strsym = lookup_symbol(symbol);
     printf("%s", strsym);
     if (set->to_set->lvalues != NULL) {

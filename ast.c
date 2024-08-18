@@ -5,11 +5,17 @@
 #include "ast.h"
 
 /* Functions to create top level definitions */
+static struct TopLevelDecl *new_tld(enum TLDType tld_type)
+{
+    struct TopLevelDecl *tld = allocator_malloc(sizeof(struct TopLevelDecl));
+    tld->type = tld_type;
+    return tld;
+}
+
 struct TopLevelDecl *new_class(Symbol symbol, Definitions *definitions, Methods *methods)
 {
     globals.class_count++;
-    struct TopLevelDecl *tld = allocator_malloc(sizeof(struct TopLevelDecl));
-    tld->type = TLD_TYPE_CLASS;
+    struct TopLevelDecl *tld = new_tld(TLD_TYPE_CLASS);
     tld->cls = allocator_malloc(sizeof(struct Class));
     tld->cls->name = symbol;
     tld->cls->definitions = definitions == NULL ? NULL : definitions;
@@ -20,7 +26,6 @@ struct TopLevelDecl *new_class(Symbol symbol, Definitions *definitions, Methods 
 struct Definition *lookup_property(struct Class *cls, Symbol name)
 {
     linkedlist_foreach(lnode, cls->definitions->head) {
-    // for (Definitions *defs = cls->definitions; defs != NULL; defs = defs->next) {
         struct Definition *def = lnode->value;
         if (def->name == name) {
             return def;
@@ -34,7 +39,6 @@ uint64_t lookup_property_index(struct Class *cls, Symbol name)
 {
     uint64_t cnt = 0;
     linkedlist_foreach(lnode, cls->definitions->head) {
-    // for (Definitions *defs = cls->definitions; defs != NULL; defs = defs->next) {
         struct Definition *def = lnode->value;
         if (def->name == name) {
             return cnt;
@@ -47,9 +51,9 @@ uint64_t lookup_property_index(struct Class *cls, Symbol name)
 
 static struct Accessor *new_accessor(Symbol symbol, LValues *lvalues)
 {
+    printf("new accessor: %s, %d\n", lookup_symbol(symbol), lvalues->length);
     struct Accessor *accessor = allocator_malloc(sizeof(struct Accessor));
-    accessor->symbol = symbol;
-    accessor->type = TYPE_UNDEFINED;
+    accessor->definition = new_define(symbol, TYPE_UNDEFINED);
     accessor->lvalues = lvalues;
     return accessor;
 }
@@ -68,17 +72,23 @@ struct TopLevelDecl *new_tld_fundef(Symbol symbol, Type rettype, Definitions *ar
         Statements *stmts)
 {
     globals.function_count++;
-    struct TopLevelDecl *tld = allocator_malloc(sizeof(struct TopLevelDecl));
-    tld->type = TLD_TYPE_FUNDEF;
+    struct TopLevelDecl *tld = new_tld(TLD_TYPE_FUNDEF);
     tld->fundef = new_fundef(symbol, rettype, args, stmts);
     return tld;
 }
 
 /* Functions to create Statements */
-struct Statement *new_set(Symbol symbol, struct Value *val, LValues *lvalues, bool is_define)
+static struct Statement *new_stmt(enum StatementType st)
 {
     struct Statement *stmt = allocator_malloc(sizeof(struct Statement));
-    stmt->type = STMT_SET;
+    stmt->type = st;
+    return stmt;
+}
+
+struct Statement *new_set(Symbol symbol, struct Value *val, LValues *lvalues, bool is_define)
+{
+    printf("new set: %s, %d\n", lookup_symbol(symbol), lvalues->length);
+    struct Statement *stmt = new_stmt(STMT_SET);
     stmt->set = allocator_malloc(sizeof(struct Set));
     stmt->set->to_set = new_accessor(symbol, lvalues);
     stmt->set->is_define = is_define;
@@ -88,8 +98,7 @@ struct Statement *new_set(Symbol symbol, struct Value *val, LValues *lvalues, bo
 
 struct Statement *new_if(struct Value *condition, Statements *if_stmts)
 {
-    struct Statement *stmt = allocator_malloc(sizeof(struct Statement));
-    stmt->type = STMT_IF;
+    struct Statement *stmt = new_stmt(STMT_IF);
     stmt->if_stmt = allocator_malloc(sizeof(struct IfStatement));
     stmt->if_stmt->condition = condition;
     stmt->if_stmt->if_stmts = if_stmts;
@@ -112,8 +121,7 @@ void add_else(struct IfStatement *if_stmt, Statements *else_stmts)
 
 struct Statement *new_while(struct Value *condition, Statements *stmts)
 {
-    struct Statement *stmt = allocator_malloc(sizeof(struct Statement));
-    stmt->type = STMT_WHILE;
+    struct Statement *stmt = new_stmt(STMT_WHILE);
     stmt->while_stmt = allocator_malloc(sizeof(struct While));
     stmt->while_stmt->condition = condition;
     stmt->while_stmt->stmts = stmts;
@@ -123,8 +131,7 @@ struct Statement *new_while(struct Value *condition, Statements *stmts)
 struct Statement *new_for(struct Statement *init, struct Value *condition,
         struct Statement *increment, Statements *stmts)
 {
-    struct Statement *stmt = allocator_malloc(sizeof(struct Statement));
-    stmt->type = STMT_FOR;
+    struct Statement *stmt = new_stmt(STMT_FOR);
     stmt->for_stmt = allocator_malloc(sizeof(struct For));
     stmt->for_stmt->init = init;
     stmt->for_stmt->condition = condition;
@@ -135,8 +142,7 @@ struct Statement *new_for(struct Statement *init, struct Value *condition,
 
 struct Statement *new_let(Definitions *let)
 {
-    struct Statement *stmt = allocator_malloc(sizeof(struct Statement));
-    stmt->type = STMT_LET;
+    struct Statement *stmt = new_stmt(STMT_LET);
     stmt->let = let;
     return stmt;
 }
@@ -146,6 +152,7 @@ struct Definition *new_define(Symbol name, Type type)
     struct Definition *def = allocator_malloc(sizeof(struct Definition));
     def->name = name;
     def->type = type;
+    def->scope_offset = 0;
     return def;
 }
 
@@ -159,98 +166,89 @@ static struct FunCall *new_funcall(Symbol funname, Values *args)
 
 struct Statement *new_sfuncall(Symbol funname, Values *args)
 {
-    struct Statement *stmt = allocator_malloc(sizeof(struct Statement));
-    stmt->type = STMT_FUNCALL;
+    struct Statement *stmt = new_stmt(STMT_FUNCALL);
     stmt->funcall = new_funcall(funname, args);
     return stmt;
 }
 
 struct Statement *new_return(struct Value *val)
 {
-    struct Statement *stmt = allocator_malloc(sizeof(struct Statement));
-    stmt->type = STMT_RETURN;
+    struct Statement *stmt = new_stmt(STMT_RETURN);
     stmt->ret = val;
     return stmt;
 }
 
 /* Functions for creating Values */
-struct Value *new_string(char *string)
+static struct Value *new_value(enum ValueType vtype, Type type)
 {
     struct Value *val = allocator_malloc(sizeof(struct Value));
-    val->vtype = VTYPE_STRING;
-    val->type = TYPE_STRING;
+    val->vtype = vtype;
+    val->type = type;
+    return val;
+}
+
+struct Value *new_string(char *string)
+{
+    struct Value *val = new_value(VTYPE_STRING, TYPE_STRING);
     val->string = string;
     return val;
 }
 
-struct Value *new_symbol(uint64_t symbol)
-{
-    struct Value *val = allocator_malloc(sizeof(struct Value));
-    val->vtype = VTYPE_SYMBOL;
-    val->type = TYPE_UNDEFINED;
-    val->symbol = symbol;
-    return val;
-}
+// This has been replaced with "get"
+// struct Value *new_symbol(uint64_t symbol)
+// {
+//     printf("new symbol: %s\n", lookup_symbol(symbol));
+//     struct Value *val = new_value(VTYPE_SYMBOL, TYPE_UNDEFINED);
+//     val->symbol = symbol;
+//     return val;
+// }
 
 struct Value *new_integer(long integer)
 {
-    struct Value *val = allocator_malloc(sizeof(struct Value));
-    val->vtype = VTYPE_INT;
-    val->type = TYPE_INT;
+    struct Value *val = new_value(VTYPE_INT, TYPE_INT);
     val->integer = integer;
     return val;
 }
 
 struct Value *new_floating(double floating)
 {
-    struct Value *val = allocator_malloc(sizeof(struct Value));
-    val->vtype = VTYPE_FLOAT;
-    val->type = TYPE_FLOAT;
+    struct Value *val = new_value(VTYPE_FLOAT, TYPE_FLOAT);
     val->floating = floating;
     return val;
 }
 
 struct Value *new_boolean(int boolean)
 {
-    struct Value *val = allocator_malloc(sizeof(struct Value));
-    val->vtype = VTYPE_BOOL;
-    val->type = TYPE_BOOL;
+    struct Value *val = new_value(VTYPE_BOOL, TYPE_BOOL);
     val->boolean = boolean;
     return val;
 }
 
 struct Value *new_vfuncall(Symbol funname, Values *args)
 {
-    struct Value *val = allocator_malloc(sizeof(struct Value));
-    val->vtype = VTYPE_FUNCALL;
-    val->type = TYPE_UNDEFINED;
+    struct Value *val = new_value(VTYPE_FUNCALL, TYPE_UNDEFINED);
     val->funcall = new_funcall(funname, args);
     return val;
 }
 
 struct Value *new_constructor(Symbol funname, Values *args)
 {
-    struct Value *val = allocator_malloc(sizeof(struct Value));
-    val->vtype = VTYPE_CONSTRUCTOR;
-    val->type = funname; // constructor name should be same as classname
+    // Constructor name should be same as classname
+    struct Value *val = new_value(VTYPE_CONSTRUCTOR, funname);
     val->funcall = new_funcall(funname, args);
     return val;
 }
 
 struct Value *new_get(Symbol symbol, LValues *lvalues)
 {
-    struct Value *val = allocator_malloc(sizeof(struct Value));
-    val->vtype = VTYPE_GET;
-    val->type = TYPE_UNDEFINED;
+    struct Value *val = new_value(VTYPE_GET, TYPE_UNDEFINED);
     val->get = new_accessor(symbol, lvalues);
     return val;
 }
 
 struct Value *new_expr(struct Expr *expr)
 {
-    struct Value *val = allocator_malloc(sizeof(struct Value));
-    val->vtype = VTYPE_EXPR;
-    val->type = TYPE_UNDEFINED;
+    struct Value *val = new_value(VTYPE_EXPR, TYPE_UNDEFINED);
     val->expr = expr;
     return val;
 }

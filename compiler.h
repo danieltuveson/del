@@ -49,6 +49,7 @@ enum Code {
     EXIT,
     GET_LOCAL,
     SET_LOCAL,
+    DEFINE,
     GET_HEAP,
     SET_HEAP,
     CALL,

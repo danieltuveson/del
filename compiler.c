@@ -40,16 +40,17 @@ static inline void compile_bool(struct CompilerContext *cc, uint64_t boolean)
     return compile_int(cc, boolean);
 }
 
-static void compile_loadsym(struct CompilerContext *cc, Symbol symbol)
+static void compile_loadsym(struct CompilerContext *cc, size_t offset)
+// static void compile_loadsym(struct CompilerContext *cc, Symbol symbol)
 {
     load(cc, GET_LOCAL);
-    load(cc, symbol);
+    load(cc, offset);
 }
 
 // Pack 8 byte chunks of chars into longs to push onto stack
 static void compile_string(struct CompilerContext *cc, char *string)
 {
-    assert("Error: not implemented\n" && false);
+    // assert("Error: not implemented\n" && false);
     uint64_t packed = 0;
     uint64_t i = 0;
     uint64_t tmp;
@@ -101,7 +102,9 @@ static void compile_funargs(struct CompilerContext *cc, Definitions *defs)
     linkedlist_foreach(lnode, defs->head) {
         struct Definition *def = lnode->value;
         load(cc, PUSH);
-        load(cc, def->name);
+        // load(cc, def->name);
+        load(cc, def->scope_offset);
+        printf("compile_funargs: %s, %ld\n", lookup_symbol(def->name), def->scope_offset);
         load(cc, SET_LOCAL);
     }
 }
@@ -133,16 +136,21 @@ static void compile_constructor(struct CompilerContext *cc, struct FunCall *func
     load(cc, PUSH_HEAP);
 }
 
+    // load(cc, GET_LOCAL);
+    // load(cc, offset);
 static void compile_get(struct CompilerContext *cc, struct Accessor *get)
 {
+    printf("compile_get: %s, %ld\n", lookup_symbol(get->definition->name), get->definition->scope_offset);
     if (linkedlist_is_empty(get->lvalues)) {
-        load(cc, PUSH);
-        load(cc, get->symbol);
+        // load(cc, PUSH);
+        // load(cc, get->definition->name);
         load(cc, GET_LOCAL);
+        load(cc, get->definition->scope_offset);
         return;
     } 
-    compile_loadsym(cc, get->symbol);
-    Type parent_value_type = get->type;
+    // compile_loadsym(cc, get->definition->name);
+    compile_loadsym(cc, get->definition->scope_offset);
+    Type parent_value_type = get->definition->type;
     linkedlist_foreach(lnode, get->lvalues->head) {
         struct Class *cls = lookup_class(cc->class_table, parent_value_type);
         struct LValue *lvalue = lnode->value;
@@ -169,8 +177,8 @@ static void compile_funcall(struct CompilerContext *cc, struct FunCall *funcall)
     int bookmark = next(cc);
     if (funcall->args != NULL) {
         linkedlist_foreach_reverse(lnode, funcall->args->tail) {
-            struct Value *val = lnode->value;
-            printf("compiling arg %s...\n", lookup_symbol(val->symbol));
+            // struct Value *val = lnode->value;
+            // printf("compiling arg %s...\n", lookup_symbol(val->symbol));
             compile_value(cc, lnode->value);
         }
     }
@@ -189,7 +197,7 @@ static void compile_value(struct CompilerContext *cc, struct Value *val)
         case VTYPE_INT:         compile_int(cc,         val->integer);  break;
         case VTYPE_FLOAT:       compile_float(cc,       val->floating); break;
         case VTYPE_BOOL:        compile_bool(cc,        val->boolean);  break;
-        case VTYPE_SYMBOL:      compile_loadsym(cc,     val->symbol);   break;
+        // case VTYPE_SYMBOL:      compile_loadsym(cc,     val->symbol);   break;
         case VTYPE_EXPR:        compile_expr(cc,        val->expr);     break;
         case VTYPE_FUNCALL:     compile_funcall(cc,     val->funcall);  break;
         case VTYPE_CONSTRUCTOR: compile_constructor(cc, val->funcall);  break;
@@ -226,19 +234,23 @@ static void compile_expr(struct CompilerContext *cc, struct Expr *expr)
 
 static void compile_set(struct CompilerContext *cc, struct Set *set)
 {
+    printf("compile_set: %s, %ld\n", lookup_symbol(set->to_set->definition->name), set->to_set->definition->scope_offset);
     compile_value(cc, set->val);
     if (linkedlist_is_empty(set->to_set->lvalues)) {
         load(cc, PUSH);
-        load(cc, set->to_set->symbol);
+        // load(cc, set->to_set->definition->name);
+        load(cc, set->to_set->definition->scope_offset);
         load(cc, SET_LOCAL);
+        if (set->is_define) load(cc, DEFINE);
         return;
     } 
     // else {
     //     printf("Error cannot compile property access / index\n");
     //     return;
     // }
-    compile_loadsym(cc, set->to_set->symbol);
-    Type parent_value_type = set->to_set->type;
+    // compile_loadsym(cc, set->to_set->definition->name);
+    compile_loadsym(cc, set->to_set->definition->scope_offset);
+    Type parent_value_type = set->to_set->definition->type;
     linkedlist_foreach(lnode, set->to_set->lvalues->head) {
         struct Class *cls = lookup_class(cc->class_table, parent_value_type);
         struct LValue *lvalue = lnode->value;
@@ -329,7 +341,7 @@ static void compile_statement(struct CompilerContext *cc, struct Statement *stmt
         case STMT_WHILE:   compile_while(cc,   stmt->while_stmt);  break;
         case STMT_FOR:     compile_for(cc,     stmt->for_stmt);    break;
         case STMT_FUNCALL: compile_funcall(cc, stmt->funcall);     break;
-        case STMT_LET: /* Currently just used for typechecking */  break;
+        case STMT_LET:     load(cc, DEFINE);                       break;
         default: printf("Error cannot compile statement type: not implemented\n"); break;
     }
 }

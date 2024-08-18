@@ -12,6 +12,8 @@
     for (i = symbol % length; table[i].name != 0; i = i == length - 1 ? 0 : i + 1)
 
 struct Scope {
+    bool isfunction;
+    size_t varcount;
     Definitions *definitions;
     struct Scope *parent;
 };
@@ -58,7 +60,7 @@ void print_scope(struct Scope *scope)
     } else {
         printf("(Top Level)");
     }
-    printf("<- { ");
+    printf("<- %ld { ", scope->varcount);
     linkedlist_foreach(lnode, scope->definitions->head) {
         struct Definition *def = lnode->value;
         printf("%s: %s", lookup_symbol(def->name), lookup_symbol(def->type));
@@ -69,9 +71,15 @@ void print_scope(struct Scope *scope)
     printf(" }\n");
 }
 
-static void enter_scope(struct Scope **current)
+static void enter_scope(struct Scope **current, bool isfunction)
 {
     struct Scope *scope = allocator_malloc(sizeof(*scope));
+    scope->isfunction = isfunction;
+    if (*current != NULL && !isfunction) {
+        scope->varcount = (*current)->varcount;
+    } else {
+        scope->varcount = 0;
+    }
     scope->definitions = linkedlist_new();
     scope->parent = *current;
     *current = scope;
@@ -102,6 +110,9 @@ static bool add_var(struct Scope *current, struct Definition *def)
         printf("Error: variable '%s' shadows existing definition\n", lookup_symbol(def->name));
         return false;
     }
+    printf("adding var %s, offset %ld\n", lookup_symbol(def->name), current->varcount);
+    def->scope_offset = current->varcount;
+    current->varcount++;
     linkedlist_append(current->definitions, def);
     return true;
 }
@@ -112,6 +123,7 @@ static bool add_type(struct Scope *current, struct Definition *def)
         struct Definition *lookup_def = lnode->value;
         if (lookup_def->name == def->name) {
             lookup_def->type = def->type;
+            lookup_def->scope_offset = def->scope_offset;
             return true;
         }
     }
@@ -283,16 +295,16 @@ static Type typecheck_expression(struct TypeCheckerContext *context, struct Expr
     };
 }
 
-static Type typecheck_symbol(struct TypeCheckerContext *context, Symbol symbol)
-{
-    struct Definition *def = lookup_var(context->scope, symbol);
-    if (def == NULL || def->type == TYPE_UNDEFINED) {
-        printf("Error: '%s' is not defined\n", lookup_symbol(symbol));
-        return TYPE_UNDEFINED;
-    } else {
-        return def->type;
-    }
-}
+// static Type typecheck_symbol(struct TypeCheckerContext *context, Symbol symbol)
+// {
+//     struct Definition *def = lookup_var(context->scope, symbol);
+//     if (def == NULL || def->type == TYPE_UNDEFINED) {
+//         printf("Error: '%s' is not defined\n", lookup_symbol(symbol));
+//         return TYPE_UNDEFINED;
+//     } else {
+//         return def->type;
+//     }
+// }
 
 static Type typecheck_get(struct TypeCheckerContext *context, struct Accessor *get);
 
@@ -303,7 +315,7 @@ static Type typecheck_value(struct TypeCheckerContext *context, struct Value *va
         case VTYPE_INT:         return TYPE_INT;
         case VTYPE_FLOAT:       return TYPE_FLOAT;
         case VTYPE_BOOL:        return TYPE_BOOL;
-        case VTYPE_SYMBOL:      return typecheck_symbol(context, val->symbol);
+        // case VTYPE_SYMBOL:      return typecheck_symbol(context, val->symbol);
         case VTYPE_EXPR:        return typecheck_expression(context, val->expr);
         case VTYPE_CONSTRUCTOR: return typecheck_constructor(context, val->constructor);
         case VTYPE_FUNCALL: {
@@ -395,16 +407,16 @@ static bool typecheck_set(struct TypeCheckerContext *context, struct Set *set)
     if (set->is_define) {
         assert(linkedlist_is_empty(set->to_set->lvalues)); // Not syntactically valid, should never happen
         struct Definition *def = allocator_malloc(sizeof(*def));
-        def->name = set->to_set->symbol;
+        def->name = set->to_set->definition->name;
         def->type = TYPE_UNDEFINED;
         if (!add_var(context->scope, def)) {
             return false;
         }
     }
     // Make sure left side has been declared
-    struct Definition *def = lookup_var(context->scope, set->to_set->symbol);
+    struct Definition *def = lookup_var(context->scope, set->to_set->definition->name);
     if (def == NULL) {
-        printf("Error: Symbol '%s' is used before it is declared\n", lookup_symbol(set->to_set->symbol));
+        printf("Error: Symbol '%s' is used before it is declared\n", lookup_symbol(set->to_set->definition->name));
         return false;
     }
     // Typecheck left side of set
@@ -422,7 +434,7 @@ static bool typecheck_set(struct TypeCheckerContext *context, struct Set *set)
     } else if (rhs_type != lhs_type && lhs_type != TYPE_UNDEFINED) {
         // Need to rewrite this slightly to account for lhs possibly having properties
         printf("Error: %s is of type %s, cannot set to type %s\n",
-                lookup_symbol(set->to_set->symbol),
+                lookup_symbol(set->to_set->definition->name),
                 lookup_symbol(lhs_type),
                 lookup_symbol(rhs_type));
         return false;
@@ -431,7 +443,8 @@ static bool typecheck_set(struct TypeCheckerContext *context, struct Set *set)
         def->type = rhs_type;
         add_type(context->scope, def);
     }
-    set->to_set->type = def->type;
+    set->to_set->definition->type = def->type;
+    set->to_set->definition->scope_offset = def->scope_offset;
     return true;
 }
 
@@ -442,15 +455,16 @@ static bool typecheck_set(struct TypeCheckerContext *context, struct Set *set)
 // };
 static Type typecheck_get(struct TypeCheckerContext *context, struct Accessor *get)
 {
-    struct Definition *def = lookup_var(context->scope, get->symbol);
+    struct Definition *def = lookup_var(context->scope, get->definition->name);
     if (def == NULL) {
-        printf("Error: Symbol '%s' is used before it is declared\n", lookup_symbol(get->symbol));
-        return 0;
+        printf("Error: Symbol '%s' is used before it is declared\n", lookup_symbol(get->definition->name));
+        return TYPE_UNDEFINED;
     }
-    Type type = (get->lvalues != NULL)
+    Type type = !linkedlist_is_empty(get->lvalues)
         ? typecheck_lvalue(context, def, get->lvalues)
         : def->type;
-    get->type = def->type;
+    get->definition->type = def->type;
+    get->definition->scope_offset = def->scope_offset;
     return type;
 }
 
@@ -628,18 +642,18 @@ static bool typecheck_statement(struct TypeCheckerContext *context, struct State
         case STMT_LET:
             return scope_vars(context->scope, stmt->let);
         case STMT_IF: {
-            enter_scope(&(context->scope));
+            enter_scope(&(context->scope), false);
             ret = typecheck_if(context, stmt->if_stmt);
             exit_scope(&(context->scope));
             return ret;
         }
         case STMT_WHILE:
-            enter_scope(&(context->scope));
+            enter_scope(&(context->scope), false);
             ret = typecheck_while(context, stmt->while_stmt);
             exit_scope(&(context->scope));
             return ret;
         case STMT_FOR:
-            enter_scope(&(context->scope));
+            enter_scope(&(context->scope), false);
             ret = typecheck_for(context, stmt->for_stmt);
             exit_scope(&(context->scope));
             return ret;
@@ -653,7 +667,7 @@ static bool typecheck_statement(struct TypeCheckerContext *context, struct State
             return typecheck_return(context, stmt->ret);
         case STMT_FOREACH:
             assert("Error: not implemented\n" && false);
-            enter_scope(&(context->scope));
+            enter_scope(&(context->scope), false);
             // ret = typecheck_foreach(context, stmt->foreach_stmt);
             exit_scope(&(context->scope));
             return ret;
@@ -677,7 +691,7 @@ static bool typecheck_statements(struct TypeCheckerContext *context, Statements 
 static bool typecheck_fundef(struct TypeCheckerContext *context, struct FunDef *fundef)
 {
     struct Scope *scope = NULL;
-    enter_scope(&scope);
+    enter_scope(&scope, true);
     context->enclosing_func = fundef;
     context->scope = scope;
     bool ret = scope_vars(context->scope, fundef->args);

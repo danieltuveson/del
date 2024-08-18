@@ -16,7 +16,7 @@ typedef struct LinkedList Methods;
 typedef struct LinkedList LValues;
 
 enum ValueType {
-    VTYPE_SYMBOL,
+    // VTYPE_SYMBOL,
     VTYPE_STRING,
     VTYPE_INT,
     VTYPE_FLOAT,
@@ -94,9 +94,14 @@ struct LValue {
     };
 };
 
-struct Accessor {
-    Symbol symbol;
+struct Definition {
+    size_t scope_offset;
+    Symbol name;
     Type type;
+};
+
+struct Accessor {
+    struct Definition *definition;
     LValues *lvalues;
 };
 
@@ -105,7 +110,8 @@ struct Value {
     Type type;
     union {
         char *string;
-        Symbol symbol;
+        // Symbol string;
+        // Symbol symbol; // "get" has replaced this
         long integer;
         double floating;
         long boolean;
@@ -114,11 +120,6 @@ struct Value {
         struct FunCall *constructor;
         struct Accessor *get;
     };
-};
-
-struct Definition {
-    Symbol name;
-    Type type;
 };
 
 struct Set {
@@ -205,7 +206,7 @@ struct Statement *new_return(struct Value *val);
 
 /* Value constructors */
 struct Value *new_string(char *string);
-struct Value *new_symbol(uint64_t symbol);
+// struct Value *new_symbol(uint64_t symbol);
 struct Value *new_integer(long integer);
 struct Value *new_floating(double floating);
 struct Value *new_boolean(int boolean);

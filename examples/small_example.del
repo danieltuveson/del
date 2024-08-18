@@ -10,54 +10,62 @@
 //     // arg2: string;
 // }
 
-function otherFunction(blah : int) : int {
-    if 0 == 0 {
-        let z = 44;
-        let y = 4;
-        z = y + -5;
-        return anotherFunction(z);
-    }
-    // while (y > 4) {
-    //     y = 4;
-    // }
-    // for (let i = 0; i < 4; i = i + 1) {
-    //     y = 4;
-    // }
-    let oijoij = 2222222222;
-    if (oijoij > 1) {
-        let oij = 444;
-    }
-    return 1;
-}
+// function otherFunction(blah : int) : int {
+//     if 0 == 0 {
+//         let z = 44;
+//         let y = 4;
+//         z = y + -5;
+//         return anotherFunction(z);
+//     }
+//     // while (y > 4) {
+//     //     y = 4;
+//     // }
+//     // for (let i = 0; i < 4; i = i + 1) {
+//     //     y = 4;
+//     // }
+//     let oijoij = 2222222222;
+//     if (oijoij > 1) {
+//         let oij = 444;
+//     }
+//     return 1;
+// }
 
-function anotherFunction(baaalh: int) : int {
-    let thing = baaalh + 7;
-    let thing2 = nothing();
-    let thing3 = 777;
-    return thing2;
-}
-
-function nothing() : int {
-    let x = 666;
-    return x;
-}
-
-function main() {
-    let x = 5;
-    let ret = otherFunction(x);
-    x = 1;
-}
+// class Thing {
+//     thing: int;
+// }
+// 
+// function main() {
+//     let blah;
+//     let x = new Thing(1);
+//     let y = new Thing(2);
+//     let z = "new string";
+//     blah = true;
+//     x.thing = 12;
+//     y.thing = 34;
+// }
 
 // function fib(n : int) : int {
 //     let fibn_minus_2 = 0;
 //     let fibn_minus_1 = 1;
 //     let fibn = fibn_minus_1 + fibn_minus_2;
 //     if n == 0 {
+//         // let x = 111;
 //         return fibn_minus_2;
 //     } else if n == 1 {
+//         // let y = 222;
+//         // let yy = 333;
 //         return fibn_minus_1;
-//     }
+//     } 
+//     // if true {
+//     //     let z = 444;
+//     // }
 //     for let i = 2; i <= n; i = i + 1 {
+//         // if true {
+//         //     let nested = 1;
+//         //     for (let j = 0; j < 1; j = j + 1) {
+//         //         let nested_twice = 3;
+//         //     }
+//         // }
 //         fibn = fibn_minus_1 + fibn_minus_2;
 //         fibn_minus_2 = fibn_minus_1;
 //         fibn_minus_1 = fibn;
@@ -65,12 +73,12 @@ function main() {
 //     return fibn;
 // }
 
-// function main() {
-//     // Can only go up to 90, until we create a BigInt class
-//     // let num_iters = 1000000;
-//     let num_iters = 100;
-//     let x = 2;
-//     for let j = 0; j < num_iters; j = j + 1 {
-//         x = fib(90) - x / 2;
-//     }
-// }
+function main() {
+    let i = 0;
+    let j = 0;
+    while (i < 5) {
+        i = i + 1;
+    }
+    // let somethign = 4;
+    // let i = fib(7);
+}
