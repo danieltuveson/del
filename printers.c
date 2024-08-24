@@ -11,13 +11,13 @@ static const int TAB_WIDTH = 4;
 void print_instructions(struct CompilerContext *cc)
 {
     int length = cc->offset;
-    uint64_t *instructions = cc->instructions;
+    DelValue *instructions = cc->instructions;
     for (int i = 0; i < length; i++) {
         printf("%-5d", i);
-        switch ((enum Code) instructions[i]) {
+        switch (instructions[i].opcode) {
             case PUSH:
                 i++;
-                printf("PUSH %" PRIu64 "\n", (uint64_t) instructions[i]);
+                printf("PUSH %" PRIu64 "\n", instructions[i].integer);
                 break;
             case PUSH_HEAP:
                 printf("PUSH_HEAP\n");
@@ -81,7 +81,7 @@ void print_instructions(struct CompilerContext *cc)
                 break;
             case GET_LOCAL:
                 i++;
-                printf("GET_LOCAL %" PRIu64 " (%s)\n", instructions[i], lookup_symbol(instructions[i]));
+                printf("GET_LOCAL %" PRIu64 "\n", instructions[i].offset);
                 break;
             case SET_LOCAL:
                 printf("SET_LOCAL\n");
@@ -113,12 +113,12 @@ void print_instructions(struct CompilerContext *cc)
 void print_stack(struct Stack *stack)
 {
     printf("stack:  [ ");
-    for (uint64_t i = 0; i < stack->offset; i++) {
+    for (size_t i = 0; i < stack->offset; i++) {
         // If it would be interpreted as a huge number, it's probably a negative integer
-        if (stack->values[i] > INT64_MAX) {
-            printf("%" PRIi64 " ", (int64_t) stack->values[i]);
+        if (stack->values[i].integer > INT64_MAX) {
+            printf("%" PRIi64 " ", (int64_t) stack->values[i].integer);
         } else {
-            printf("%" PRIu64 " ", (uint64_t) stack->values[i]);
+            printf("%" PRIu64 " ", (uint64_t) stack->values[i].offset);
         }
     }
     printf("]\n");
@@ -130,7 +130,7 @@ void print_frames(struct StackFrames *sfs)
     for (size_t i = 0; i < sfs->index; i++) {
         // printf(" { %s: ", lookup_symbol(sfs->names[i]));
         printf(" { %lu: ", i);
-        printf("%" PRIi64 " }, ", (int64_t) sfs->values[i]);
+        printf("%" PRIi64 " }, ", (int64_t) sfs->values[i].integer);
     }
     printf("\n");
     printf("frame offsets: ");
@@ -147,7 +147,7 @@ void print_frames(struct StackFrames *sfs)
         for (size_t j = lower; j < upper; j++) {
             // printf(" { %s: ", lookup_symbol(sfs->names[j]));
             printf(" { %lu: ", j);
-            printf("%" PRIi64 " }, ", (int64_t) sfs->values[j]);
+            printf("%" PRIi64 " }, ", sfs->values[j].integer);
         }
         printf("] \n");
         lower = upper;
@@ -156,9 +156,9 @@ void print_frames(struct StackFrames *sfs)
 
 void print_heap(struct Heap *heap)
 {
-    printf("heap:   [ objcount: %d, offset: %d, values: { ", heap->objcount, heap->offset);
-    for (int i = 0; i < heap->offset; i++) {
-        printf("%" PRIu64 "", heap->values[i]);
+    printf("heap:   [ objcount: %ld, offset: %ld, values: { ", heap->objcount, heap->offset);
+    for (size_t i = 0; i < heap->offset; i++) {
+        printf("%" PRIu64 "", heap->values[i].integer);
         if (i != heap->offset - 1) printf(", ");
     }
     printf(" } ]\n");

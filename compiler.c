@@ -11,101 +11,118 @@ static void compile_statement(struct CompilerContext *cc, struct Statement *stmt
 static void compile_statements(struct CompilerContext *cc, Statements *stmts);
 
 /* Move offset pointer to the empty element. Return the offset of the last element added */
-static inline int next(struct CompilerContext *cc) {
+static inline size_t next(struct CompilerContext *cc) {
     assert("offset is out of bounds\n" && cc->offset < INSTRUCTIONS_SIZE - 1);
     return cc->offset++;
 }
 
 /* Add instruction to instruction set */
-static inline void load(struct CompilerContext *cc, uint64_t op)
+static inline void load_opcode(struct CompilerContext *cc, enum Code opcode)
 {
-    cc->instructions[next(cc)] = op;
+    cc->instructions[next(cc)].opcode = opcode;
 }
 
-static void compile_int(struct CompilerContext *cc, uint64_t integer)
+static inline void push(struct CompilerContext *cc)
 {
-    load(cc, PUSH);
-    load(cc, integer);
+    load_opcode(cc, PUSH);
 }
 
-static void compile_float(struct CompilerContext *cc, double floating)
+static inline void load_offset(struct CompilerContext *cc, size_t offset)
+{
+    cc->instructions[next(cc)].offset = offset;
+}
+// typedef union {
+//     int64_t integer;
+//     size_t offset;
+//     double floating;
+//     char character;
+//     enum Code opcode;
+// } DelValue;
+
+static inline void compile_int(struct CompilerContext *cc, int64_t integer)
+{
+    push(cc);
+    cc->instructions[next(cc)].integer = integer;
+}
+
+static inline void compile_float(struct CompilerContext *cc, double floating)
 {
     assert("floating point not implemented\n" && 0);
-    load(cc, PUSH);
-    load(cc, floating);
+    push(cc);
+    cc->instructions[next(cc)].floating = floating;
 }
 
-static inline void compile_bool(struct CompilerContext *cc, uint64_t boolean)
+static inline void compile_bool(struct CompilerContext *cc, int64_t boolean)
 {
-    return compile_int(cc, boolean);
+    compile_int(cc, boolean);
 }
 
 static void compile_loadsym(struct CompilerContext *cc, size_t offset)
 // static void compile_loadsym(struct CompilerContext *cc, Symbol symbol)
 {
-    load(cc, GET_LOCAL);
-    load(cc, offset);
+    load_opcode(cc, GET_LOCAL);
+    load_offset(cc, offset);
 }
 
 // Pack 8 byte chunks of chars into longs to push onto stack
 static void compile_string(struct CompilerContext *cc, char *string)
 {
-    // assert("Error: not implemented\n" && false);
-    uint64_t packed = 0;
-    uint64_t i = 0;
-    uint64_t tmp;
-    for (; string[i] != '\0'; i++) {
-        tmp = (uint64_t) string[i];
-        switch ((i + 1) % 8) {
-            case 0:
-                packed = packed | (tmp << 56);
-                load(cc, PUSH);
-                load(cc, packed);
-                break;
-            case 1: packed = tmp    | (tmp << 0);  break; /* technically "tmp << 0" does nothing */
-            case 2: packed = packed | (tmp << 8);  break;
-            case 3: packed = packed | (tmp << 16); break;
-            case 4: packed = packed | (tmp << 24); break;
-            case 5: packed = packed | (tmp << 32); break;
-            case 6: packed = packed | (tmp << 40); break;
-            case 7: packed = packed | (tmp << 48); break;
-        }
-    }
-    // If string is not multiple of 8 bytes, push the remainder
-    if ((i + 1) % 8 != 0) {
-        load(cc, PUSH);
-        load(cc, packed);
-        // push count
-        load(cc, PUSH);
-        load(cc, i / 8 + 1);
-    } else {
-        load(cc, PUSH);
-        load(cc, i / 8);
-    }
-    load(cc, PUSH_HEAP);
+    assert("Error: not implemented\n" && false);
+    // uint64_t packed = 0;
+    // uint64_t i = 0;
+    // uint64_t tmp;
+    // for (; string[i] != '\0'; i++) {
+    //     tmp = (uint64_t) string[i];
+    //     switch ((i + 1) % 8) {
+    //         case 0:
+    //             packed = packed | (tmp << 56);
+    //             push(cc);
+    //             load(cc, packed);
+    //             break;
+    //         case 1: packed = tmp    | (tmp << 0);  break; /* technically "tmp << 0" does nothing */
+    //         case 2: packed = packed | (tmp << 8);  break;
+    //         case 3: packed = packed | (tmp << 16); break;
+    //         case 4: packed = packed | (tmp << 24); break;
+    //         case 5: packed = packed | (tmp << 32); break;
+    //         case 6: packed = packed | (tmp << 40); break;
+    //         case 7: packed = packed | (tmp << 48); break;
+    //     }
+    // }
+    // // If string is not multiple of 8 bytes, push the remainder
+    // if ((i + 1) % 8 != 0) {
+    //     push(cc);
+    //     load(cc, packed);
+    //     // push count
+    //     push(cc);
+    //     load(cc, i / 8 + 1);
+    // } else {
+    //     push(cc);
+    //     load(cc, i / 8);
+    // }
+    // load_opcode(cc, PUSH_HEAP);
 }
 
 static void compile_binary_op(struct CompilerContext *cc, struct Value *val1, struct Value *val2,
        enum Code op) {
     compile_value(cc, val1);
     compile_value(cc, val2);
-    load(cc, op);
+    load_opcode(cc, op);
 }
 
 static void compile_unary_op(struct CompilerContext *cc, struct Value *val, enum Code op) {
     compile_value(cc, val);
-    load(cc, op);
+    load_opcode(cc, op);
 }
 
 static void compile_funargs(struct CompilerContext *cc, Definitions *defs)
 {
     linkedlist_foreach(lnode, defs->head) {
         struct Definition *def = lnode->value;
-        load(cc, PUSH);
+        push(cc);
         // load(cc, def->name);
-        load(cc, def->scope_offset);
+        load_offset(cc, def->scope_offset);
         printf("compile_funargs: %s, %ld\n", lookup_symbol(def->name), def->scope_offset);
-        load(cc, SET_LOCAL);
+        load_opcode(cc, SET_LOCAL);
     }
 }
 
@@ -131,9 +148,9 @@ static void compile_constructor(struct CompilerContext *cc, struct FunCall *func
         printf("\n");
         compile_value(cc, lnode->value);
     }
-    load(cc, PUSH);
-    load(cc, funcall->args->length);
-    load(cc, PUSH_HEAP);
+    push(cc);
+    load_offset(cc, funcall->args->length);
+    load_opcode(cc, PUSH_HEAP);
 }
 
     // load(cc, GET_LOCAL);
@@ -144,8 +161,8 @@ static void compile_get(struct CompilerContext *cc, struct Accessor *get)
     if (linkedlist_is_empty(get->lvalues)) {
         // load(cc, PUSH);
         // load(cc, get->definition->name);
-        load(cc, GET_LOCAL);
-        load(cc, get->definition->scope_offset);
+        load_opcode(cc, GET_LOCAL);
+        load_offset(cc, get->definition->scope_offset);
         return;
     } 
     // compile_loadsym(cc, get->definition->name);
@@ -157,9 +174,9 @@ static void compile_get(struct CompilerContext *cc, struct Accessor *get)
         switch (lvalue->lvtype) {
             case LV_PROPERTY: {
                 uint64_t index = lookup_property_index(cls, lvalue->property);
-                load(cc, PUSH);
-                load(cc, index);
-                load(cc, GET_HEAP);
+                push(cc);
+                load_offset(cc, index);
+                load_opcode(cc, GET_HEAP);
                 parent_value_type = lvalue->type;
                 break;
             } default:
@@ -173,8 +190,8 @@ static void compile_get(struct CompilerContext *cc, struct Accessor *get)
 
 static void compile_funcall(struct CompilerContext *cc, struct FunCall *funcall)
 {
-    load(cc, PUSH);
-    int bookmark = next(cc);
+    push(cc);
+    size_t bookmark = next(cc);
     if (funcall->args != NULL) {
         linkedlist_foreach_reverse(lnode, funcall->args->tail) {
             // struct Value *val = lnode->value;
@@ -182,12 +199,12 @@ static void compile_funcall(struct CompilerContext *cc, struct FunCall *funcall)
             compile_value(cc, lnode->value);
         }
     }
-    load(cc, PUSH_SCOPE);
-    load(cc, PUSH);
+    load_opcode(cc, PUSH_SCOPE);
+    push(cc);
     add_callsite(cc->funcall_table, funcall->funname, next(cc));
-    load(cc, JMP);
-    cc->instructions[bookmark] = cc->offset;
-    load(cc, POP_SCOPE);
+    load_opcode(cc, JMP);
+    cc->instructions[bookmark].offset = cc->offset;
+    load_opcode(cc, POP_SCOPE);
 }
 
 static void compile_value(struct CompilerContext *cc, struct Value *val)
@@ -237,11 +254,11 @@ static void compile_set(struct CompilerContext *cc, struct Set *set)
     printf("compile_set: %s, %ld\n", lookup_symbol(set->to_set->definition->name), set->to_set->definition->scope_offset);
     compile_value(cc, set->val);
     if (linkedlist_is_empty(set->to_set->lvalues)) {
-        load(cc, PUSH);
+        push(cc);
         // load(cc, set->to_set->definition->name);
-        load(cc, set->to_set->definition->scope_offset);
-        load(cc, SET_LOCAL);
-        if (set->is_define) load(cc, DEFINE);
+        load_offset(cc, set->to_set->definition->scope_offset);
+        load_opcode(cc, SET_LOCAL);
+        if (set->is_define) load_opcode(cc, DEFINE);
         return;
     } 
     // else {
@@ -259,13 +276,13 @@ static void compile_set(struct CompilerContext *cc, struct Set *set)
                 uint64_t index = lookup_property_index(cls, lvalue->property);
                 // NOTE: refactor to not have lookup_property on class, write a generic list lookup function
                 if (lnode->next == NULL) {
-                    load(cc, PUSH);
-                    load(cc, index);
-                    load(cc, SET_HEAP);
+                    push(cc);
+                    load_offset(cc, index);
+                    load_opcode(cc, SET_HEAP);
                 } else {
-                    load(cc, PUSH);
-                    load(cc, index);
-                    load(cc, GET_HEAP);
+                    push(cc);
+                    load_offset(cc, index);
+                    load_opcode(cc, GET_HEAP);
                 }
                 parent_value_type = lvalue->type;
                 break;
@@ -282,22 +299,21 @@ static void compile_return(struct CompilerContext *cc, struct Value *ret)
 {
     if (ret != NULL) {
         compile_value(cc, ret);
-        load(cc, SWAP);
+        load_opcode(cc, SWAP);
     }
-    load(cc, JMP);
+    load_opcode(cc, JMP);
 }
 
 static void compile_if(struct CompilerContext *cc, struct IfStatement *stmt)
 {
-    int old_offset = 0;
-    load(cc, PUSH);
-    old_offset = next(cc);
+    push(cc);
+    size_t old_offset = next(cc);
     compile_value(cc, stmt->condition);
-    load(cc, JNE);
+    load_opcode(cc, JNE);
     compile_statements(cc, stmt->if_stmts);
 
     // set JNE jump to go to after if statement
-    cc->instructions[old_offset] = (uint64_t) cc->offset;
+    cc->instructions[old_offset].offset = cc->offset;
 
     if (stmt->else_stmts) {
         compile_statements(cc, stmt->else_stmts);
@@ -307,18 +323,17 @@ static void compile_if(struct CompilerContext *cc, struct IfStatement *stmt)
 static void compile_loop(struct CompilerContext *cc, struct Value *cond,
         Statements *stmts, struct Statement *increment)
 {
-    int top_of_loop, old_offset;
-    top_of_loop = cc->offset;
-    load(cc, PUSH);
-    old_offset = next(cc);
+    size_t top_of_loop = cc->offset;
+    push(cc);
+    size_t old_offset = next(cc);
     compile_value(cc, cond);
-    load(cc, JNE);
+    load_opcode(cc, JNE);
     compile_statements(cc, stmts);
     if (increment != NULL) compile_statement(cc, increment);
-    load(cc, PUSH);
-    load(cc, top_of_loop);
-    load(cc, JMP);
-    cc->instructions[old_offset] = (uint64_t) cc->offset; // set JNE jump to go to end of loop
+    push(cc);
+    load_offset(cc, top_of_loop);
+    load_opcode(cc, JMP);
+    cc->instructions[old_offset].offset = cc->offset; // set JNE jump to go to end of loop
 }
 
 static void compile_while(struct CompilerContext *cc, struct While *while_stmt)
@@ -341,7 +356,7 @@ static void compile_statement(struct CompilerContext *cc, struct Statement *stmt
         case STMT_WHILE:   compile_while(cc,   stmt->while_stmt);  break;
         case STMT_FOR:     compile_for(cc,     stmt->for_stmt);    break;
         case STMT_FUNCALL: compile_funcall(cc, stmt->funcall);     break;
-        case STMT_LET:     load(cc, DEFINE);                       break;
+        case STMT_LET:     load_opcode(cc, DEFINE);                       break;
         default: printf("Error cannot compile statement type: not implemented\n"); break;
     }
 }
@@ -366,51 +381,6 @@ static void compile_statements(struct CompilerContext *cc, Statements *stmts)
 //     }
 //     return offset;
 // }
-// 
-// static int compile_statement(struct CompilerContext *cc, struct Statement *stmt, int offset)
-// {
-//     switch (stmt->type) {
-//         case STMT_SET:
-//             load(PUSH);
-//             offset = compile_value(cc, stmt->set->val, next());
-//             load(stmt->set->symbol);
-//             load(SET_LOCAL); // will work on an alternate "SET" operation later.
-//             break;
-//         case STMT_IF:
-//             offset = compile_if(cc, stmt, offset);
-//             break;
-//         case STMT_WHILE:
-//             offset = compile_while(cc, stmt, offset);
-//             break;
-//         case STMT_LET:
-//             offset = compile_let(cc, stmt->let, offset);
-//             break;
-//         case STMT_RETURN:
-//             offset = compile_value(cc, stmt->ret, offset);
-//             load(SWAP);
-//             load(JMP);
-//             break;
-//         case STMT_FUNCALL:
-//         case STMT_FUNCTION_DEF:
-//         case STMT_EXIT_FOR:
-//         case STMT_EXIT_WHILE:
-//         case STMT_EXIT_FUNCTION:
-//         case STMT_FOR:
-//             // stmt->for_stmt->start;
-//             // stmt->for_stmt->stop;
-//             // stmt->for_stmt->stmts;
-//         case STMT_FOREACH:
-//             // stmt->for_each->symbol;
-//             // stmt->for_each->condition;
-//             // stmt->for_each->stmts;
-//         default:
-//             printf("cannot compile statement type: not implemented\n");
-//             assert(0);
-//             break;
-//     }
-//     return offset;
-// }
-// 
 
 // static void compile_class(struct CompilerContext *cc, struct Class *cls)
 // {
@@ -422,10 +392,10 @@ static void compile_entrypoint(struct CompilerContext *cc, TopLevelDecls *tlds)
     linkedlist_foreach(lnode, tlds->head) {
         struct TopLevelDecl *tld = lnode->value;
         if (tld->type == TLD_TYPE_FUNDEF && tld->fundef->name == globals.entrypoint) {
-            load(cc, PUSH_SCOPE);
+            load_opcode(cc, PUSH_SCOPE);
             compile_statements(cc, tld->fundef->stmts);
-            load(cc, POP_SCOPE);
-            load(cc, EXIT);
+            load_opcode(cc, POP_SCOPE);
+            load_opcode(cc, EXIT);
             break;
         }
     }
@@ -450,25 +420,23 @@ static void compile_tlds(struct CompilerContext *cc, TopLevelDecls *tlds)
     cc->funcall_table = new_ft(0);
     compile_entrypoint(cc, tlds);
     linkedlist_foreach(lnode, tlds->head) {
-    // for (;tlds != NULL; tlds = tlds->next) {
         compile_tld(cc, (struct TopLevelDecl *) lnode->value);
     }
 }
 
 // Looks through compiled bytecode and adds references to where function is defined
-static void resolve_function_declarations_help(uint64_t *instructions,
+static void resolve_function_declarations_help(DelValue *instructions,
     struct FunctionCallTableNode *fn)
 {
     linkedlist_foreach(lnode, fn->callsites->head) {
-    // for (struct List *calls = fn->callsites; calls != NULL; calls = calls->prev) {
         uint64_t *callsite = lnode->value;
         // printf("callsite %" PRIu64 " updated with function %s at location %" PRIu64,
         //         *callsite, lookup_symbol(fn->function), fn->location);
-        instructions[*callsite] = fn->location;
+        instructions[*callsite].offset = fn->location;
     }
 }
 
-static void resolve_function_declarations(uint64_t *instructions,
+static void resolve_function_declarations(DelValue *instructions,
         struct FunctionCallTable *funcall_table)
 {
     if (funcall_table == NULL) return;
@@ -480,7 +448,7 @@ static void resolve_function_declarations(uint64_t *instructions,
 
 // #include "test_compile.c"
 
-int compile(struct CompilerContext *cc, TopLevelDecls *tlds)
+size_t compile(struct CompilerContext *cc, TopLevelDecls *tlds)
 {
     compile_tlds(cc, tlds);
     resolve_function_declarations(cc->instructions, cc->funcall_table);

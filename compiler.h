@@ -5,13 +5,6 @@
 #include "functiontable.h"
 #include "typecheck.h"
 
-struct CompilerContext {
-    uint64_t *instructions;
-    int offset;
-    struct FunctionCallTable *funcall_table;
-    struct ClassTable *class_table;
-};
-
 enum Code {
     PUSH,
     PUSH_HEAP,
@@ -55,9 +48,25 @@ enum Code {
     CALL,
     SWAP,
     PUSH_SCOPE,
-    POP_SCOPE
+    POP_SCOPE,
+    PRINT
 };
 
-int compile(struct CompilerContext *cc, TopLevelDecls *tlds);
+typedef union {
+    int64_t integer;
+    size_t offset;
+    double floating;
+    char character;
+    enum Code opcode;
+} DelValue;
+
+struct CompilerContext {
+    DelValue *instructions;
+    size_t offset;
+    struct FunctionCallTable *funcall_table;
+    struct ClassTable *class_table;
+};
+
+size_t compile(struct CompilerContext *cc, TopLevelDecls *tlds);
 
 #endif

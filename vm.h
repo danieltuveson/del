@@ -3,38 +3,6 @@
 
 #include "common.h"
 
-// enum HeapValType {
-//     L_INT,
-//     L_FLOAT,
-//     L_STRING,
-//     L_BOOL,
-//     L_OBJ
-// };
-// 
-// struct HeapVal {
-//     enum HeapValType type;
-//     union {
-//         long integer;
-//         double floating;
-//         char *string;
-//         long boolean;
-//         void *obj;
-//     };
-// };
-
-// struct HeapVal {
-//     uint64_t size;
-//     uint64_t *object;
-// };
-
-// Stores info about local variables
-// struct StackFrame {
-//     Symbol name;
-//     uint64_t value;
-//     int count;
-//     int frame_start;
-// };
-
 // Struct of arrays storing stack frames
 // - names: stores "hashes" of variable names.
 // - values: stores corresponding values (names[i] corresponds to values[i]).
@@ -43,16 +11,15 @@
 // - frame_offsets_index: stores the index of the top of frame_start
 struct StackFrames {
     size_t index;
-    // Symbol names[HEAP_SIZE];
-    uint64_t values[HEAP_SIZE];
+    DelValue values[HEAP_SIZE];
     size_t frame_offsets_index;
     size_t frame_offsets[HEAP_SIZE];
 };
 
 /* The stack stores almost all data used by the VM */
 struct Stack {
-    uint64_t offset;
-    uint64_t values[STACK_SIZE];
+    size_t offset;
+    DelValue values[STACK_SIZE];
 };
 
 #define COUNT_OFFSET    32
@@ -72,11 +39,19 @@ struct Stack {
  *   4 gigabytes of data before hitting this limit.
  */
 struct Heap {
-    int objcount;
-    int offset;
-    uint64_t values[HEAP_SIZE];
+    size_t objcount;
+    size_t offset;
+    DelValue values[HEAP_SIZE];
 };
 
-int vm_execute(uint64_t *instructions);
+struct VirtualMachine {
+    struct StackFrames sfs;
+    struct Stack stack;
+    struct Heap heap;
+    uint64_t ip;
+    int iterations;
+};
+
+int vm_execute(DelValue *instructions);
 
 #endif

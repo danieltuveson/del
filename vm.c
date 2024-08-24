@@ -3,37 +3,52 @@
 #include "vm.h"
 #include "printers.h"
 
-typedef uint64_t HeapPointer;
+typedef size_t HeapPointer;
 
-static inline void set_count(HeapPointer *ptr, uint64_t count)
+static inline void set_count(HeapPointer *ptr, size_t count)
 {
     assert(count <= UINT16_MAX);
     *ptr = *ptr | (count << COUNT_OFFSET);
 }
 
-static inline uint64_t get_count(HeapPointer ptr)
+static inline size_t get_count(HeapPointer ptr)
 {
     return (ptr & COUNT_MASK) >> COUNT_OFFSET;
 }
 
-static inline uint64_t get_location(HeapPointer ptr)
+static inline size_t get_location(HeapPointer ptr)
 {
     return ptr & LOCATION_MASK;
 }
 
-static inline void push(struct Stack *stack, uint64_t value)
+// int64_t integer;
+// size_t offset;
+// double floating;
+// char character;
+// enum Code opcode;
+static inline void push(struct Stack *stack, DelValue val)
 {
-    stack->values[stack->offset++] = value;
+    stack->values[stack->offset++] = val;
 }
 
-static inline uint64_t pop(struct Stack *stack)
+static inline void push_integer(struct Stack *stack, int64_t integer)
+{
+    stack->values[stack->offset++].integer = integer;
+}
+
+static inline void push_offset(struct Stack *stack, size_t offset)
+{
+    stack->values[stack->offset++].offset = offset;
+}
+
+static inline DelValue pop(struct Stack *stack)
 {
     return stack->values[--stack->offset];
 }
 
 static inline void swap(struct Stack *stack)
 {
-    uint64_t val1, val2;
+    DelValue val1, val2;
     val1 = pop(stack);
     val2 = pop(stack);
     push(stack, val1);
@@ -43,11 +58,11 @@ static inline void swap(struct Stack *stack)
 //     stack->values[stack->offset-1] = swp;
 }
 
-#define eval_binary_op(stack_ptr, v1, v2, op, type) \
+#define eval_binary_op(stack_ptr, v1, v2, op) \
     do { \
-        v1 = (type) pop(stack_ptr); \
-        v2 = (type) pop(stack_ptr); \
-        push(stack_ptr, (uint64_t) (v2 op v1)); } while (0)
+        v1 = pop(stack_ptr); \
+        v2 = pop(stack_ptr); \
+        push_integer(stack_ptr, (v2.integer op v1.integer)); } while (0)
 
 // static void uint64_as_string(uint64_t value, char *str, int start)
 // {
@@ -61,23 +76,21 @@ static inline void swap(struct Stack *stack)
 /* Pops values from the stack and pushes them onto the heap */
 static inline void push_heap(struct Heap *heap, struct Stack *stack)
 {
-    uint64_t value, count, ptr;
-    value = 0;
-    count = pop(stack);
-    ptr = heap->offset;
+    size_t count = pop(stack).offset;
+    size_t ptr = heap->offset;
     set_count(&ptr, count);
     // heap->values[heap->offset++] = count;
     // printf("count: %" PRIu64 "\n", count);
     // printf("location: %" PRIu64 "\n", location);
-    for (uint64_t i = 0; i < count; i++) {
-        value = pop(stack);
+    for (size_t i = 0; i < count; i++) {
+        DelValue value = pop(stack);
         // char str[9] = {0};
         // uint64_as_string(value, str, 0);
         // printf("value: %" PRIu64 "\n", value);
         heap->values[heap->offset++] = value;
     }
     // Store count in bits before location
-    push(stack, ptr);
+    push_offset(stack, ptr);
     heap->objcount++;
 }
 
@@ -95,24 +108,22 @@ static inline void push_heap(struct Heap *heap, struct Stack *stack)
 
 static inline void get_heap(struct Heap *heap, struct Stack *stack)
 {
-    uint64_t index, ptr, location;
-    index = pop(stack);
-    ptr = pop(stack);
-    location = get_location(ptr);
-    push(stack, heap->values[location + index]);
+    size_t index = pop(stack).offset;
+    size_t ptr = pop(stack).offset;
+    size_t location = get_location(ptr);
+    push_offset(stack, heap->values[location + index].offset);
 }
 
 static inline void set_heap(struct Heap *heap, struct Stack *stack)
 {
     printf("setting heap\n");
-    uint64_t value, index, ptr, location;
-    index = pop(stack);
-    ptr = pop(stack);
-    value = pop(stack);
-    location = get_location(ptr);
+    size_t index = pop(stack).offset;
+    size_t ptr = pop(stack).offset;
+    DelValue value = pop(stack);
+    size_t location = get_location(ptr);
     heap->values[location + index] = value;
-    printf("value: %" PRIu64 ", ptr: %" PRIu64 ", index: %" PRIu64 ", location: %" PRIu64 "\n", 
-           value, ptr, index, location);
+    printf("value: %" PRIi64 ", ptr: %" PRIu64 ", index: %" PRIu64 ", location: %" PRIu64 "\n", 
+           value.integer, ptr, index, location);
     printf("done setting heap\n");
 }
 
@@ -132,7 +143,7 @@ static inline size_t stack_frame_offset(struct StackFrames *sfs)
     return sfs->frame_offsets[sfs->frame_offsets_index-1];
 }
 
-static uint64_t get_local(struct StackFrames *sfs, size_t scope_offset)
+static DelValue get_local(struct StackFrames *sfs, size_t scope_offset)
 // static uint64_t lookup_local(struct StackFrames *sfs, Symbol lookup_val)
 {
     // for (size_t i = stack_frame_offset(sfs); i < sfs->index; i++) {
@@ -148,8 +159,8 @@ static uint64_t get_local(struct StackFrames *sfs, size_t scope_offset)
 static void set_local(struct Stack *stack, struct StackFrames *sfs)
 // static void def(struct Stack *stack, struct StackFrames *sfs)
 {
-    size_t scope_offset = (size_t) pop(stack);
-    uint64_t val = pop(stack);
+    size_t scope_offset = pop(stack).offset;
+    DelValue val = pop(stack);
     size_t sf_offset = stack_frame_offset(sfs);
     sfs->values[sf_offset + scope_offset] = val;
     // Symbol symbol = (Symbol) pop(stack);
@@ -202,18 +213,21 @@ static void set_local(struct Stack *stack, struct StackFrames *sfs)
 //     return offset;
 // }
 
-int vm_execute(uint64_t *instructions)
+int vm_execute(DelValue *instructions)
 {
+#if DEBUG
+    int popcount = 0;
+#endif
     struct StackFrames sfs = {0, {0}, {0}, 0, {0}};
     struct Stack stack = {0, {0}};
     struct Heap heap = {0, 0, {0}};
-    uint64_t ip = 0;
+    size_t ip = 0;
     uint64_t ret = 0;
-    uint64_t val1 = 0, val2 = 0;
-    Symbol symbol;
-    int i = 0;
+    DelValue val1 = { .integer = 0 };
+    DelValue val2 = { .integer = 0 };
+    size_t iterations = 0;
     while (1) {
-        switch ((enum Code) instructions[ip]) {
+        switch (instructions[ip].opcode) {
             case PUSH:
                 ip++;
                 push(&stack, instructions[ip]);
@@ -228,23 +242,27 @@ int vm_execute(uint64_t *instructions)
                 set_heap(&heap, &stack);
                 break;
             /* Grotesque lump of binary operators. Boring! */
-            case AND: eval_binary_op(&stack, val1, val2, &&, int64_t); break;
-            case OR:  eval_binary_op(&stack, val1, val2, ||, int64_t); break;
-            case ADD: eval_binary_op(&stack, val1, val2, +,  int64_t);  break;
-            case SUB: eval_binary_op(&stack, val1, val2, -,  int64_t);  break;
-            case MUL: eval_binary_op(&stack, val1, val2, *,  int64_t);  break;
-            case DIV: eval_binary_op(&stack, val2, val1, /,  int64_t);  break;
-            case MOD: eval_binary_op(&stack, val2, val1, %,  int64_t);  break;
-            case EQ:  eval_binary_op(&stack, val1, val2, ==, int64_t); break;
-            case NEQ: eval_binary_op(&stack, val1, val2, !=, int64_t); break;
-            case LTE: eval_binary_op(&stack, val1, val2, <=, int64_t); break;
-            case GTE: eval_binary_op(&stack, val1, val2, >=, int64_t); break;
-            case LT:  eval_binary_op(&stack, val1, val2, <,  int64_t);  break;
-            case GT:  eval_binary_op(&stack, val1, val2, >,  int64_t);  break;
-            case UNARY_PLUS: val1 = (int64_t) pop(&stack);
-                push(&stack, (uint64_t) val1); break;
-            case UNARY_MINUS: val1 = (int64_t) pop(&stack);
-                push(&stack, (uint64_t) (-1 * val1)); break;
+            case AND: eval_binary_op(&stack, val1, val2, &&); break;
+            case OR:  eval_binary_op(&stack, val1, val2, ||); break;
+            case ADD: eval_binary_op(&stack, val1, val2, +);  break;
+            case SUB: eval_binary_op(&stack, val1, val2, -);  break;
+            case MUL: eval_binary_op(&stack, val1, val2, *);  break;
+            case DIV: eval_binary_op(&stack, val2, val1, /);  break;
+            case MOD: eval_binary_op(&stack, val2, val1, %);  break;
+            case EQ:  eval_binary_op(&stack, val1, val2, ==); break;
+            case NEQ: eval_binary_op(&stack, val1, val2, !=); break;
+            case LTE: eval_binary_op(&stack, val1, val2, <=); break;
+            case GTE: eval_binary_op(&stack, val1, val2, >=); break;
+            case LT:  eval_binary_op(&stack, val1, val2, <);  break;
+            case GT:  eval_binary_op(&stack, val1, val2, >);  break;
+            case UNARY_PLUS:
+                val1 = pop(&stack);
+                push_integer(&stack, val1.integer);
+                break;
+            case UNARY_MINUS:
+                val1 = pop(&stack);
+                push_integer(&stack, (-1 * val1.integer));
+                break;
             case SET_LOCAL:
                 set_local(&stack, &sfs);
 #if DEBUG
@@ -256,11 +274,11 @@ int vm_execute(uint64_t *instructions)
                 break;
             case GET_LOCAL:
                 ip++;
-                size_t scope_offset = (size_t) instructions[ip];
+                size_t scope_offset = instructions[ip].offset;
                 val1 = get_local(&sfs, scope_offset);
                 // symbol = instructions[ip];
                 // val1 = lookup_local(&sfs, symbol);
-                push(&stack, (uint64_t) val1);
+                push(&stack, val1);
                 // if (lookup_local(&locals, symbol, &val1)) {
                 //     push(&stack, (uint64_t) val1);
                 // } else {
@@ -272,20 +290,20 @@ int vm_execute(uint64_t *instructions)
                 assert("JE note implemented\n" && false);
                 break;
             case JNE:
-                val1 = (uint64_t) pop(&stack);
-                if (!val1) {
-                    ip = (uint64_t) pop(&stack);
+                val1 = pop(&stack);
+                if (!val1.integer) {
+                    ip = pop(&stack).offset;
                     ip--; // reverse the effects of the ip++ below
                 } else {
                     pop(&stack);
                 }
                 break;
             case JMP:
-                ip = (uint64_t) pop(&stack);
+                ip = pop(&stack).offset;
                 ip--; // reverse the effects of the ip++ below
                 break;
             case POP:
-                ret = (uint64_t) pop(&stack);
+                ret = pop(&stack).integer;
                 break;
             case GET_HEAP:
                 get_heap(&heap, &stack);
@@ -307,18 +325,29 @@ int vm_execute(uint64_t *instructions)
                 stack_frame_enter(&sfs);
                 break;
             case POP_SCOPE:
+#if DEBUG
+                // print value for fibonacci benchmark
+                if (popcount == 1000000) {
+                    printf("x: %llu\n", get_local(&sfs, 1));
+                }
+#endif
                 stack_frame_exit(&sfs);
+#if DEBUG
+                popcount++;
+#endif
+                break;
+            case PRINT:
                 break;
             default:
-                printf("unknown instruction encountered: '%" PRIu64 "'", instructions[ip]);
+                printf("unknown instruction encountered: '%" PRIu64 "'", instructions[ip].offset);
                 break;
         }
         ip++;
-        i++;
+        iterations++;
 #if DEBUG
         print_stack(&stack);
         // print_heap(&heap);
-        if (i > 200) {
+        if (iterations > 200000) {
             printf("infinite loop detected, ending execution\n");
             break;
         }

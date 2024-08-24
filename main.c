@@ -66,7 +66,7 @@ int main(int argc, char *argv[])
     struct FunDef *ft = allocator_malloc(globals.function_count * sizeof(*ft));
     struct ClassTable class_table = { globals.class_count, clst };
     struct FunctionTable function_table = { globals.function_count, ft };
-    uint64_t instructions[INSTRUCTIONS_SIZE];
+    DelValue instructions[INSTRUCTIONS_SIZE];
     struct CompilerContext cc = { instructions, 0, NULL, &class_table };
     assert(globals.ast != NULL);
     print_tlds(globals.ast);

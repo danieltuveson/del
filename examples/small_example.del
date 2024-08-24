@@ -44,41 +44,24 @@
 //     y.thing = 34;
 // }
 
-// function fib(n : int) : int {
-//     let fibn_minus_2 = 0;
-//     let fibn_minus_1 = 1;
-//     let fibn = fibn_minus_1 + fibn_minus_2;
-//     if n == 0 {
-//         // let x = 111;
-//         return fibn_minus_2;
-//     } else if n == 1 {
-//         // let y = 222;
-//         // let yy = 333;
-//         return fibn_minus_1;
-//     } 
-//     // if true {
-//     //     let z = 444;
-//     // }
-//     for let i = 2; i <= n; i = i + 1 {
-//         // if true {
-//         //     let nested = 1;
-//         //     for (let j = 0; j < 1; j = j + 1) {
-//         //         let nested_twice = 3;
-//         //     }
-//         // }
-//         fibn = fibn_minus_1 + fibn_minus_2;
-//         fibn_minus_2 = fibn_minus_1;
-//         fibn_minus_1 = fibn;
-//     }
-//     return fibn;
-// }
+function fib(n : int) : int {
+    let fibn_minus_2 = 0;
+    let fibn_minus_1 = 1;
+    let fibn = fibn_minus_1 + fibn_minus_2;
+    if n == 0 {
+        return fibn_minus_2;
+    } else if n == 1 {
+        return fibn_minus_1;
+    } 
+    for let i = 2; i <= n; i = i + 1 {
+        fibn = fibn_minus_1 + fibn_minus_2;
+        fibn_minus_2 = fibn_minus_1;
+        fibn_minus_1 = fibn;
+    }
+    return fibn;
+}
 
 function main() {
-    let i = 0;
-    let j = 0;
-    while (i < 5) {
-        i = i + 1;
-    }
-    // let somethign = 4;
-    // let i = fib(7);
+    let number = 20;
+    fib(number);
 }
