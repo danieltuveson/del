@@ -193,7 +193,7 @@ static void set_local(struct Stack *stack, struct StackFrames *sfs, size_t scope
 
 int vm_execute(DelValue *instructions)
 {
-#if DEBUG
+#if BENCHMARK
     int popcount = 0;
 #endif
     struct StackFrames sfs = {0, {0}, {0}, 0, {0}};
@@ -334,14 +334,14 @@ int vm_execute(DelValue *instructions)
                 stack_frame_enter(&sfs);
                 break;
             case POP_SCOPE:
-#if DEBUG
+#if BENCHMARK
                 // print value for fibonacci benchmark
                 if (popcount == 1000000) {
                     printf("x: %li\n", get_local(&sfs, 1).integer);
                 }
 #endif
                 stack_frame_exit(&sfs);
-#if DEBUG
+#if BENCHMARK
                 popcount++;
 #endif
                 break;
