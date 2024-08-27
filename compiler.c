@@ -41,8 +41,23 @@ static inline void load_offset(struct CompilerContext *cc, size_t offset)
 
 static inline void compile_int(struct CompilerContext *cc, int64_t integer)
 {
-    push(cc);
-    cc->instructions[next(cc)].integer = integer;
+    switch (integer) {
+        case 0: 
+            load_opcode(cc, PUSH_0);
+            break;
+        case 1:
+            load_opcode(cc, PUSH_1);
+            break;
+        case 2:
+            load_opcode(cc, PUSH_2);
+            break;
+        case 3:
+            load_opcode(cc, PUSH_3);
+            break;
+        default:
+            push(cc);
+            cc->instructions[next(cc)].integer = integer;
+    }
 }
 
 static inline void compile_float(struct CompilerContext *cc, double floating)
@@ -57,11 +72,46 @@ static inline void compile_bool(struct CompilerContext *cc, int64_t boolean)
     compile_int(cc, boolean);
 }
 
-static void compile_loadsym(struct CompilerContext *cc, size_t offset)
-// static void compile_loadsym(struct CompilerContext *cc, Symbol symbol)
+static void compile_get_local(struct CompilerContext *cc, size_t offset)
 {
-    load_opcode(cc, GET_LOCAL);
-    load_offset(cc, offset);
+    switch (offset) {
+        case 0: 
+            load_opcode(cc, GET_LOCAL_0);
+            break;
+        case 1:
+            load_opcode(cc, GET_LOCAL_1);
+            break;
+        case 2:
+            load_opcode(cc, GET_LOCAL_2);
+            break;
+        case 3:
+            load_opcode(cc, GET_LOCAL_3);
+            break;
+        default:
+            load_opcode(cc, GET_LOCAL);
+            load_offset(cc, offset);
+    }
+}
+
+static void compile_set_local(struct CompilerContext *cc, size_t offset)
+{
+    switch (offset) {
+        case 0: 
+            load_opcode(cc, SET_LOCAL_0);
+            break;
+        case 1:
+            load_opcode(cc, SET_LOCAL_1);
+            break;
+        case 2:
+            load_opcode(cc, SET_LOCAL_2);
+            break;
+        case 3:
+            load_opcode(cc, SET_LOCAL_3);
+            break;
+        default:
+            load_opcode(cc, SET_LOCAL);
+            load_offset(cc, offset);
+    }
 }
 
 // Pack 8 byte chunks of chars into longs to push onto stack
@@ -118,11 +168,9 @@ static void compile_funargs(struct CompilerContext *cc, Definitions *defs)
 {
     linkedlist_foreach(lnode, defs->head) {
         struct Definition *def = lnode->value;
-        push(cc);
-        // load(cc, def->name);
-        load_offset(cc, def->scope_offset);
+        // push(cc);
+        compile_set_local(cc, def->scope_offset);
         printf("compile_funargs: %s, %ld\n", lookup_symbol(def->name), def->scope_offset);
-        load_opcode(cc, SET_LOCAL);
     }
 }
 
@@ -161,12 +209,11 @@ static void compile_get(struct CompilerContext *cc, struct Accessor *get)
     if (linkedlist_is_empty(get->lvalues)) {
         // load(cc, PUSH);
         // load(cc, get->definition->name);
-        load_opcode(cc, GET_LOCAL);
-        load_offset(cc, get->definition->scope_offset);
+        compile_get_local(cc, get->definition->scope_offset);
         return;
     } 
-    // compile_loadsym(cc, get->definition->name);
-    compile_loadsym(cc, get->definition->scope_offset);
+    // compile_get_local(cc, get->definition->name);
+    compile_get_local(cc, get->definition->scope_offset);
     Type parent_value_type = get->definition->type;
     linkedlist_foreach(lnode, get->lvalues->head) {
         struct Class *cls = lookup_class(cc->class_table, parent_value_type);
@@ -214,7 +261,7 @@ static void compile_value(struct CompilerContext *cc, struct Value *val)
         case VTYPE_INT:         compile_int(cc,         val->integer);  break;
         case VTYPE_FLOAT:       compile_float(cc,       val->floating); break;
         case VTYPE_BOOL:        compile_bool(cc,        val->boolean);  break;
-        // case VTYPE_SYMBOL:      compile_loadsym(cc,     val->symbol);   break;
+        // case VTYPE_SYMBOL:      compile_get_local(cc,     val->symbol);   break;
         case VTYPE_EXPR:        compile_expr(cc,        val->expr);     break;
         case VTYPE_FUNCALL:     compile_funcall(cc,     val->funcall);  break;
         case VTYPE_CONSTRUCTOR: compile_constructor(cc, val->funcall);  break;
@@ -254,10 +301,7 @@ static void compile_set(struct CompilerContext *cc, struct Set *set)
     printf("compile_set: %s, %ld\n", lookup_symbol(set->to_set->definition->name), set->to_set->definition->scope_offset);
     compile_value(cc, set->val);
     if (linkedlist_is_empty(set->to_set->lvalues)) {
-        push(cc);
-        // load(cc, set->to_set->definition->name);
-        load_offset(cc, set->to_set->definition->scope_offset);
-        load_opcode(cc, SET_LOCAL);
+        compile_set_local(cc, set->to_set->definition->scope_offset);
         if (set->is_define) load_opcode(cc, DEFINE);
         return;
     } 
@@ -265,8 +309,8 @@ static void compile_set(struct CompilerContext *cc, struct Set *set)
     //     printf("Error cannot compile property access / index\n");
     //     return;
     // }
-    // compile_loadsym(cc, set->to_set->definition->name);
-    compile_loadsym(cc, set->to_set->definition->scope_offset);
+    // compile_get_local(cc, set->to_set->definition->name);
+    compile_get_local(cc, set->to_set->definition->scope_offset);
     Type parent_value_type = set->to_set->definition->type;
     linkedlist_foreach(lnode, set->to_set->lvalues->head) {
         struct Class *cls = lookup_class(cc->class_table, parent_value_type);

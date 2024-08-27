@@ -144,38 +144,16 @@ static inline size_t stack_frame_offset(struct StackFrames *sfs)
 }
 
 static DelValue get_local(struct StackFrames *sfs, size_t scope_offset)
-// static uint64_t lookup_local(struct StackFrames *sfs, Symbol lookup_val)
 {
-    // for (size_t i = stack_frame_offset(sfs); i < sfs->index; i++) {
-    //     if (lookup_val == sfs->names[i]) {
-    //         return sfs->values[i];
-    //     }
-    // }
-    // return 0;
     size_t sf_offset = stack_frame_offset(sfs);
     return sfs->values[sf_offset + scope_offset];
 }
 
-static void set_local(struct Stack *stack, struct StackFrames *sfs)
-// static void def(struct Stack *stack, struct StackFrames *sfs)
+static void set_local(struct Stack *stack, struct StackFrames *sfs, size_t scope_offset)
 {
-    size_t scope_offset = pop(stack).offset;
     DelValue val = pop(stack);
     size_t sf_offset = stack_frame_offset(sfs);
     sfs->values[sf_offset + scope_offset] = val;
-    // Symbol symbol = (Symbol) pop(stack);
-    // uint64_t val = pop(stack);
-    // size_t i = stack_frame_offset(sfs);
-    // while (i < sfs->index) {
-    //     if (symbol == sfs->names[i]) {
-    //         sfs->values[i] = val;
-    //         return;
-    //     }
-    //     i++;
-    // }
-    // sfs->names[i] = symbol;
-    // sfs->values[i] = val;
-    // sfs->index++;
 }
 
 // static char *get_string(struct Heap *heap, uint64_t heap_loc)
@@ -222,6 +200,7 @@ int vm_execute(DelValue *instructions)
     struct Stack stack = {0, {0}};
     struct Heap heap = {0, 0, {0}};
     size_t ip = 0;
+    size_t scope_offset = 0;
     uint64_t ret = 0;
     DelValue val1 = { .integer = 0 };
     DelValue val2 = { .integer = 0 };
@@ -232,6 +211,15 @@ int vm_execute(DelValue *instructions)
                 ip++;
                 push(&stack, instructions[ip]);
                 break;
+            #define PUSH_N(n)\
+            case PUSH_ ## n:\
+                push_integer(&stack, n);\
+                break
+            PUSH_N(0);
+            PUSH_N(1);
+            PUSH_N(2);
+            PUSH_N(3);
+            #undef PUSH_N
             case PUSH_HEAP:
                 push_heap(&heap, &stack);
 #if DEBUG
@@ -264,28 +252,49 @@ int vm_execute(DelValue *instructions)
                 push_integer(&stack, (-1 * val1.integer));
                 break;
             case SET_LOCAL:
-                set_local(&stack, &sfs);
+                ip++;
+                scope_offset = instructions[ip].offset;
+                set_local(&stack, &sfs, scope_offset);
 #if DEBUG
                 print_frames(&sfs);
 #endif
                 break;
+#if DEBUG
+            #define SET_LOCAL_N(n)\
+            case SET_LOCAL_ ## n:\
+                set_local(&stack, &sfs, n);\
+                print_frames(&sfs);\
+                break
+#else
+            #define SET_LOCAL_N(n)\
+            case SET_LOCAL_ ## n:\
+                set_local(&stack, &sfs, n);\
+                break
+#endif
+            SET_LOCAL_N(0);
+            SET_LOCAL_N(1);
+            SET_LOCAL_N(2);
+            SET_LOCAL_N(3);
+            #undef SET_LOCAL_N
             case DEFINE:
                 sfs.index++;
                 break;
             case GET_LOCAL:
                 ip++;
-                size_t scope_offset = instructions[ip].offset;
+                scope_offset = instructions[ip].offset;
                 val1 = get_local(&sfs, scope_offset);
-                // symbol = instructions[ip];
-                // val1 = lookup_local(&sfs, symbol);
                 push(&stack, val1);
-                // if (lookup_local(&locals, symbol, &val1)) {
-                //     push(&stack, (uint64_t) val1);
-                // } else {
-                //     printf("variable '%s' is undefined\n", lookup_symbol(symbol));
-                //     goto exit_loop;
-                // }
                 break;
+            #define GET_LOCAL_N(n)\
+            case GET_LOCAL_ ## n:\
+                val1 = get_local(&sfs, n);\
+                push(&stack, val1);\
+                break
+            GET_LOCAL_N(0);
+            GET_LOCAL_N(1);
+            GET_LOCAL_N(2);
+            GET_LOCAL_N(3);
+            #undef GET_LOCAL_N
             case JE:
                 assert("JE note implemented\n" && false);
                 break;
@@ -328,7 +337,7 @@ int vm_execute(DelValue *instructions)
 #if DEBUG
                 // print value for fibonacci benchmark
                 if (popcount == 1000000) {
-                    printf("x: %llu\n", get_local(&sfs, 1));
+                    printf("x: %li\n", get_local(&sfs, 1).integer);
                 }
 #endif
                 stack_frame_exit(&sfs);
