@@ -19,6 +19,18 @@ void print_instructions(struct CompilerContext *cc)
                 i++;
                 printf("PUSH %" PRIu64 "\n", instructions[i].integer);
                 break;
+            case PUSH_0:
+                printf("PUSH_0\n");
+                break;
+            case PUSH_1:
+                printf("PUSH_1\n");
+                break;
+            case PUSH_2:
+                printf("PUSH_2\n");
+                break;
+            case PUSH_3:
+                printf("PUSH_3\n");
+                break;
             case PUSH_HEAP:
                 printf("PUSH_HEAP\n");
                 break;
@@ -33,6 +45,9 @@ void print_instructions(struct CompilerContext *cc)
                 break;
             case DIV:
                 printf("DIV\n");
+                break;
+            case MOD:
+                printf("MOD\n");
                 break;
             case JE:
                 printf("JE\n");
@@ -83,8 +98,32 @@ void print_instructions(struct CompilerContext *cc)
                 i++;
                 printf("GET_LOCAL %" PRIu64 "\n", instructions[i].offset);
                 break;
+            case GET_LOCAL_0:
+                printf("GET_LOCAL_0\n");
+                break;
+            case GET_LOCAL_1:
+                printf("GET_LOCAL_1\n");
+                break;
+            case GET_LOCAL_2:
+                printf("GET_LOCAL_2\n");
+                break;
+            case GET_LOCAL_3:
+                printf("GET_LOCAL_3\n");
+                break;
             case SET_LOCAL:
                 printf("SET_LOCAL\n");
+                break;
+            case SET_LOCAL_0:
+                printf("SET_LOCAL_0\n");
+                break;
+            case SET_LOCAL_1:
+                printf("SET_LOCAL_1\n");
+                break;
+            case SET_LOCAL_2:
+                printf("SET_LOCAL_2\n");
+                break;
+            case SET_LOCAL_3:
+                printf("SET_LOCAL_3\n");
                 break;
             case GET_HEAP:
                 printf("GET_HEAP\n");
@@ -104,8 +143,11 @@ void print_instructions(struct CompilerContext *cc)
             case POP_SCOPE:
                 printf("POP_SCOPE\n");
                 break;
+            case DEFINE:
+                printf("DEFINE\n");
+                break;
             default:
-                printf("***non-printable instruction***\n");
+                printf("***non-printable instruction: %d***\n", instructions[i].opcode);
         }
     }
 }
