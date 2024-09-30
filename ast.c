@@ -164,9 +164,10 @@ static struct FunCall *new_funcall(Symbol funname, Values *args)
     return funcall;
 }
 
-struct Statement *new_sfuncall(Symbol funname, Values *args)
+struct Statement *new_sfuncall(Symbol funname, Values *args, bool is_builtin)
 {
-    struct Statement *stmt = new_stmt(STMT_FUNCALL);
+    enum StatementType t = is_builtin ? STMT_BUILTIN_FUNCALL : STMT_FUNCALL;
+    struct Statement *stmt = new_stmt(t);
     stmt->funcall = new_funcall(funname, args);
     return stmt;
 }
@@ -194,15 +195,6 @@ struct Value *new_string(char *string)
     return val;
 }
 
-// This has been replaced with "get"
-// struct Value *new_symbol(uint64_t symbol)
-// {
-//     printf("new symbol: %s\n", lookup_symbol(symbol));
-//     struct Value *val = new_value(VTYPE_SYMBOL, TYPE_UNDEFINED);
-//     val->symbol = symbol;
-//     return val;
-// }
-
 struct Value *new_integer(long integer)
 {
     struct Value *val = new_value(VTYPE_INT, TYPE_INT);
@@ -224,17 +216,19 @@ struct Value *new_boolean(int boolean)
     return val;
 }
 
-struct Value *new_vfuncall(Symbol funname, Values *args)
+struct Value *new_vfuncall(Symbol funname, Values *args, bool is_builtin)
 {
-    struct Value *val = new_value(VTYPE_FUNCALL, TYPE_UNDEFINED);
+    enum ValueType t = is_builtin ? VTYPE_BUILTIN_FUNCALL: VTYPE_FUNCALL;
+    struct Value *val = new_value(t, TYPE_UNDEFINED);
     val->funcall = new_funcall(funname, args);
     return val;
 }
 
-struct Value *new_constructor(Symbol funname, Values *args)
+struct Value *new_constructor(Symbol funname, Values *args, bool is_builtin)
 {
     // Constructor name should be same as classname
-    struct Value *val = new_value(VTYPE_CONSTRUCTOR, funname);
+    enum ValueType t = is_builtin ? VTYPE_BUILTIN_CONSTRUCTOR: VTYPE_CONSTRUCTOR;
+    struct Value *val = new_value(t, funname);
     val->funcall = new_funcall(funname, args);
     return val;
 }

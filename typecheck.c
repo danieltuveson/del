@@ -311,25 +311,38 @@ static Type typecheck_get(struct TypeCheckerContext *context, struct Accessor *g
 static Type typecheck_value(struct TypeCheckerContext *context, struct Value *val)
 {
     switch (val->vtype) {
-        case VTYPE_STRING:      return TYPE_STRING;
-        case VTYPE_INT:         return TYPE_INT;
-        case VTYPE_FLOAT:       return TYPE_FLOAT;
-        case VTYPE_BOOL:        return TYPE_BOOL;
-        // case VTYPE_SYMBOL:      return typecheck_symbol(context, val->symbol);
-        case VTYPE_EXPR:        return typecheck_expression(context, val->expr);
-        case VTYPE_CONSTRUCTOR: return typecheck_constructor(context, val->constructor);
+        case VTYPE_STRING:
+            return TYPE_STRING;
+        case VTYPE_INT:
+            return TYPE_INT;
+        case VTYPE_FLOAT:
+            return TYPE_FLOAT;
+        case VTYPE_BOOL:
+            return TYPE_BOOL;
+        case VTYPE_EXPR:
+            val->type = typecheck_expression(context, val->expr);
+            return val->type;
+        case VTYPE_CONSTRUCTOR:
+            val->type = typecheck_constructor(context, val->constructor);
+            return val->type;
         case VTYPE_FUNCALL: {
             struct FunDef *fundef = lookup_fun(context->fun_table, val->funcall->funname);
             if (fundef != NULL && fundef->rettype == TYPE_UNDEFINED) {
                 printf("Error: function %s does not return a value\n", lookup_symbol(fundef->name));
                 return TYPE_UNDEFINED;
             } else if (typecheck_funcall(context, val->funcall, fundef)) {
+                val->type = fundef->rettype;
                 return fundef->rettype;
             } else {
                 return TYPE_UNDEFINED;
             }
         }
-        case VTYPE_GET:         return typecheck_get(context, val->get);
+        case VTYPE_GET:
+            val->type = typecheck_get(context, val->get);
+            return val->type;
+        case VTYPE_BUILTIN_CONSTRUCTOR:
+        case VTYPE_BUILTIN_FUNCALL:
+            assert("Not implemented\n" && false);
     }
     return TYPE_UNDEFINED; // Doing this to silence compiler warning, should never happen
 }
@@ -573,7 +586,9 @@ static bool typecheck_funcall(struct TypeCheckerContext *context, struct FunCall
         struct Value *val = vals->value;
         struct Definition *fun_arg_def = defs->value;
         Type val_type = typecheck_value(context, val);
-        if (val_type != fun_arg_def->type) {
+        if (val_type == TYPE_UNDEFINED) {
+            return false;
+        } else if (val_type != fun_arg_def->type) {
             printf("Error: expected argument %" PRIu64 " to %s to be of type %s, but got "
                    "argument of type %s\n",
                     i + 1, lookup_symbol(fundef->name),
@@ -583,6 +598,24 @@ static bool typecheck_funcall(struct TypeCheckerContext *context, struct FunCall
         }
         vals = vals->next;
         defs = defs->next;
+    }
+    return true;
+}
+
+// Typecheck for print builtin
+static bool typecheck_print(struct TypeCheckerContext *context, Values *args)
+{
+    if (args == NULL || args->length == 0) {
+        printf("Error: print function requires at least one argument\n");
+        return false;
+    }
+    // Validate arguments
+    linkedlist_foreach(lnode, args->head) {
+        struct Value *val = lnode->value;
+        Type val_type = typecheck_value(context, val);
+        if (val_type == TYPE_UNDEFINED) {
+            return false;
+        }
     }
     return true;
 }
@@ -619,7 +652,9 @@ static Type typecheck_constructor(struct TypeCheckerContext *context, struct Fun
         struct Value *val = vals->value;
         struct Definition *fun_arg_def = defs->value;
         Type val_type = typecheck_value(context, val);
-        if (val_type != fun_arg_def->type) {
+        if (val_type == TYPE_UNDEFINED) {
+            return false;
+        } else if (val_type != fun_arg_def->type) {
             printf("Error: expected argument %" PRIu64 " to %s to be of type %s, but got "
                     "argument of type %s\n",
                     i + 1, lookup_symbol(cls->name),
@@ -657,6 +692,15 @@ static bool typecheck_statement(struct TypeCheckerContext *context, struct State
             ret = typecheck_for(context, stmt->for_stmt);
             exit_scope(&(context->scope));
             return ret;
+        case STMT_BUILTIN_FUNCALL: {
+            Symbol name = stmt->funcall->funname;
+            if (name == BUILTIN_PRINT || name == BUILTIN_PRINTLN) {
+                ret = typecheck_print(context, stmt->funcall->args);
+            } else {
+                assert("Error: not implemented\n" && false);
+            }
+            return ret;
+        }
         case STMT_FUNCALL: {
             struct FunDef *fundef = lookup_fun(context->fun_table, stmt->funcall->funname);
             ret = typecheck_funcall(context, stmt->funcall, fundef);

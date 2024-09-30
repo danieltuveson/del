@@ -10,7 +10,6 @@
 #include "vm.h"
 #include "printers.h"
 
-
 int main(int argc, char *argv[])
 {
     int ret = EXIT_FAILURE;
@@ -31,7 +30,7 @@ int main(int argc, char *argv[])
 
     printf("........ TOKENIZING INPUT ........\n");
     struct Lexer lexer;
-    lexer_init(&lexer, globals.file->input, globals.file->length, false);
+    lexer_init(&lexer, false);
     if (!tokenize(&lexer)) {
         // print_error(&(lexer.error));
         printf("Error at line %d column %d: %s\n", lexer.error.line_number, lexer.error.column_number,

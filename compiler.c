@@ -117,9 +117,9 @@ static void compile_set_local(struct CompilerContext *cc, size_t offset)
 // Pack 8 byte chunks of chars into longs to push onto stack
 static void compile_string(struct CompilerContext *cc, char *string)
 {
-    assert("Error: not implemented\n" && false);
+    assert("Error: not implemented\n" && false && cc && string);
     // uint64_t packed = 0;
-    // uint64_t i = 0;
+    // uint64_t i = 0j
     // uint64_t tmp;
     // for (; string[i] != '\0'; i++) {
     //     tmp = (uint64_t) string[i];
@@ -235,6 +235,30 @@ static void compile_get(struct CompilerContext *cc, struct Accessor *get)
     }
 }
 
+static void compile_print(struct CompilerContext *cc, Values *args, bool has_newline)
+{
+    linkedlist_foreach(lnode, args->head) {
+        struct Value *value = lnode->value;
+        compile_value(cc, value);
+        compile_int(cc, value->type);
+        load_opcode(cc, PRINT);
+    }
+    if (has_newline) {
+        compile_string(cc, "\n");
+        compile_int(cc, TYPE_STRING);
+        load_opcode(cc, PRINT);
+    }
+}
+
+static void compile_builtin_funcall(struct CompilerContext *cc, struct FunCall *funcall)
+{
+    if (funcall->funname == BUILTIN_PRINT) {
+        compile_print(cc, funcall->args, false);
+    } else if (funcall->funname == BUILTIN_PRINTLN) {
+        compile_print(cc, funcall->args, false);
+    }
+}
+
 static void compile_funcall(struct CompilerContext *cc, struct FunCall *funcall)
 {
     push(cc);
@@ -261,12 +285,11 @@ static void compile_value(struct CompilerContext *cc, struct Value *val)
         case VTYPE_INT:         compile_int(cc,         val->integer);  break;
         case VTYPE_FLOAT:       compile_float(cc,       val->floating); break;
         case VTYPE_BOOL:        compile_bool(cc,        val->boolean);  break;
-        // case VTYPE_SYMBOL:      compile_get_local(cc,     val->symbol);   break;
         case VTYPE_EXPR:        compile_expr(cc,        val->expr);     break;
         case VTYPE_FUNCALL:     compile_funcall(cc,     val->funcall);  break;
         case VTYPE_CONSTRUCTOR: compile_constructor(cc, val->funcall);  break;
         case VTYPE_GET:         compile_get(cc,         val->get);      break;
-        // default: printf("compile not implemented yet\n"); assert(0);
+        default: printf("compile not implemented yet\n"); assert(0);
     }
 }
 
@@ -394,14 +417,33 @@ static void compile_for(struct CompilerContext *cc, struct For *for_stmt)
 static void compile_statement(struct CompilerContext *cc, struct Statement *stmt)
 {
     switch (stmt->type) {
-        case STMT_SET:     compile_set(cc,     stmt->set);         break;
-        case STMT_RETURN:  compile_return(cc,  stmt->ret);         break;
-        case STMT_IF:      compile_if(cc,      stmt->if_stmt);     break;
-        case STMT_WHILE:   compile_while(cc,   stmt->while_stmt);  break;
-        case STMT_FOR:     compile_for(cc,     stmt->for_stmt);    break;
-        case STMT_FUNCALL: compile_funcall(cc, stmt->funcall);     break;
-        case STMT_LET:     load_opcode(cc, DEFINE);                       break;
-        default: printf("Error cannot compile statement type: not implemented\n"); break;
+        case STMT_SET:
+            compile_set(cc, stmt->set);
+            break;
+        case STMT_RETURN:
+            compile_return(cc, stmt->ret);
+            break;
+        case STMT_IF:
+            compile_if(cc, stmt->if_stmt);
+            break;
+        case STMT_WHILE:
+            compile_while(cc, stmt->while_stmt);
+            break;
+        case STMT_FOR:
+            compile_for(cc, stmt->for_stmt);
+            break;
+        case STMT_FUNCALL:
+            compile_funcall(cc, stmt->funcall);
+            break;
+        case STMT_BUILTIN_FUNCALL:
+            compile_builtin_funcall(cc, stmt->funcall);
+            break;
+        case STMT_LET:
+            load_opcode(cc, DEFINE);
+            break;
+        default:
+            assert("Error cannot compile statement type: not implemented\n" && false);
+            break;
     }
 }
 

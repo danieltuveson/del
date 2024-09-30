@@ -16,7 +16,7 @@ static void get_bad_line(char *text, char *underline, struct Token *token)
     }
     // Start / end indices
     int line_end = line_start;
-    char *c = globals.file->input + line_start;
+    // char *c = globals.file->input + line_start;
     for (char *c = globals.file->input + line_start; *c != '\n'; c++) {
         line_end++;
     }

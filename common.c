@@ -4,13 +4,6 @@
 
 struct Globals globals = { {0}, NULL, NULL, NULL, NULL, 0, 0, 0, NULL };
 
-uint64_t TYPE_UNDEFINED = 0;
-uint64_t TYPE_NIL       = 1;
-uint64_t TYPE_BOOL      = 2;
-uint64_t TYPE_INT       = 3;
-uint64_t TYPE_FLOAT     = 4;
-uint64_t TYPE_STRING    = 5;
-
 static void add_symbol_helper(char *sym, size_t size)
 {
     char *symbol = allocator_malloc(size);
@@ -23,18 +16,22 @@ static void add_symbol_helper(char *sym, size_t size)
 
 #define add_symbol(sym) add_symbol_helper(sym, sizeof(sym))
 
-/* Important Note: the order of these must be the same as the order in which they are
- * declared above if we want their symbol to correspond to the same number
- */
 void init_symbol_table(void)
 {
-    // Add types to symbol table
+    /* Add types to symbol table
+     * Important Note: the order of these must be the same as the order in which they are
+     * declared in the header if we want their symbol to correspond to the same number
+     */
     add_symbol("**UNDEFINED**");
     add_symbol("null");
     add_symbol("bool");
     add_symbol("int");
     add_symbol("float");
     add_symbol("string");
+    
+    // Builtin functions
+    add_symbol("print");
+    add_symbol("println");
 }
 #undef add_symbol
 
@@ -53,3 +50,9 @@ char *lookup_symbol(uint64_t symbol)
     // printf("returns null. This should not happen!!!\n");
     return NULL;
 }
+
+bool is_builtin(uint64_t symbol)
+{
+    return symbol >= BUILTIN_PRINT && symbol <= BUILTIN_PRINTLN;
+}
+

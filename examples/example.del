@@ -12,6 +12,7 @@ function sum(r : Range) : int {
 }
 
 function main() {
-    let range = new Range(0, 100);
+    let range = new Range(0, 10);
     let sum = sum(range);
+    print(sum);
 }

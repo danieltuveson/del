@@ -81,9 +81,9 @@ struct Lexer {
     Tokens *tokens;
 };
 
-void lexer_init(struct Lexer *lexer, char *input, int input_length, bool include_comments);
+void lexer_init(struct Lexer *lexer, bool include_comments);
 bool tokenize(struct Lexer *lexer);
-void print_token(struct Lexer *lexer, struct Token *token);
+void print_token(struct Token *token);
 void print_lexer(struct Lexer *lexer);
 
 #endif

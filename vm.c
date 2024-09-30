@@ -98,17 +98,6 @@ static inline void push_heap(struct Heap *heap, struct Stack *stack)
 }
 
 /* Get value from the heap and push it onto the stack */
-// static inline void get_heap(struct Heap *heap, struct Stack *stack)
-// {
-//     uint64_t ptr, count, location;
-//     ptr = pop(stack);
-//     location = get_location(ptr);
-//     count = get_count(ptr);
-//     for (uint64_t i = count + location - 1; i >= location; i--) {
-//         push(stack, heap->values[i]);
-//     }
-// }
-
 static inline void get_heap(struct Heap *heap, struct Stack *stack)
 {
     size_t index = pop(stack).offset;
@@ -119,15 +108,15 @@ static inline void get_heap(struct Heap *heap, struct Stack *stack)
 
 static inline void set_heap(struct Heap *heap, struct Stack *stack)
 {
-    printf("setting heap\n");
+    // printf("setting heap\n");
     size_t index = pop(stack).offset;
     size_t ptr = pop(stack).offset;
     DelValue value = pop(stack);
     size_t location = get_location(ptr);
     heap->values[location + index] = value;
-    printf("value: %" PRIi64 ", ptr: %" PRIu64 ", index: %" PRIu64 ", location: %" PRIu64 "\n", 
-           value.integer, ptr, index, location);
-    printf("done setting heap\n");
+    // printf("value: %" PRIi64 ", ptr: %" PRIu64 ", index: %" PRIu64 ", location: %" PRIu64 "\n", 
+    //        value.integer, ptr, index, location);
+    // printf("done setting heap\n");
 }
 
 static inline void stack_frame_enter(struct StackFrames *sfs)
@@ -162,52 +151,38 @@ static void set_local(struct Stack *stack, struct StackFrames *sfs, size_t scope
 #endif
 }
 
-// static char *get_string(struct Heap *heap, uint64_t heap_loc)
-// {
-// }
-// 
+static void print(struct Stack *stack)
+{
+    DelValue dval, dtype;
+    dtype = pop(stack);
+    dval = pop(stack);
+    Type t = dtype.integer;
+    switch (t) {
+        case TYPE_NIL:
+            printf("null");
+            break;
+        case TYPE_INT:
+            printf("%" PRIi64 "", dval.integer);
+            break;
+        case TYPE_FLOAT:
+            printf("%f", dval.floating);
+            break;
+        case TYPE_BOOL:
+            if (dval.integer == 0) {
+                printf("false");
+            } else {
+                printf("true");
+            }
+            break;
+        case TYPE_STRING:
+            assert("Not implemented\n" && false);
+            break;
+        default:
+            printf("<object>");
+    }
+    printf("\n");
+}
 
-// static char *load_string(struct Stack *stack, struct Heap *heap)
-// {
-//     uint64_t packed = 0;
-//     uint64_t i = 0;
-//     uint64_t tmp;
-//     for (; string[i] != '\0'; i++) {
-//         tmp = (uint64_t) string[i];
-//         switch ((i + 1) % 8) {
-//             case 0:
-//                 packed = packed | (tmp << 56);
-//                 load(PUSH_HEAP);
-//                 load(packed);
-//                 break;
-//             case 1: packed = tmp;                  break;
-//             case 2: packed = packed | (tmp << 8);  break;
-//             case 3: packed = packed | (tmp << 16); break;
-//             case 4: packed = packed | (tmp << 24); break;
-//             case 5: packed = packed | (tmp << 32); break;
-//             case 6: packed = packed | (tmp << 40); break;
-//             case 7: packed = packed | (tmp << 48); break;
-//         }
-//     }
-//     // If string is not multiple of 8 bytes, push the remainder
-//     if ((i + 1) % 8 != 0) {
-//         load(PUSH_HEAP);
-//         load(packed);
-//     }
-//     return offset;
-// }
-
-// CUSTOM THREADED FUNCTIONS / MACROS
-// #define THREADED_CODE_ENABLED 1
-
-// struct StackFrames {
-//     size_t index;
-//     DelValue values[HEAP_SIZE];
-//     size_t frame_offsets_index;
-//     size_t frame_offsets[HEAP_SIZE];
-// };
-
-// Main
 int vm_execute(DelValue *instructions)
 {
 #if BENCHMARK
@@ -349,8 +324,11 @@ int vm_execute(DelValue *instructions)
                 popcount++;
 #endif
                 vm_break;
-            vm_case(PRINT):
+            vm_case(PRINT): {
+                print(&stack);
+                assert("Print not implemeneted\n" && false);
                 vm_break;
+            }
             vm_case(FLOAT_ADD):
             vm_case(FLOAT_SUB):
             vm_case(FLOAT_MUL):

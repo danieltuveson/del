@@ -364,9 +364,6 @@ static void print_get(struct Accessor *get)
 void print_value(struct Value *val)
 {
     switch (val->vtype) {
-    // case VTYPE_SYMBOL:
-    //     printf("%s", lookup_symbol(val->symbol));
-    //     break;
     case VTYPE_STRING:
         printf("\"%s\"", val->string);
         break;
@@ -531,6 +528,7 @@ static void print_statement_indent(struct Statement *stmt, int indent)
         case STMT_FOREACH:
             printf("print_statement not yet implemented for this type");
             break;
+        case STMT_BUILTIN_FUNCALL:
         case STMT_FUNCALL:
             printf("%s", lookup_symbol(stmt->funcall->funname));
             printf("(");

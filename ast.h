@@ -16,14 +16,15 @@ typedef struct LinkedList Methods;
 typedef struct LinkedList LValues;
 
 enum ValueType {
-    // VTYPE_SYMBOL,
     VTYPE_STRING,
     VTYPE_INT,
     VTYPE_FLOAT,
     VTYPE_BOOL,
     VTYPE_EXPR,
     VTYPE_FUNCALL,
+    VTYPE_BUILTIN_FUNCALL,
     VTYPE_CONSTRUCTOR,
+    VTYPE_BUILTIN_CONSTRUCTOR,
     VTYPE_GET
 };
 
@@ -164,6 +165,7 @@ enum StatementType {
     STMT_FOR,
     STMT_FOREACH,
     STMT_FUNCALL,
+    STMT_BUILTIN_FUNCALL,
     STMT_RETURN
 };
 
@@ -201,7 +203,8 @@ struct Statement *new_for(struct Statement *init, struct Value *condition,
         struct Statement *increment, Statements *stmts);
 struct Statement *new_let(Definitions *let);
 struct Definition *new_define(Symbol name, Type type);
-struct Statement *new_sfuncall(Symbol funname, Values *args);
+// struct Statement *new_sfuncall(Symbol funname, Values *args);
+struct Statement *new_sfuncall(Symbol funname, Values *args, bool is_builtin);
 struct Statement *new_return(struct Value *val);
 
 /* Value constructors */
@@ -210,8 +213,8 @@ struct Value *new_string(char *string);
 struct Value *new_integer(long integer);
 struct Value *new_floating(double floating);
 struct Value *new_boolean(int boolean);
-struct Value *new_vfuncall(Symbol funname, Values *args);
-struct Value *new_constructor(Symbol funname, Values *args);
+struct Value *new_vfuncall(Symbol funname, Values *args, bool is_builtin);
+struct Value *new_constructor(Symbol funname, Values *args, bool is_builtin);
 struct Value *new_get(Symbol symbol, LValues *lvalues);
 struct Value *new_expr(struct Expr *expr);
 struct LValue *new_property(Symbol property);

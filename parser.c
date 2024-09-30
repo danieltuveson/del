@@ -193,23 +193,23 @@ static Values *parse_args(struct Parser *parser)
     return vals;
 }
 
-#define parse_call(rettype, parser, symbol, func) \
+#define parse_call(rettype, parser, symbol, func, builtin) \
     do {                                          \
     Values *vals = NULL;                          \
     if (match(parser, ST_CLOSE_PAREN)) {          \
-        rettype = func(symbol, NULL);             \
+        rettype = func(symbol, NULL, builtin); \
     } else if ((vals = parse_args(parser))) {     \
-        rettype = func(symbol, vals);             \
+        rettype = func(symbol, vals, builtin); \
     } else {                                      \
         rettype = NULL;                           \
     }                                             \
     } while (false)
 
 static struct Value *parse_vfuncall(struct Parser *parser, Symbol symbol,
-    struct Value *func(Symbol, Values *))
+    struct Value *func(Symbol, Values *, bool))
 {
     struct Value *val;
-    parse_call(val, parser, symbol, func);
+    parse_call(val, parser, symbol, func, false);
     return val;
 }
 
@@ -287,10 +287,11 @@ static struct Value *parse_subexpr(struct Parser *parser)
 }
 
 static struct Statement *parse_sfuncall(struct Parser *parser, Symbol symbol,
-    struct Statement *func(Symbol, Values *))
+    struct Statement *func(Symbol, Values *, bool))
 {
     struct Statement *stmt;
-    parse_call(stmt, parser, symbol, func);
+    bool builtin = is_builtin(symbol);
+    parse_call(stmt, parser, symbol, func, builtin);
     return stmt;
 }
 
@@ -578,6 +579,10 @@ static struct TopLevelDecl *parse_fundef(struct Parser *parser)
     struct LinkedListNode *old_head = parser->head;
     if (match(parser, T_SYMBOL)) {
         Symbol funname = nth_token(old_head, 1)->symbol;
+        if (is_builtin(funname)) {
+            error_parser("cannot use builtin function name as declaration");
+            return NULL;
+        }
         Definitions *defs = parse_fundef_args(parser);
         Type rettype = TYPE_UNDEFINED;
         if (!defs) {

@@ -321,7 +321,7 @@ static void tokenize_symbol(struct Lexer *lexer)
     linkedlist_append(lexer->tokens, new_symbol_token(lexer, init_offset, lexer->offset, symbol));
 }
 
-void print_token(struct Lexer *lexer, struct Token *token)
+void print_token(struct Token *token)
 {
     printf("Type: %d, Start: %d, End: %d, Content: '", token->type, token->start, token->end);
     for (int i = token->start; i < token->end; i++) {
@@ -352,13 +352,13 @@ void print_lexer(struct Lexer *lexer)
     printf("  [\n");
     for (struct LinkedListNode *node = lexer->tokens->head; node != NULL; node = node->next) {
         printf("    ");
-        print_token(lexer, node->value);
+        print_token(node->value);
     }
     printf("  ]\n");
     printf("}\n");
 }
 
-void lexer_init(struct Lexer *lexer, char *input, int input_length, bool include_comments)
+void lexer_init(struct Lexer *lexer, bool include_comments)
 {
     lexer->error.message = NULL;
     lexer->error.line_number = 1;
