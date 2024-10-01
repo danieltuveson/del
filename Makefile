@@ -5,7 +5,7 @@
 # CFLAGS = -O2 -g -Wall -Wextra -DDEBUG=1 -DTHREADED_CODE_ENABLED=1
 
 # Threading option exists, but disabled by default since I didn't see a consistent speedup
-CFLAGS = -O2 -g -Wall -Wextra -DDEBUG=1 -DBENCHMARK=1 -DTHREADED_CODE_ENABLED=0
+CFLAGS = -O2 -g -Wall -Wextra -DDEBUG=0 -DBENCHMARK=1 -DTHREADED_CODE_ENABLED=0
 objects = common.o allocator.o lexer.o readfile.o linkedlist.o ast.o printers.o parser.o \
 		  typecheck.o functiontable.o compiler.o vm.o error.o 
 main = main.o

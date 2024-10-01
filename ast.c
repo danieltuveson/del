@@ -51,7 +51,6 @@ uint64_t lookup_property_index(struct Class *cls, Symbol name)
 
 static struct Accessor *new_accessor(Symbol symbol, LValues *lvalues)
 {
-    printf("new accessor: %s, %ld\n", lookup_symbol(symbol), lvalues->length);
     struct Accessor *accessor = allocator_malloc(sizeof(struct Accessor));
     accessor->definition = new_define(symbol, TYPE_UNDEFINED);
     accessor->lvalues = lvalues;
@@ -87,7 +86,6 @@ static struct Statement *new_stmt(enum StatementType st)
 
 struct Statement *new_set(Symbol symbol, struct Value *val, LValues *lvalues, bool is_define)
 {
-    printf("new set: %s, %ld\n", lookup_symbol(symbol), lvalues->length);
     struct Statement *stmt = new_stmt(STMT_SET);
     stmt->set = allocator_malloc(sizeof(struct Set));
     stmt->set->to_set = new_accessor(symbol, lvalues);

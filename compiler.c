@@ -168,9 +168,7 @@ static void compile_funargs(struct CompilerContext *cc, Definitions *defs)
 {
     linkedlist_foreach(lnode, defs->head) {
         struct Definition *def = lnode->value;
-        // push(cc);
         compile_set_local(cc, def->scope_offset);
-        printf("compile_funargs: %s, %ld\n", lookup_symbol(def->name), def->scope_offset);
     }
 }
 
@@ -191,9 +189,6 @@ static void compile_fundef(struct CompilerContext *cc, struct FunDef *fundef)
 static void compile_constructor(struct CompilerContext *cc, struct FunCall *funcall)
 {
     linkedlist_foreach_reverse(lnode, funcall->args->tail) {
-        printf("...compiling constructor...\n");
-        print_value(lnode->value);
-        printf("\n");
         compile_value(cc, lnode->value);
     }
     push(cc);
@@ -205,7 +200,6 @@ static void compile_constructor(struct CompilerContext *cc, struct FunCall *func
     // load(cc, offset);
 static void compile_get(struct CompilerContext *cc, struct Accessor *get)
 {
-    printf("compile_get: %s, %ld\n", lookup_symbol(get->definition->name), get->definition->scope_offset);
     if (linkedlist_is_empty(get->lvalues)) {
         // load(cc, PUSH);
         // load(cc, get->definition->name);
@@ -230,6 +224,7 @@ static void compile_get(struct CompilerContext *cc, struct Accessor *get)
                 // handle this later
                 // struct Value *index;
                 printf("Error cannot compile array indexing\n");
+                assert(false);
                 return;
         }
     }
@@ -265,8 +260,6 @@ static void compile_funcall(struct CompilerContext *cc, struct FunCall *funcall)
     size_t bookmark = next(cc);
     if (funcall->args != NULL) {
         linkedlist_foreach_reverse(lnode, funcall->args->tail) {
-            // struct Value *val = lnode->value;
-            // printf("compiling arg %s...\n", lookup_symbol(val->symbol));
             compile_value(cc, lnode->value);
         }
     }
@@ -289,7 +282,7 @@ static void compile_value(struct CompilerContext *cc, struct Value *val)
         case VTYPE_FUNCALL:     compile_funcall(cc,     val->funcall);  break;
         case VTYPE_CONSTRUCTOR: compile_constructor(cc, val->funcall);  break;
         case VTYPE_GET:         compile_get(cc,         val->get);      break;
-        default: printf("compile not implemented yet\n"); assert(0);
+        default: printf("compile not implemented yet\n"); assert(false);
     }
 }
 
@@ -315,13 +308,12 @@ static void compile_expr(struct CompilerContext *cc, struct Expr *expr)
         case OP_PERCENT:     compile_binary_op(cc, val1, val2, MOD);  break;
         case OP_UNARY_PLUS:  compile_unary_op(cc, val1, UNARY_PLUS);  break;
         case OP_UNARY_MINUS: compile_unary_op(cc, val1, UNARY_MINUS); break;
-        default: printf("Error cannot compile expression\n"); break;
+        default: printf("Error cannot compile expression\n"); assert(false); break;
     }
 }
 
 static void compile_set(struct CompilerContext *cc, struct Set *set)
 {
-    printf("compile_set: %s, %ld\n", lookup_symbol(set->to_set->definition->name), set->to_set->definition->scope_offset);
     compile_value(cc, set->val);
     if (linkedlist_is_empty(set->to_set->lvalues)) {
         compile_set_local(cc, set->to_set->definition->scope_offset);
@@ -357,6 +349,7 @@ static void compile_set(struct CompilerContext *cc, struct Set *set)
                 // handle this later
                 // struct Value *index;
                 printf("Error cannot compile array indexing\n");
+                assert(false);
                 return;
         }
     }

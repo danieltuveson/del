@@ -110,7 +110,6 @@ static bool add_var(struct Scope *current, struct Definition *def)
         printf("Error: variable '%s' shadows existing definition\n", lookup_symbol(def->name));
         return false;
     }
-    printf("adding var %s, offset %ld\n", lookup_symbol(def->name), current->varcount);
     def->scope_offset = current->varcount;
     current->varcount++;
     linkedlist_append(current->definitions, def);
@@ -744,7 +743,6 @@ static bool typecheck_fundef(struct TypeCheckerContext *context, struct FunDef *
         return ret;
     }
     ret = typecheck_statements(context, fundef->stmts);
-    print_scope(scope);
     exit_scope(&scope);
     return ret;
 }

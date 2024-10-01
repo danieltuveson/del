@@ -326,7 +326,6 @@ int vm_execute(DelValue *instructions)
                 vm_break;
             vm_case(PRINT): {
                 print(&stack);
-                assert("Print not implemeneted\n" && false);
                 vm_break;
             }
             vm_case(FLOAT_ADD):
@@ -349,7 +348,7 @@ int vm_execute(DelValue *instructions)
         iterations++;
 #if DEBUG
         print_stack(&stack);
-        // print_heap(&heap);
+        print_heap(&heap);
         if (iterations > 200000) {
             printf("infinite loop detected, ending execution\n");
             goto exit_loop;
@@ -357,9 +356,11 @@ int vm_execute(DelValue *instructions)
 #endif
     }
 exit_loop:
+#if DEBUG
     print_stack(&stack);
     print_frames(&sfs);
     print_heap(&heap);
+#endif
     return ret;
 }
 
