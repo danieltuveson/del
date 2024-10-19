@@ -112,15 +112,11 @@ static inline void get_heap(struct Heap *heap, struct Stack *stack)
 
 static inline void set_heap(struct Heap *heap, struct Stack *stack)
 {
-    // printf("setting heap\n");
     size_t index = pop(stack).offset;
     size_t ptr = pop(stack).offset;
     DelValue value = pop(stack);
     size_t location = get_location(ptr);
     heap->values[location + index] = value;
-    // printf("value: %" PRIi64 ", ptr: %" PRIu64 ", index: %" PRIu64 ", location: %" PRIu64 "\n", 
-    //        value.integer, ptr, index, location);
-    // printf("done setting heap\n");
 }
 
 static inline void stack_frame_enter(struct StackFrames *sfs)
@@ -139,13 +135,13 @@ static inline size_t stack_frame_offset(struct StackFrames *sfs)
     return sfs->frame_offsets[sfs->frame_offsets_index-1];
 }
 
-static DelValue get_local(struct StackFrames *sfs, size_t scope_offset)
+static inline DelValue get_local(struct StackFrames *sfs, size_t scope_offset)
 {
     size_t sf_offset = stack_frame_offset(sfs);
     return sfs->values[sf_offset + scope_offset];
 }
 
-static void set_local(struct Stack *stack, struct StackFrames *sfs, size_t scope_offset)
+static inline void set_local(struct Stack *stack, struct StackFrames *sfs, size_t scope_offset)
 {
     DelValue val = pop(stack);
     size_t sf_offset = stack_frame_offset(sfs);
@@ -201,9 +197,6 @@ static void print(struct Stack *stack, struct Heap *heap)
 
 int vm_execute(DelValue *instructions)
 {
-#if BENCHMARK
-    int popcount = 0;
-#endif
     struct StackFrames sfs = {0};
     struct Stack stack = {0};
     struct Heap heap = {0};
@@ -333,16 +326,7 @@ int vm_execute(DelValue *instructions)
                 stack_frame_enter(&sfs);
                 vm_break;
             vm_case(POP_SCOPE):
-#if BENCHMARK
-                // print value for fibonacci benchmark
-                if (popcount == 1000000) {
-                    printf("x: %li\n", get_local(&sfs, 1).integer);
-                }
-#endif
                 stack_frame_exit(&sfs);
-#if BENCHMARK
-                popcount++;
-#endif
                 vm_break;
             vm_case(PRINT): {
                 print(&stack, &heap);

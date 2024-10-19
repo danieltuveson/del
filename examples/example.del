@@ -16,4 +16,6 @@ function main() {
     let sum = sum(range);
     print("The sum is: ");
     println(sum);
+    println(4 == 4);
+    println(4 == 5);
 }

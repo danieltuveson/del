@@ -67,7 +67,6 @@ static inline void compile_int(struct CompilerContext *cc, int64_t integer)
 static inline void compile_chars(struct CompilerContext *cc, char chars[8])
 {
     push(cc);
-    int offset = cc->offset;
     memcpy(cc->instructions[next(cc)].chars, chars, 8);
 }
 
