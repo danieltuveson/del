@@ -69,11 +69,6 @@ static inline void compile_chars(struct CompilerContext *cc, char chars[8])
     push(cc);
     int offset = cc->offset;
     memcpy(cc->instructions[next(cc)].chars, chars, 8);
-    // printf("instructions: ");
-    // for (int i = 0; i < 8; i++) {
-    //     putchar(cc->instructions[offset].chars[i]);
-    // }
-    // putchar('\n');
 }
 
 static inline void compile_float(struct CompilerContext *cc, double floating)
@@ -139,11 +134,6 @@ static void compile_string(struct CompilerContext *cc, char *string)
     while (string[i] != '\0') {
         packed[offset] = string[i];
         if (offset == 7) {
-            // printf("packed: ");
-            // for (int j = 0; j < 8; j++) {
-            //     printf("%c", packed[j]);
-            // }
-            // printf("%c", '\n');
             compile_chars(cc, packed);
             memset(packed, 0, 8);
         }
@@ -153,11 +143,6 @@ static void compile_string(struct CompilerContext *cc, char *string)
     // Push the remainder, if we haven't already
     if (offset != 0) {
         compile_chars(cc, packed);
-        // printf("packed': ");
-        // for (int j = 0; j < 8; j++) {
-        //     printf("%c", packed[j]);
-        // }
-        // printf("%c", '\n');
     }
     compile_heap(cc, offset, i / 8 + (offset == 0 ? 0 : 1));
 }
