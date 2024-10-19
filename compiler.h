@@ -11,7 +11,7 @@ typedef union {
     int64_t integer;
     size_t offset;
     double floating;
-    char character;
+    char chars[8];
     enum Code opcode;
 } DelValue;
 

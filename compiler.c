@@ -31,13 +31,17 @@ static inline void load_offset(struct CompilerContext *cc, size_t offset)
 {
     cc->instructions[next(cc)].offset = offset;
 }
-// typedef union {
-//     int64_t integer;
-//     size_t offset;
-//     double floating;
-//     char character;
-//     enum Code opcode;
-// } DelValue;
+
+static void compile_heap(struct CompilerContext *cc, size_t metadata, size_t count)
+{
+    // load metadata
+    push(cc);
+    load_offset(cc, metadata);
+    // load count
+    push(cc);
+    load_offset(cc, count);
+    load_opcode(cc, PUSH_HEAP);
+}
 
 static inline void compile_int(struct CompilerContext *cc, int64_t integer)
 {
@@ -58,6 +62,18 @@ static inline void compile_int(struct CompilerContext *cc, int64_t integer)
             push(cc);
             cc->instructions[next(cc)].integer = integer;
     }
+}
+
+static inline void compile_chars(struct CompilerContext *cc, char chars[8])
+{
+    push(cc);
+    int offset = cc->offset;
+    memcpy(cc->instructions[next(cc)].chars, chars, 8);
+    // printf("instructions: ");
+    // for (int i = 0; i < 8; i++) {
+    //     putchar(cc->instructions[offset].chars[i]);
+    // }
+    // putchar('\n');
 }
 
 static inline void compile_float(struct CompilerContext *cc, double floating)
@@ -114,42 +130,36 @@ static void compile_set_local(struct CompilerContext *cc, size_t offset)
     }
 }
 
-// Pack 8 byte chunks of chars into longs to push onto stack
+// Pack 8 byte chunks of chars to push onto stack
 static void compile_string(struct CompilerContext *cc, char *string)
 {
-    assert("Error: not implemented\n" && false && cc && string);
-    // uint64_t packed = 0;
-    // uint64_t i = 0j
-    // uint64_t tmp;
-    // for (; string[i] != '\0'; i++) {
-    //     tmp = (uint64_t) string[i];
-    //     switch ((i + 1) % 8) {
-    //         case 0:
-    //             packed = packed | (tmp << 56);
-    //             push(cc);
-    //             load(cc, packed);
-    //             break;
-    //         case 1: packed = tmp    | (tmp << 0);  break; /* technically "tmp << 0" does nothing */
-    //         case 2: packed = packed | (tmp << 8);  break;
-    //         case 3: packed = packed | (tmp << 16); break;
-    //         case 4: packed = packed | (tmp << 24); break;
-    //         case 5: packed = packed | (tmp << 32); break;
-    //         case 6: packed = packed | (tmp << 40); break;
-    //         case 7: packed = packed | (tmp << 48); break;
-    //     }
-    // }
-    // // If string is not multiple of 8 bytes, push the remainder
-    // if ((i + 1) % 8 != 0) {
-    //     push(cc);
-    //     load(cc, packed);
-    //     // push count
-    //     push(cc);
-    //     load(cc, i / 8 + 1);
-    // } else {
-    //     push(cc);
-    //     load(cc, i / 8);
-    // }
-    // load_opcode(cc, PUSH_HEAP);
+    char packed[8] = {0};
+    uint64_t i = 0;
+    int offset = 0;
+    while (string[i] != '\0') {
+        packed[offset] = string[i];
+        if (offset == 7) {
+            // printf("packed: ");
+            // for (int j = 0; j < 8; j++) {
+            //     printf("%c", packed[j]);
+            // }
+            // printf("%c", '\n');
+            compile_chars(cc, packed);
+            memset(packed, 0, 8);
+        }
+        i++;
+        offset = i % 8;
+    }
+    // Push the remainder, if we haven't already
+    if (offset != 0) {
+        compile_chars(cc, packed);
+        // printf("packed': ");
+        // for (int j = 0; j < 8; j++) {
+        //     printf("%c", packed[j]);
+        // }
+        // printf("%c", '\n');
+    }
+    compile_heap(cc, offset, i / 8 + (offset == 0 ? 0 : 1));
 }
 
 static void compile_binary_op(struct CompilerContext *cc, struct Value *val1, struct Value *val2,
@@ -191,9 +201,7 @@ static void compile_constructor(struct CompilerContext *cc, struct FunCall *func
     linkedlist_foreach_reverse(lnode, funcall->args->tail) {
         compile_value(cc, lnode->value);
     }
-    push(cc);
-    load_offset(cc, funcall->args->length);
-    load_opcode(cc, PUSH_HEAP);
+    compile_heap(cc, 0, funcall->args->length);
 }
 
     // load(cc, GET_LOCAL);
@@ -250,7 +258,7 @@ static void compile_builtin_funcall(struct CompilerContext *cc, struct FunCall *
     if (funcall->funname == BUILTIN_PRINT) {
         compile_print(cc, funcall->args, false);
     } else if (funcall->funname == BUILTIN_PRINTLN) {
-        compile_print(cc, funcall->args, false);
+        compile_print(cc, funcall->args, true);
     }
 }
 

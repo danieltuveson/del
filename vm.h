@@ -22,8 +22,8 @@ struct Stack {
     DelValue values[STACK_SIZE];
 };
 
-#define COUNT_OFFSET    32
-#define METADATA_OFFSET 48
+#define COUNT_OFFSET    UINT64_C(32)
+#define METADATA_OFFSET UINT64_C(48)
 #define METADATA_MASK   (UINT64_MAX - ((UINT64_C(1) << METADATA_OFFSET) - 1))
 #define LOCATION_MASK   ((UINT64_C(1) << COUNT_OFFSET) - 1)
 #define COUNT_MASK      (UINT64_MAX - (LOCATION_MASK + METADATA_MASK))

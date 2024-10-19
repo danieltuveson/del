@@ -3,7 +3,7 @@
 #include "vm.h"
 #include "printers.h"
 
-typedef size_t HeapPointer;
+typedef uint64_t HeapPointer;
 
 static inline void set_count(HeapPointer *ptr, size_t count)
 {
@@ -14,6 +14,17 @@ static inline void set_count(HeapPointer *ptr, size_t count)
 static inline size_t get_count(HeapPointer ptr)
 {
     return (ptr & COUNT_MASK) >> COUNT_OFFSET;
+}
+
+static inline void set_metadata(HeapPointer *ptr, size_t metadata)
+{
+    assert(metadata <= UINT16_MAX);
+    *ptr = *ptr | (metadata << METADATA_OFFSET);
+}
+
+static inline size_t get_metadata(HeapPointer ptr)
+{
+    return (ptr & METADATA_MASK) >> METADATA_OFFSET;
 }
 
 static inline size_t get_location(HeapPointer ptr)
@@ -64,21 +75,14 @@ static inline void swap(struct Stack *stack)
         v2 = pop(stack_ptr); \
         push_integer(stack_ptr, (v2.integer op v1.integer)); } while (0)
 
-// static void uint64_as_string(uint64_t value, char *str, int start)
-// {
-//     for (int i = 0; i < 8; i++) {
-//         str[i + start] = (char) (value >> (8 * i));
-//     }
-//     str[8 + start] = '\0';
-//     printf("decoded as string '%s'\n", str);
-// }
-
 /* Pops values from the stack and pushes them onto the heap */
 static inline void push_heap(struct Heap *heap, struct Stack *stack)
 {
     size_t count = pop(stack).offset;
+    size_t metadata = pop(stack).offset;
     size_t ptr = heap->offset;
     set_count(&ptr, count);
+    set_metadata(&ptr, metadata);
     // heap->values[heap->offset++] = count;
     // printf("count: %" PRIu64 "\n", count);
     // printf("location: %" PRIu64 "\n", location);
@@ -151,23 +155,36 @@ static void set_local(struct Stack *stack, struct StackFrames *sfs, size_t scope
 #endif
 }
 
-static void print(struct Stack *stack)
+static void print_string(struct Stack *stack, struct Heap *heap)
+{
+    size_t ptr = pop(stack).offset;
+    size_t location = get_location(ptr);
+    size_t count = get_count(ptr);
+    for (int i = count - 1; i >= 0; i--) {
+        printf("%.*s", 8, heap->values[location + i].chars);
+    }
+}
+
+static void print(struct Stack *stack, struct Heap *heap)
 {
     DelValue dval, dtype;
     dtype = pop(stack);
-    dval = pop(stack);
     Type t = dtype.integer;
     switch (t) {
         case TYPE_NIL:
+            dval = pop(stack);
             printf("null");
             break;
         case TYPE_INT:
+            dval = pop(stack);
             printf("%" PRIi64 "", dval.integer);
             break;
         case TYPE_FLOAT:
+            dval = pop(stack);
             printf("%f", dval.floating);
             break;
         case TYPE_BOOL:
+            dval = pop(stack);
             if (dval.integer == 0) {
                 printf("false");
             } else {
@@ -175,12 +192,11 @@ static void print(struct Stack *stack)
             }
             break;
         case TYPE_STRING:
-            assert("Not implemented\n" && false);
+            print_string(stack, heap);
             break;
         default:
             printf("<object>");
     }
-    printf("\n");
 }
 
 int vm_execute(DelValue *instructions)
@@ -203,6 +219,10 @@ int vm_execute(DelValue *instructions)
             vm_case(PUSH):
                 ip++;
                 push(&stack, instructions[ip]);
+#if DEBUG
+                print_stack(&stack);
+                print_heap(&heap);
+#endif
                 vm_break;
             #define PUSH_N(n)\
             vm_case(PUSH_ ## n):\
@@ -325,9 +345,12 @@ int vm_execute(DelValue *instructions)
 #endif
                 vm_break;
             vm_case(PRINT): {
-                print(&stack);
+                print(&stack, &heap);
                 vm_break;
             }
+            vm_case(PUSH_STRING):
+            vm_case(GET_CHAR):
+            vm_case(SET_CHAR):
             vm_case(FLOAT_ADD):
             vm_case(FLOAT_SUB):
             vm_case(FLOAT_MUL):

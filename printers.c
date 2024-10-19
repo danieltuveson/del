@@ -154,7 +154,7 @@ void print_instructions(struct CompilerContext *cc)
 
 void print_stack(struct Stack *stack)
 {
-    printf("stack:  [ ");
+    printf("stack: %lu [ ", stack->offset);
     for (size_t i = 0; i < stack->offset; i++) {
         // If it would be interpreted as a huge number, it's probably a negative integer
         if (stack->values[i].integer > INT64_MAX) {
