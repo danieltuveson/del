@@ -12,10 +12,15 @@
 #include <string.h>
 #include <assert.h>
 
-#define INSTRUCTIONS_SIZE 10000
-#define STACK_SIZE 256
-#define HEAP_SIZE  1024
+#define INSTRUCTIONS_SIZE        10000
+#define STACK_SIZE               256
+#define HEAP_SIZE                1024
 #define MAX_ERROR_MESSAGE_LENGTH 250
+
+#define IN_BYTES(val) 8 * val
+#define INSTRUCTIONS_SIZE_BYTES        IN_BYTES(10000)
+#define STACK_SIZE_BYTES               IN_BYTES(256)
+#define HEAP_SIZE_BYTES                IN_BYTES(1024)
 
 /* Symbol is used to represent any variable, function, or type name */
 typedef uint64_t Symbol;

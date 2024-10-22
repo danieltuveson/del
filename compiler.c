@@ -82,6 +82,12 @@ static inline void compile_bool(struct CompilerContext *cc, int64_t boolean)
     compile_int(cc, boolean);
 }
 
+static inline void compile_type(struct CompilerContext *cc, Type type)
+{
+    push(cc);
+    cc->instructions[next(cc)].type = type;
+}
+
 static void compile_get_local(struct CompilerContext *cc, size_t offset)
 {
     switch (offset) {
@@ -183,9 +189,11 @@ static void compile_fundef(struct CompilerContext *cc, struct FunDef *fundef)
 static void compile_constructor(struct CompilerContext *cc, struct FunCall *funcall)
 {
     linkedlist_foreach_reverse(lnode, funcall->args->tail) {
-        compile_value(cc, lnode->value);
+        struct Value *value = lnode->value;
+        compile_type(cc, value->type);
+        compile_value(cc, value);
     }
-    compile_heap(cc, 0, funcall->args->length);
+    compile_heap(cc, 0, 2 * funcall->args->length);
 }
 
     // load(cc, GET_LOCAL);
@@ -227,12 +235,12 @@ static void compile_print(struct CompilerContext *cc, Values *args, bool has_new
     linkedlist_foreach(lnode, args->head) {
         struct Value *value = lnode->value;
         compile_value(cc, value);
-        compile_int(cc, value->type);
+        compile_type(cc, value->type);
         load_opcode(cc, PRINT);
     }
     if (has_newline) {
         compile_string(cc, "\n");
-        compile_int(cc, TYPE_STRING);
+        compile_type(cc, TYPE_STRING);
         load_opcode(cc, PRINT);
     }
 }

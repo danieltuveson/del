@@ -146,6 +146,9 @@ void print_instructions(struct CompilerContext *cc)
             case DEFINE:
                 printf("DEFINE\n");
                 break;
+            case PRINT:
+                printf("PRINT\n");
+                break;
             default:
                 printf("***non-printable instruction: %d***\n", instructions[i].opcode);
         }
@@ -198,7 +201,8 @@ void print_frames(struct StackFrames *sfs)
 
 void print_heap(struct Heap *heap)
 {
-    printf("heap:   [ objcount: %ld, offset: %ld, values: { ", heap->objcount, heap->offset);
+    printf("heap:   [ memory usage: %lu, objcount: %ld, offset: %ld, values: { ", 
+            IN_BYTES(heap->offset), heap->objcount, heap->offset);
     for (size_t i = 0; i < heap->offset; i++) {
         printf("%" PRIu64 "", heap->values[i].integer);
         if (i != heap->offset - 1) printf(", ");

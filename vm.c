@@ -27,6 +27,16 @@ static inline size_t get_metadata(HeapPointer ptr)
     return (ptr & METADATA_MASK) >> METADATA_OFFSET;
 }
 
+static inline void gc_mark(HeapPointer *ptr)
+{
+    *ptr = *ptr | GC_MARK_MASK;
+}
+
+static inline void gc_unmark(HeapPointer *ptr)
+{
+    *ptr = *ptr & ~GC_MARK_MASK;
+}
+
 static inline size_t get_location(HeapPointer ptr)
 {
     return ptr & LOCATION_MASK;
@@ -76,13 +86,19 @@ static inline void swap(struct Stack *stack)
         push_integer(stack_ptr, (v2.integer op v1.integer)); } while (0)
 
 /* Pops values from the stack and pushes them onto the heap */
-static inline void push_heap(struct Heap *heap, struct Stack *stack)
+static inline bool push_heap(struct Heap *heap, struct Stack *stack)
 {
     size_t count = pop(stack).offset;
     size_t metadata = pop(stack).offset;
     size_t ptr = heap->offset;
     set_count(&ptr, count);
     set_metadata(&ptr, metadata);
+    size_t new_usage = heap->offset + count;
+    if (new_usage > HEAP_SIZE) {
+        printf("Fatal runtime error: out of memory\n");
+        printf("Requested %lu bytes but VM only has a capacity of %lu bytes\n", IN_BYTES(new_usage), HEAP_SIZE_BYTES);
+        return false;
+    }
     // heap->values[heap->offset++] = count;
     // printf("count: %" PRIu64 "\n", count);
     // printf("location: %" PRIu64 "\n", location);
@@ -99,12 +115,13 @@ static inline void push_heap(struct Heap *heap, struct Stack *stack)
 #if DEBUG
     print_heap(heap);
 #endif
+    return true;
 }
 
 /* Get value from the heap and push it onto the stack */
 static inline void get_heap(struct Heap *heap, struct Stack *stack)
 {
-    size_t index = pop(stack).offset;
+    size_t index = 2 * pop(stack).offset;
     size_t ptr = pop(stack).offset;
     size_t location = get_location(ptr);
     push_offset(stack, heap->values[location + index].offset);
@@ -112,7 +129,7 @@ static inline void get_heap(struct Heap *heap, struct Stack *stack)
 
 static inline void set_heap(struct Heap *heap, struct Stack *stack)
 {
-    size_t index = pop(stack).offset;
+    size_t index = 2 * pop(stack).offset;
     size_t ptr = pop(stack).offset;
     DelValue value = pop(stack);
     size_t location = get_location(ptr);
@@ -165,7 +182,7 @@ static void print(struct Stack *stack, struct Heap *heap)
 {
     DelValue dval, dtype;
     dtype = pop(stack);
-    Type t = dtype.integer;
+    Type t = dtype.type;
     switch (t) {
         case TYPE_NIL:
             dval = pop(stack);
@@ -227,7 +244,9 @@ int vm_execute(DelValue *instructions)
             PUSH_N(3);
             #undef PUSH_N
             vm_case(PUSH_HEAP):
-                push_heap(&heap, &stack);
+                if (!push_heap(&heap, &stack)) {
+                    goto exit_loop;
+                }
                 vm_break;
             vm_case(SET_HEAP):
                 set_heap(&heap, &stack);

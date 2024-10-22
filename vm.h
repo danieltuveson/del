@@ -27,6 +27,7 @@ struct Stack {
 #define METADATA_MASK   (UINT64_MAX - ((UINT64_C(1) << METADATA_OFFSET) - 1))
 #define LOCATION_MASK   ((UINT64_C(1) << COUNT_OFFSET) - 1)
 #define COUNT_MASK      (UINT64_MAX - (LOCATION_MASK + METADATA_MASK))
+#define GC_MARK_MASK    (UINT64_C(1) << 63)
 
 /* A value on the heap is just a slice of bytes
  * A pointer to the heap consists of 3 parts:
@@ -40,9 +41,20 @@ struct Stack {
  */
 struct Heap {
     size_t objcount;
-    size_t offset;
+    size_t offset; 
     DelValue values[HEAP_SIZE];
 };
+
+// int64_t integer;
+// size_t offset;
+// double floating;
+// char chars[8];
+// enum Code opcode;
+
+typedef struct {
+    Type type;
+    DelValue value;
+} HeapValue;
 
 struct VirtualMachine {
     struct StackFrames sfs;

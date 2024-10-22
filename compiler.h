@@ -13,6 +13,7 @@ typedef union {
     double floating;
     char chars[8];
     enum Code opcode;
+    Type type;
 } DelValue;
 
 struct CompilerContext {
