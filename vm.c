@@ -94,9 +94,9 @@ static inline bool push_heap(struct Heap *heap, struct Stack *stack)
     set_count(&ptr, count);
     set_metadata(&ptr, metadata);
     size_t new_usage = heap->offset + count;
-    if (new_usage > HEAP_SIZE) {
+    if (new_usage > HEAP_MAX) {
         printf("Fatal runtime error: out of memory\n");
-        printf("Requested %lu bytes but VM only has a capacity of %lu bytes\n", IN_BYTES(new_usage), HEAP_SIZE_BYTES);
+        printf("Requested %lu bytes but VM only has a capacity of %lu bytes\n", IN_BYTES(new_usage), HEAP_MAX_BYTES);
         return false;
     }
     // heap->values[heap->offset++] = count;

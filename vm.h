@@ -11,15 +11,15 @@
 // - frame_offsets_index: stores the index of the top of frame_start
 struct StackFrames {
     size_t index;
-    DelValue values[HEAP_SIZE];
+    DelValue values[HEAP_MAX];
     size_t frame_offsets_index;
-    size_t frame_offsets[HEAP_SIZE];
+    size_t frame_offsets[HEAP_MAX];
 };
 
 /* The stack stores almost all data used by the VM */
 struct Stack {
     size_t offset;
-    DelValue values[STACK_SIZE];
+    DelValue values[STACK_MAX];
 };
 
 #define COUNT_OFFSET    UINT64_C(32)
@@ -42,7 +42,7 @@ struct Stack {
 struct Heap {
     size_t objcount;
     size_t offset; 
-    DelValue values[HEAP_SIZE];
+    DelValue values[HEAP_MAX];
 };
 
 // int64_t integer;

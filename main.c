@@ -9,8 +9,28 @@
 #include "compiler.h"
 #include "vm.h"
 #include "printers.h"
+#include "vector.h"
 
-int main(int argc, char *argv[])
+// int main(int argc, char *argv[])
+int main()
+{
+    DelValue value;
+    struct Vector *vector = vector_new(1, 7);
+    for (int64_t i = 0; i < 10; i++)  {
+        vector_print(vector);
+        printf("===============================\n");
+        value.integer = i;
+        if (vector_append(&vector, value) == NULL) {
+            printf("Error: could not allocate %ld elements\n", i + 1);
+            break;
+        }
+    }
+    vector_print(vector);
+    vector_free(vector);
+    return 0;
+}
+
+int _main(int argc, char *argv[])
 {
     int ret = EXIT_FAILURE;
     if (argc != 2) {
@@ -74,7 +94,7 @@ int main(int argc, char *argv[])
     struct FunDef *ft = allocator_malloc(globals.function_count * sizeof(*ft));
     struct ClassTable class_table = { globals.class_count, clst };
     struct FunctionTable function_table = { globals.function_count, ft };
-    DelValue instructions[INSTRUCTIONS_SIZE];
+    DelValue instructions[INSTRUCTIONS_MAX];
     struct CompilerContext cc = { instructions, 0, NULL, &class_table };
     assert(globals.ast != NULL);
 #if DEBUG

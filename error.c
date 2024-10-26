@@ -22,12 +22,12 @@ static void get_bad_line(char *text, char *underline, struct Token *token)
     }
     int length = line_end - line_start;
     // Copy problematic line to error buffer
-    for (int i = 0; i < length && i < MAX_ERROR_MESSAGE_LENGTH - 1; i++) {
+    for (int i = 0; i < length && i < ERROR_MESSAGE_MAX - 1; i++) {
         text[i] = globals.file->input[i + line_start];
     }
     // Copy underline to buffer
     int i_arr = 0;
-    for (int i = line_start; i < line_end && i_arr < MAX_ERROR_MESSAGE_LENGTH - 1; i++) {
+    for (int i = line_start; i < line_end && i_arr < ERROR_MESSAGE_MAX - 1; i++) {
         i_arr = i - line_start;
         if (i < token->start) {
             underline[i_arr] = ' ';
@@ -42,14 +42,14 @@ static void get_bad_line(char *text, char *underline, struct Token *token)
 }
 
 // Making the intermediate arrays smaller to the truncation warnings go away
-#define PRINTF_FUDGE_FACTOR_LENGTH MAX_ERROR_MESSAGE_LENGTH / 4
+#define PRINTF_FUDGE_FACTOR_LENGTH ERROR_MESSAGE_MAX / 4
 
 void error_parser(char *message, ...)
 {
     char errormsg[PRINTF_FUDGE_FACTOR_LENGTH];
     va_list args;
     va_start(args, message);
-    vsnprintf(errormsg, MAX_ERROR_MESSAGE_LENGTH, message, args);
+    vsnprintf(errormsg, ERROR_MESSAGE_MAX, message, args);
     va_end(args);
     struct Token *token = globals.parser->head->value;
     char text[PRINTF_FUDGE_FACTOR_LENGTH] = {0};
@@ -57,7 +57,7 @@ void error_parser(char *message, ...)
     get_bad_line(text, underline, token);
     snprintf(
         globals.error,
-        MAX_ERROR_MESSAGE_LENGTH,
+        ERROR_MESSAGE_MAX,
         "Error in file '%s' at line %d, column %d\n"
         "%5d | %s\n        %s\n"
         "%s\n",

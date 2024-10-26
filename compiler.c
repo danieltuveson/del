@@ -12,7 +12,7 @@ static void compile_statements(struct CompilerContext *cc, Statements *stmts);
 
 /* Move offset pointer to the empty element. Return the offset of the last element added */
 static inline size_t next(struct CompilerContext *cc) {
-    assert("offset is out of bounds\n" && cc->offset < INSTRUCTIONS_SIZE - 1);
+    assert("offset is out of bounds\n" && cc->offset < INSTRUCTIONS_MAX - 1);
     return cc->offset++;
 }
 

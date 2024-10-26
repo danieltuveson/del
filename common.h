@@ -12,22 +12,22 @@
 #include <string.h>
 #include <assert.h>
 
-#define INSTRUCTIONS_SIZE        10000
-#define STACK_SIZE               256
-#define HEAP_SIZE                1024
-#define MAX_ERROR_MESSAGE_LENGTH 250
+#define INSTRUCTIONS_MAX        10000
+#define STACK_MAX               256
+#define HEAP_MAX                1024
+#define ERROR_MESSAGE_MAX       250
 
 #define IN_BYTES(val) 8 * val
-#define INSTRUCTIONS_SIZE_BYTES        IN_BYTES(10000)
-#define STACK_SIZE_BYTES               IN_BYTES(256)
-#define HEAP_SIZE_BYTES                IN_BYTES(1024)
+#define INSTRUCTIONS_MAX_BYTES        IN_BYTES(INSTRUCTIONS_MAX)
+#define STACK_MAX_BYTES               IN_BYTES(STACK_MAX)
+#define HEAP_MAX_BYTES                IN_BYTES(HEAP_MAX)
 
 /* Symbol is used to represent any variable, function, or type name */
 typedef uint64_t Symbol;
 
 struct Globals {
     // Stores compile-time error message
-    char error[MAX_ERROR_MESSAGE_LENGTH];
+    char error[ERROR_MESSAGE_MAX];
     // Stores main structs used throughout the program
     struct FileContext *file;
     struct Lexer *lexer;

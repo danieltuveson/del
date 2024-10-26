@@ -1,0 +1,27 @@
+class Garbage {
+    trash: int;
+    junk: string;
+}
+
+function makeGarbage(start : int, stop : int) {
+    for (let i = start; i < stop; i = i + 1) {
+        let litter = new Garbage(i, "big pile o' garbage");
+        print(i, ",");
+    }
+    return;
+}
+
+function makeLotsOfGarbage() {
+    println("beginning pollution protocol...");
+    let step = 100;
+    for let i = 0; i < step * step; i = i + step {
+        makeGarbage(i, 2 * step);
+    }
+    println("");
+    println("done");
+    return;
+}
+
+function main() {
+    makeLotsOfGarbage();
+}

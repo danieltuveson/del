@@ -1,3 +1,8 @@
-make clean && \
-make && \
-valgrind ./del examples/small_example.del
+function runtests {
+    ./del test/gc.del
+    echo $?
+}
+
+make clean
+make && runtests
+

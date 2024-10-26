@@ -1,0 +1,16 @@
+// Make sure things return properly
+
+// Should throw a compile error
+function noReturnCompileError() : int {
+    println("this shouldn't compile");
+}
+
+// Should be allowed
+function shouldNotHaveReturn() {
+    println("this should return");
+}
+
+function main() {
+    noReturnCompileError();
+    shouldNotHaveReturn();
+}
