@@ -11,12 +11,11 @@
 #include "printers.h"
 #include "vector.h"
 
-// int main(int argc, char *argv[])
 int main()
 {
     DelValue value;
-    struct Vector *vector = vector_new(1, 7);
-    for (int64_t i = 0; i < 10; i++)  {
+    struct Vector *vector = vector_new(4, 32);
+    for (int64_t i = 0; i < 16; i++)  {
         vector_print(vector);
         printf("===============================\n");
         value.integer = i;
@@ -25,6 +24,14 @@ int main()
             break;
         }
     }
+    vector_print(vector);
+    vector_shrink(&vector, 16);
+    // for (int64_t i = 0; i < 16; i++)  {
+    //     vector_print(vector);
+    //     printf("===============================\n");
+    //     value = vector_pop(&vector);
+    //     printf("Popped value: %ld\n", value.integer);
+    // }
     vector_print(vector);
     vector_free(vector);
     return 0;

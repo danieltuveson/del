@@ -96,7 +96,7 @@ static inline bool push_heap(struct Heap *heap, struct Stack *stack)
     size_t new_usage = heap->offset + count;
     if (new_usage > HEAP_MAX) {
         printf("Fatal runtime error: out of memory\n");
-        printf("Requested %lu bytes but VM only has a capacity of %lu bytes\n", IN_BYTES(new_usage), HEAP_MAX_BYTES);
+        printf("Requested %lu bytes but VM only has a capacity of %u bytes\n", IN_BYTES(new_usage), HEAP_MAX_BYTES);
         return false;
     }
     // heap->values[heap->offset++] = count;
@@ -138,6 +138,7 @@ static inline void set_heap(struct Heap *heap, struct Stack *stack)
 
 static inline void stack_frame_enter(struct StackFrames *sfs)
 {
+    // vector_append(sfs->frame_offsets, sfs->frames->length);
     sfs->frame_offsets[sfs->frame_offsets_index++] = sfs->index;
 }
 

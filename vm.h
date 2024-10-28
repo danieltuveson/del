@@ -12,8 +12,10 @@
 struct StackFrames {
     size_t index;
     DelValue values[HEAP_MAX];
+    // struct Vector *frames;
     size_t frame_offsets_index;
     size_t frame_offsets[HEAP_MAX];
+    // struct Vector *frame_offsets;
 };
 
 /* The stack stores almost all data used by the VM */
