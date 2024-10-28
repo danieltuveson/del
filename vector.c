@@ -80,9 +80,7 @@ static inline void vector_shrink_internal(struct Vector **vector_ptr)
     if (LIST_SHRINK_FACTOR * vector->length <= vector->capacity) {
         size_t new_capacity = vector->capacity / LIST_GROWTH_FACTOR;
         if (new_capacity >= vector->min_capacity) {
-            printf("SHRINKING!\n");
             vector_grow(vector_ptr, new_capacity);
-            printf("SHRUNK\n");
         }
     }
 }
