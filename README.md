@@ -36,21 +36,25 @@ function main() {
 ```
 
 ## In progress / next item to do
-- print builtin function
+- Implement garbage collection
 
 
 ## TODO
-- Clean up parser
 - Make typechecker validate that functions return values for all paths
 - Remove "default" options from switch statements and search for missing cases.
-- Fix string implementation
-- Finish implementing classes 
-- Implement basic FFI, or at least add some simple IO
-- Implement arrays
-- Implement interfaces
-- Implement garbage collection
-- Implement module / namespace solutions
-- Improve performance (maybe require redesigning the VM)
+- Implement:
+  - Basic FFI, or at least add some simple IO
+  - Arrays
+  - Java-style interfaces
+  - Function pointers
+  - Module / namespace solutions
+  - Error handling
+- Get rid of global context struct
+
 
 ## Things to continuously improve
 - Improve error messages in lex / parse / typechecking stages
+- Tests...
+- Documentation / examples
+- Improve performance (might require redesigning the VM or adding JIT for further improvements)
+
