@@ -6,7 +6,6 @@
 *.tab.c
 *.output
 lang
-*.lua
 *.out
 lex.yy.c
 lex.yy.h
