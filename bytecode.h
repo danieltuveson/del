@@ -57,8 +57,10 @@ enum Code {
     SET_CHAR,
     CALL,
     SWAP,
+    SWITCH,
     PUSH_SCOPE,
     POP_SCOPE,
-    PRINT
+    PRINT,
+    READ
 };
 

@@ -32,14 +32,14 @@ static inline void load_offset(struct CompilerContext *cc, size_t offset)
     cc->instructions[next(cc)].offset = offset;
 }
 
-static void compile_heap(struct CompilerContext *cc, size_t metadata, size_t count)
+static void compile_heap(struct CompilerContext *cc, size_t count, size_t metadata)
 {
-    // load metadata
-    push(cc);
-    load_offset(cc, metadata);
     // load count
     push(cc);
     load_offset(cc, count);
+    // load metadata
+    push(cc);
+    load_offset(cc, metadata);
     load_opcode(cc, PUSH_HEAP);
 }
 
@@ -251,6 +251,10 @@ static void compile_builtin_funcall(struct CompilerContext *cc, struct FunCall *
         compile_print(cc, funcall->args, false);
     } else if (funcall->funname == BUILTIN_PRINTLN) {
         compile_print(cc, funcall->args, true);
+    } else if (funcall->funname == BUILTIN_READ) {
+        load_opcode(cc, READ);
+    } else {
+        assert("Builtin not implemented" && false);
     }
 }
 
@@ -274,14 +278,33 @@ static void compile_funcall(struct CompilerContext *cc, struct FunCall *funcall)
 static void compile_value(struct CompilerContext *cc, struct Value *val)
 {
     switch (val->vtype) {
-        case VTYPE_STRING:      compile_string(cc,      val->string);   break;
-        case VTYPE_INT:         compile_int(cc,         val->integer);  break;
-        case VTYPE_FLOAT:       compile_float(cc,       val->floating); break;
-        case VTYPE_BOOL:        compile_bool(cc,        val->boolean);  break;
-        case VTYPE_EXPR:        compile_expr(cc,        val->expr);     break;
-        case VTYPE_FUNCALL:     compile_funcall(cc,     val->funcall);  break;
-        case VTYPE_CONSTRUCTOR: compile_constructor(cc, val->funcall);  break;
-        case VTYPE_GET:         compile_get(cc,         val->get);      break;
+        case VTYPE_STRING:
+            compile_string(cc, val->string);
+            break;
+        case VTYPE_INT:
+            compile_int(cc, val->integer);
+            break;
+        case VTYPE_FLOAT:
+            compile_float(cc, val->floating);
+            break;
+        case VTYPE_BOOL:
+            compile_bool(cc, val->boolean);
+            break;
+        case VTYPE_EXPR:
+            compile_expr(cc, val->expr);
+            break;
+        case VTYPE_FUNCALL:
+            compile_funcall(cc, val->funcall); 
+            break;
+        case VTYPE_BUILTIN_FUNCALL:
+            compile_builtin_funcall(cc, val->funcall); 
+            break;
+        case VTYPE_CONSTRUCTOR:
+            compile_constructor(cc, val->funcall);
+            break;
+        case VTYPE_GET:
+            compile_get(cc, val->get);
+            break;
         default: printf("compile not implemented yet\n"); assert(false);
     }
 }

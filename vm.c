@@ -2,6 +2,7 @@
 #include "compiler.h"
 #include "vm.h"
 #include "printers.h"
+#include "vector.h"
 
 typedef uint64_t HeapPointer;
 
@@ -62,6 +63,9 @@ static inline void push_offset(struct Stack *stack, size_t offset)
     stack->values[stack->offset++].offset = offset;
 }
 
+#define push_chars(stack, characters) \
+    memcpy(stack->values[stack->offset++].chars, characters, 8)
+
 static inline DelValue pop(struct Stack *stack)
 {
     return stack->values[--stack->offset];
@@ -74,9 +78,17 @@ static inline void swap(struct Stack *stack)
     val2 = pop(stack);
     push(stack, val1);
     push(stack, val2);
-//     uint64_t swp = stack->values[stack->offset];
-//     stack->values[stack->offset] = stack->values[stack->offset-1];
-//     stack->values[stack->offset-1] = swp;
+}
+
+// Exchanges values on the stack at index1 and index2
+static inline void switch_op(struct Stack *stack)
+{
+    DelValue index1, index2, temp;
+    index1 = pop(stack);
+    index2 = pop(stack);
+    temp = stack->values[index1.offset];
+    stack->values[index1.offset] = stack->values[index2.offset];
+    stack->values[index2.offset] = temp;
 }
 
 #define eval_binary_op(stack_ptr, v1, v2, op) \
@@ -213,6 +225,36 @@ static void print(struct Stack *stack, struct Heap *heap)
     }
 }
 
+
+
+static inline bool read(struct Stack *stack, struct Heap *heap)
+{
+    char packed[8] = {0};
+    uint64_t i = 0;
+    size_t offset = 0;
+    int c = getchar();
+    while (c != EOF && c != '\n') {
+        packed[offset] = (char) c;
+        if (offset == 7) {
+            push_chars(stack, packed);
+            memset(packed, 0, 8);
+        }
+        i++;
+        offset = i % 8;
+        c = getchar();
+        // print_stack(stack);
+    }
+    // Push the remainder, if we haven't already
+    if (offset != 0) {
+        push_chars(stack, packed);
+    }
+    size_t metadata = i / 8 + (offset == 0 ? 0 : 1);
+    push_offset(stack, offset);
+    push_offset(stack, metadata);
+    // print_stack(stack);
+    return push_heap(heap, stack);
+}
+
 int vm_execute(DelValue *instructions)
 {
     struct StackFrames sfs = {0};
@@ -342,11 +384,19 @@ int vm_execute(DelValue *instructions)
             vm_case(SWAP):
                 swap(&stack);
                 vm_break;
+            vm_case(SWITCH):
+                switch_op(&stack);
+                vm_break;
             vm_case(PUSH_SCOPE):
                 stack_frame_enter(&sfs);
                 vm_break;
             vm_case(POP_SCOPE):
                 stack_frame_exit(&sfs);
+                vm_break;
+            vm_case(READ):
+                if (!read(&stack, &heap)) {
+                    goto exit_loop;
+                }
                 vm_break;
             vm_case(PRINT): {
                 print(&stack, &heap);

@@ -63,7 +63,7 @@ struct Vector *vector_append(struct Vector **vector_ptr, DelValue value)
     struct Vector *vector = *vector_ptr;
     if (vector->length == vector->capacity) {
         size_t new_capacity = vector->capacity * LIST_GROWTH_FACTOR;
-        if (new_capacity > vector->max_capacity && vector->max_capacity > 0) {
+        if (new_capacity > vector->max_capacity) {
             return NULL;
         }
         vector_grow(vector_ptr, new_capacity);

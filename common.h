@@ -51,10 +51,12 @@ typedef uint64_t Type;
 #define TYPE_INT UINT64_C(3)
 #define TYPE_FLOAT UINT64_C(4)
 #define TYPE_STRING UINT64_C(5)
-static inline bool is_object(Type val) { return val > TYPE_STRING; }
 /* Builtin functions */
 #define BUILTIN_PRINT UINT64_C(6)
 #define BUILTIN_PRINTLN UINT64_C(7)
+#define BUILTIN_READ UINT64_C(8)
+
+static inline bool is_object(Type val) { return val > BUILTIN_READ; }
 
 // Global variable to hold ast of currently parsed ast
 extern struct Globals globals;

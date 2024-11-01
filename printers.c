@@ -149,6 +149,9 @@ void print_instructions(struct CompilerContext *cc)
             case PRINT:
                 printf("PRINT\n");
                 break;
+            case READ:
+                printf("READ\n");
+                break;
             default:
                 printf("***non-printable instruction: %d***\n", instructions[i].opcode);
         }
@@ -383,14 +386,16 @@ void print_value(struct Value *val)
     case VTYPE_EXPR:
         print_expr(val->expr);
         break;
+    case VTYPE_BUILTIN_FUNCALL:
     case VTYPE_FUNCALL:
         print_funcall(val->funcall->funname, val->funcall->args);
         break;
+    case VTYPE_BUILTIN_CONSTRUCTOR:
     case VTYPE_CONSTRUCTOR:
         printf("new ");
         print_funcall(val->constructor->funname, val->constructor->args);
         break;
-    case  VTYPE_GET:
+    case VTYPE_GET:
         print_get(val->get);
         break;
     default:

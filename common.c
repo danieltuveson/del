@@ -32,6 +32,7 @@ void init_symbol_table(void)
     // Builtin functions
     add_symbol("print");
     add_symbol("println");
+    add_symbol("read");
 }
 #undef add_symbol
 
@@ -53,6 +54,6 @@ char *lookup_symbol(uint64_t symbol)
 
 bool is_builtin(uint64_t symbol)
 {
-    return symbol >= BUILTIN_PRINT && symbol <= BUILTIN_PRINTLN;
+    return symbol >= BUILTIN_PRINT && symbol <= BUILTIN_READ;
 }
 

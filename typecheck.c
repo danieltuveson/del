@@ -294,6 +294,15 @@ static Type typecheck_expression(struct TypeCheckerContext *context, struct Expr
     };
 }
 
+static Type typecheck_read(Values *args)
+{
+    if (args == NULL || args->length == 0) {
+        return TYPE_STRING;
+    }
+    printf("Error: read function does not take arguments\n");
+    return TYPE_UNDEFINED;
+}
+
 // static Type typecheck_symbol(struct TypeCheckerContext *context, Symbol symbol)
 // {
 //     struct Definition *def = lookup_var(context->scope, symbol);
@@ -339,9 +348,16 @@ static Type typecheck_value(struct TypeCheckerContext *context, struct Value *va
         case VTYPE_GET:
             val->type = typecheck_get(context, val->get);
             return val->type;
-        case VTYPE_BUILTIN_CONSTRUCTOR:
         case VTYPE_BUILTIN_FUNCALL:
-            assert("Not implemented\n" && false);
+            Symbol name = val->funcall->funname;
+            if (name == BUILTIN_READ) {
+                val->type = TYPE_STRING;
+                return typecheck_read(val->funcall->args);
+            } else {
+                assert("Error: not implemented\n" && false);
+            }
+        case VTYPE_BUILTIN_CONSTRUCTOR:
+            assert("Error: not implemented\n" && false);
     }
     return TYPE_UNDEFINED; // Doing this to silence compiler warning, should never happen
 }
@@ -601,7 +617,7 @@ static bool typecheck_funcall(struct TypeCheckerContext *context, struct FunCall
     return true;
 }
 
-// Typecheck for print builtin
+// Typecheck for print functions
 static bool typecheck_print(struct TypeCheckerContext *context, Values *args)
 {
     if (args == NULL || args->length == 0) {

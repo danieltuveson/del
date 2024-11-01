@@ -209,7 +209,8 @@ static struct Value *parse_vfuncall(struct Parser *parser, Symbol symbol,
     struct Value *func(Symbol, Values *, bool))
 {
     struct Value *val;
-    parse_call(val, parser, symbol, func, false);
+    bool builtin = is_builtin(symbol);
+    parse_call(val, parser, symbol, func, builtin);
     return val;
 }
 

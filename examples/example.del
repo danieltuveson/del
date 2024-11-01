@@ -1,21 +1,25 @@
-class Range {
-    start: int;
-    end: int;
-    label: string;
-}
-
-function sum(r : Range) : int {
-    let sum = 0;
-    for (let i = r.start; i <= r.end; i = i + 1) {
-        print(sum, " + ", i, " = ");
-        sum = sum + i;
-        println(sum);
-    }
-    return sum;
-}
+// class Range {
+//     start: int;
+//     end: int;
+//     label: string;
+// }
+// 
+// function sum(r : Range) : int {
+//     let sum = 0;
+//     for (let i = r.start; i <= r.end; i = i + 1) {
+//         print(sum, " + ", i, " = ");
+//         sum = sum + i;
+//         println(sum);
+//     }
+//     return sum;
+// }
 
 function main() {
-    let range = new Range(1, 5, "1 to 5");
-    let sum = sum(range);
-    println("The sum of ", range.label, " is: ", sum);
+    println("What is your name?");
+    let input = read();
+    println("Nice to meet you, ", input, ".");
+    // let range = new Range(1, 5, "1 to 5");
+    // let sum = sum(range);
+    // println("The sum of ", range.label, " is: ", sum);
+    // println("this is a really long string that I'm printing haha");
 }

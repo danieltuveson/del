@@ -11,7 +11,7 @@
 #include "printers.h"
 #include "vector.h"
 
-int main()
+int _main()
 {
     DelValue value;
     struct Vector *vector = vector_new(4, 32);
@@ -37,7 +37,7 @@ int main()
     return 0;
 }
 
-int _main(int argc, char *argv[])
+int main(int argc, char *argv[])
 {
     int ret = EXIT_FAILURE;
     if (argc != 2) {

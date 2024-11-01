@@ -50,9 +50,11 @@ function main() {
   - Module / namespace solutions
   - Error handling
 - Get rid of global context struct
+- Windows support
 
 
 ## Things to continuously improve
+- Make build less messy
 - Improve error messages in lex / parse / typechecking stages
 - Tests...
 - Documentation / examples
