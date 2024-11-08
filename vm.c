@@ -131,12 +131,16 @@ static inline bool push_heap(struct Heap *heap, struct Stack *stack)
 }
 
 /* Get value from the heap and push it onto the stack */
-static inline void get_heap(struct Heap *heap, struct Stack *stack)
+static inline bool get_heap(struct Heap *heap, struct Stack *stack)
 {
     size_t index = 2 * pop(stack).offset;
     size_t ptr = pop(stack).offset;
     size_t location = get_location(ptr);
+    if (ptr == 0) {
+        return false;
+    }
     push_offset(stack, heap->values[location + index].offset);
+    return true;
 }
 
 static inline void set_heap(struct Heap *heap, struct Stack *stack)
@@ -197,7 +201,7 @@ static void print(struct Stack *stack, struct Heap *heap)
     dtype = pop(stack);
     Type t = dtype.type;
     switch (t) {
-        case TYPE_NIL:
+        case TYPE_NULL:
             dval = pop(stack);
             printf("null");
             break;
@@ -221,19 +225,28 @@ static void print(struct Stack *stack, struct Heap *heap)
             print_string(stack, heap);
             break;
         default:
-            printf("<object>");
+            size_t ptr = pop(stack).offset;
+            size_t location = get_location(ptr);
+            size_t count = get_count(ptr);
+            if (location == 0) {
+                printf("null");
+            } else {
+                printf("<%lu>, of size %lu", location, count);
+            }
     }
 }
-
-
 
 static inline bool read(struct Stack *stack, struct Heap *heap)
 {
     char packed[8] = {0};
     uint64_t i = 0;
     size_t offset = 0;
-    int c = getchar();
-    while (c != EOF && c != '\n') {
+    while (true) {
+        int c = getchar();
+        if (c == EOF || c == '\n') {
+            if (c == EOF) clearerr(stdin);
+            break;
+        }
         packed[offset] = (char) c;
         if (offset == 7) {
             push_chars(stack, packed);
@@ -241,8 +254,6 @@ static inline bool read(struct Stack *stack, struct Heap *heap)
         }
         i++;
         offset = i % 8;
-        c = getchar();
-        // print_stack(stack);
     }
     // Push the remainder, if we haven't already
     if (offset != 0) {
@@ -251,9 +262,38 @@ static inline bool read(struct Stack *stack, struct Heap *heap)
     size_t metadata = i / 8 + (offset == 0 ? 0 : 1);
     push_offset(stack, offset);
     push_offset(stack, metadata);
-    // print_stack(stack);
     return push_heap(heap, stack);
 }
+
+// static inline void concat(struct Stack *stack, struct Heap *heap)
+// {
+//     size_t ptr = pop(stack).offset;
+//     size_t location = get_location(ptr);
+//     size_t count = get_count(ptr);
+// 
+//     char packed[8] = {0};
+//     uint64_t i = 0;
+//     size_t offset = 0;
+//     int c = getchar();
+//     while (c != EOF && c != '\n') {
+//         packed[offset] = (char) c;
+//         if (offset == 7) {
+//             push_chars(stack, packed);
+//             memset(packed, 0, 8);
+//         }
+//         i++;
+//         offset = i % 8;
+//         c = getchar();
+//     }
+//     // Push the remainder, if we haven't already
+//     if (offset != 0) {
+//         push_chars(stack, packed);
+//     }
+//     size_t metadata = i / 8 + (offset == 0 ? 0 : 1);
+//     push_offset(stack, offset);
+//     push_offset(stack, metadata);
+//     return push_heap(heap, stack);
+// }
 
 int vm_execute(DelValue *instructions)
 {
@@ -369,7 +409,10 @@ int vm_execute(DelValue *instructions)
                 ret = pop(&stack).integer;
                 vm_break;
             vm_case(GET_HEAP):
-                get_heap(&heap, &stack);
+                if (!get_heap(&heap, &stack)) {
+                    printf("Error: null pointer exception\n");
+                    goto exit_loop;
+                }
                 vm_break;
             vm_case(EXIT):
                 goto exit_loop;

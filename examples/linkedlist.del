@@ -1,0 +1,53 @@
+class List {
+    head : Node;
+    tail : Node;
+}
+
+class Node {
+    item : int;
+    next : Node;
+}
+
+function list() : List {
+    return new List(null, null);
+}
+
+function append(l: List, i: int) {
+    if l.head == null {
+        l.head = new Node(i, null);
+        l.tail = l.head;
+    } else {
+        let node = new Node(i, null);
+        l.tail.next = node;
+        l.tail = node;
+    }
+    return;
+}
+
+function print_list(l: List) {
+    let node = l.head;
+    print("[ ");
+    while node != null {
+        print(node.item);
+        node = node.next;
+        if node != null {
+            print(", ");
+        }
+    }
+    println(" ]");
+    return;
+}
+
+function main() {
+    let l = new List(null, null);
+    append(l, 1);
+    append(l, 2);
+    append(l, 3);
+    append(l, 4);
+    print_list(l);
+    println(l.tail);
+    println(l.tail.next);
+    println(l.tail.next.next);
+    println(null);
+}
+

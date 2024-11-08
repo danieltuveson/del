@@ -20,6 +20,7 @@ enum ValueType {
     VTYPE_INT,
     VTYPE_FLOAT,
     VTYPE_BOOL,
+    VTYPE_NULL,
     VTYPE_EXPR,
     VTYPE_FUNCALL,
     VTYPE_BUILTIN_FUNCALL,
@@ -213,6 +214,7 @@ struct Value *new_string(char *string);
 struct Value *new_integer(long integer);
 struct Value *new_floating(double floating);
 struct Value *new_boolean(int boolean);
+struct Value *new_null(void);
 struct Value *new_vfuncall(Symbol funname, Values *args, bool is_builtin);
 struct Value *new_constructor(Symbol funname, Values *args, bool is_builtin);
 struct Value *new_get(Symbol symbol, LValues *lvalues);

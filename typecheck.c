@@ -189,11 +189,14 @@ static Type typecheck_expression(struct TypeCheckerContext *context, struct Expr
     const bool right_is_int    = type_right == TYPE_INT;
     const bool left_is_float   = type_left  == TYPE_FLOAT;
     const bool right_is_float  = type_right == TYPE_FLOAT;
-    const bool right_is_null   = type_right == TYPE_UNDEFINED;
+    const bool right_is_undef  = type_right == TYPE_UNDEFINED;
+    const bool left_is_obj     = type_left  == TYPE_NULL || is_object(type_left);
+    const bool right_is_obj    = type_right == TYPE_NULL || is_object(type_right);
     const bool are_both_int    = left_is_int   && right_is_int;
     const bool are_both_float  = left_is_float && right_is_float;
     const bool are_both_bool   = (type_left  == TYPE_BOOL) && (type_right == TYPE_BOOL);
     const bool are_both_string = (type_left  == TYPE_STRING) && (type_right == TYPE_STRING);
+    const bool are_both_obj    = left_is_obj && right_is_obj;
     // const int are_both_other  = expr->val1 right_is_string;
     // have to find a way to handle non-primitives
     char *op_str = NULL;
@@ -214,7 +217,8 @@ static Type typecheck_expression(struct TypeCheckerContext *context, struct Expr
             // fall through
         case OP_NOT_EQ:
             if (op_str == NULL) op_str = "!=";
-            if (are_both_int || are_both_float || are_both_bool || are_both_string) {
+            if (are_both_int || are_both_float || are_both_bool || are_both_string || 
+                    are_both_obj) {
                 return TYPE_BOOL;
             } else {
                 printf("Error: mismatched types on '%s' operands\n", op_str);
@@ -280,9 +284,9 @@ static Type typecheck_expression(struct TypeCheckerContext *context, struct Expr
             // fall through
         case OP_UNARY_MINUS:
             if (op_str == NULL) op_str = "-";
-            if (left_is_int && right_is_null) {
+            if (left_is_int && right_is_undef) {
                 return TYPE_INT;
-            } else if (left_is_float && right_is_null) {
+            } else if (left_is_float && right_is_undef) {
                 return TYPE_FLOAT;
             } else {
                 printf("Error: expecting numeric operand for '%s'\n", op_str);
@@ -302,6 +306,24 @@ static Type typecheck_read(Values *args)
     printf("Error: read function does not take arguments\n");
     return TYPE_UNDEFINED;
 }
+
+// static Type typecheck_concat(Values *args)
+// {
+//     return TYPE_UNDEFINED;
+//     if (args == NULL || args->length < 2) {
+//         printf("Error: print function requires at least two arguments\n");
+//         return TYPE_UNDEFINED;
+//     }
+//     // Validate arguments
+//     linkedlist_foreach(lnode, args->head) {
+//         struct Value *val = lnode->value;
+//         Type val_type = typecheck_value(context, val);
+//         if (val_type == TYPE_STRING) {
+//         } else if (val_type == TYPE_UNDEFINED) {
+//             return TYPE_UNDEFINED;
+//         }
+//     }
+// }
 
 // static Type typecheck_symbol(struct TypeCheckerContext *context, Symbol symbol)
 // {
@@ -327,6 +349,8 @@ static Type typecheck_value(struct TypeCheckerContext *context, struct Value *va
             return TYPE_FLOAT;
         case VTYPE_BOOL:
             return TYPE_BOOL;
+        case VTYPE_NULL:
+            return TYPE_NULL;
         case VTYPE_EXPR:
             val->type = typecheck_expression(context, val->expr);
             return val->type;
@@ -353,6 +377,10 @@ static Type typecheck_value(struct TypeCheckerContext *context, struct Value *va
             if (name == BUILTIN_READ) {
                 val->type = TYPE_STRING;
                 return typecheck_read(val->funcall->args);
+            // } else if (name == BUILTIN_CONCAT) {
+            //     assert("Error: not implemented\n" && false);
+            //     // val->type = TYPE_ARRAY;
+            //     return typecheck_concat(val->funcall->args);
             } else {
                 assert("Error: not implemented\n" && false);
             }
@@ -603,7 +631,8 @@ static bool typecheck_funcall(struct TypeCheckerContext *context, struct FunCall
         Type val_type = typecheck_value(context, val);
         if (val_type == TYPE_UNDEFINED) {
             return false;
-        } else if (val_type != fun_arg_def->type) {
+        } else if (!(is_object(fun_arg_def->type) && val_type == TYPE_NULL)
+                && (val_type != fun_arg_def->type)) {
             printf("Error: expected argument %" PRIu64 " to %s to be of type %s, but got "
                    "argument of type %s\n",
                     i + 1, lookup_symbol(fundef->name),
@@ -669,7 +698,9 @@ static Type typecheck_constructor(struct TypeCheckerContext *context, struct Fun
         Type val_type = typecheck_value(context, val);
         if (val_type == TYPE_UNDEFINED) {
             return false;
-        } else if (val_type != fun_arg_def->type) {
+        // } else if (val_type != fun_arg_def->type) {
+        } else if (!(is_object(fun_arg_def->type) && val_type == TYPE_NULL)
+                && (val_type != fun_arg_def->type)) {
             printf("Error: expected argument %" PRIu64 " to %s to be of type %s, but got "
                     "argument of type %s\n",
                     i + 1, lookup_symbol(cls->name),

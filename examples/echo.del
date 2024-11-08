@@ -1,0 +1,7 @@
+function main() {
+    let input = read();
+    while input != "" {
+        println(input);
+        input = read();
+    }
+}

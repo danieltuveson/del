@@ -383,6 +383,9 @@ void print_value(struct Value *val)
     case VTYPE_BOOL:
         printf("%ld", val->boolean);
         break;
+    case VTYPE_NULL:
+        printf("null");
+        break;
     case VTYPE_EXPR:
         print_expr(val->expr);
         break;

@@ -214,6 +214,13 @@ struct Value *new_boolean(int boolean)
     return val;
 }
 
+struct Value *new_null(void)
+{
+    struct Value *val = new_value(VTYPE_NULL, TYPE_NULL);
+    val->integer = 0;
+    return val;
+}
+
 struct Value *new_vfuncall(Symbol funname, Values *args, bool is_builtin)
 {
     enum ValueType t = is_builtin ? VTYPE_BUILTIN_FUNCALL: VTYPE_FUNCALL;

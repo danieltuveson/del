@@ -46,7 +46,7 @@ struct Globals {
 /* Types that objects can have */
 typedef uint64_t Type;
 #define TYPE_UNDEFINED UINT64_C(0)
-#define TYPE_NIL UINT64_C(1)
+#define TYPE_NULL UINT64_C(1)
 #define TYPE_BOOL UINT64_C(2)
 #define TYPE_INT UINT64_C(3)
 #define TYPE_FLOAT UINT64_C(4)
@@ -55,8 +55,9 @@ typedef uint64_t Type;
 #define BUILTIN_PRINT UINT64_C(6)
 #define BUILTIN_PRINTLN UINT64_C(7)
 #define BUILTIN_READ UINT64_C(8)
+#define BUILTIN_CONCAT UINT64_C(9)
 
-static inline bool is_object(Type val) { return val > BUILTIN_READ; }
+static inline bool is_object(Type val) { return val > BUILTIN_CONCAT; }
 
 // Global variable to hold ast of currently parsed ast
 extern struct Globals globals;

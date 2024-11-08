@@ -290,6 +290,9 @@ static void compile_value(struct CompilerContext *cc, struct Value *val)
         case VTYPE_BOOL:
             compile_bool(cc, val->boolean);
             break;
+        case VTYPE_NULL:
+            compile_int(cc, val->integer);
+            break;
         case VTYPE_EXPR:
             compile_expr(cc, val->expr);
             break;
@@ -390,16 +393,25 @@ static void compile_return(struct CompilerContext *cc, struct Value *ret)
 static void compile_if(struct CompilerContext *cc, struct IfStatement *stmt)
 {
     push(cc);
-    size_t old_offset = next(cc);
+    size_t if_offset = next(cc);
     compile_value(cc, stmt->condition);
     load_opcode(cc, JNE);
     compile_statements(cc, stmt->if_stmts);
 
+    size_t else_offset = 0;
+    if (stmt->else_stmts) {
+        push(cc);
+        else_offset = next(cc);
+        load_opcode(cc, JMP);
+    }
+
     // set JNE jump to go to after if statement
-    cc->instructions[old_offset].offset = cc->offset;
+    cc->instructions[if_offset].offset = cc->offset;
 
     if (stmt->else_stmts) {
         compile_statements(cc, stmt->else_stmts);
+        // set JMP jump to go to after else statement when if statement is true
+        cc->instructions[else_offset].offset = cc->offset;
     }
 }
 

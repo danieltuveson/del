@@ -262,6 +262,8 @@ static struct Value *parse_subexpr(struct Parser *parser)
         return new_boolean(1);
     } else if (match(parser, ST_FALSE)) {
         return new_boolean(0);
+    } else if (match(parser, ST_NULL)) {
+        return new_null();
     } else if (match(parser, ST_PLUS) && (val = parse_subexpr(parser))) {
         return new_expr(unary_plus(val));
     } else if (match(parser, ST_MINUS) && (val = parse_subexpr(parser))) {

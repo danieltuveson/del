@@ -1,0 +1,95 @@
+class ChoiceList {
+    length : int;
+    head : ChoiceNode;
+    tail : ChoiceNode;
+}
+
+class ChoiceNode {
+    choice : Choice;
+    next : ChoiceNode;
+}
+
+function new_list() : ChoiceList {
+    return new ChoiceList(0, null, null);
+}
+
+function append(l: ChoiceList, i: Choice) {
+    l.length = l.length + 1;
+    if l.head == null {
+        l.head = new ChoiceNode(i, null);
+        l.tail = l.head;
+    } else {
+        let node = new ChoiceNode(i, null);
+        l.tail.next = node;
+        l.tail = node;
+    }
+    return;
+}
+
+function print_list(l: ChoiceList) {
+    let node = l.head;
+    print("[ ");
+    while node != null {
+        print(node.choice);
+        node = node.next;
+        if node != null {
+            print(", ");
+        }
+    }
+    println(" ]");
+    return;
+}
+
+class Scene {
+    text : string;
+    choices : ChoiceList;
+}
+
+class Choice {
+    number : int;
+    content: string;
+}
+
+function add_choice(scene : Scene, content : string) {
+    append(scene.choices, new Choice(scene.choices.length + 1, content));
+    return;
+}
+
+function ask(scene : Scene) {
+    println(scene.text);
+    let node = scene.choices.head;
+    while node != null {
+        println(node.choice.number, ". ", node.choice.content);
+        node = node.next;
+    }
+    return;
+}
+
+function make_scene1() : Scene {
+    let scene = new Scene(
+        "You are standing outside of the mouth of a cave.",
+        new_list()
+    );
+    add_choice(scene, "Enter the cave");
+    add_choice(scene, "Sit outside of the cave and vibe");
+    return scene;
+}
+
+function main() {
+    println("Welcome to the big adventure. Type ctrl+C to quit.");
+    let scene = make_scene1();
+    while true {
+        ask(scene);
+        print("> ");
+        let input = read();
+
+        if input == "1" {
+            println("You are in the cave");
+        } else if input == "2" {
+            println("You are stading outside of the cave, vibing");
+        } else {
+            println("Invalid choice");
+        }
+    }
+}
+

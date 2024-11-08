@@ -33,6 +33,7 @@ void init_symbol_table(void)
     add_symbol("print");
     add_symbol("println");
     add_symbol("read");
+    add_symbol("concat");
 }
 #undef add_symbol
 
@@ -54,6 +55,6 @@ char *lookup_symbol(uint64_t symbol)
 
 bool is_builtin(uint64_t symbol)
 {
-    return symbol >= BUILTIN_PRINT && symbol <= BUILTIN_READ;
+    return symbol >= BUILTIN_PRINT && symbol <= BUILTIN_CONCAT;
 }
 
