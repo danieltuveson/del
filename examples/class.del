@@ -1,0 +1,21 @@
+class Checkbox {
+    name : string;
+    label : string;
+    value : bool;
+
+    function toggle() {
+        this.value = !this.value;
+    }
+
+    // function Question(name : string, label : string) {
+    //     this.name = name;
+    //     this.label = label;
+    //     this.value = false;
+    // }
+}
+
+function main() {
+    let q = new Question("hi", "thing", true);
+    println(q.fixed);
+    println("hello world");
+}
