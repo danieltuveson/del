@@ -21,7 +21,7 @@ struct TokenMapping keywords[] = {
     {"string",   ST_STRING },
     {"int",      ST_INT },
     {"float",    ST_FLOAT },
-    {"boolean",  ST_BOOL },
+    {"bool",     ST_BOOL },
     {"null",     ST_NULL },
     {"class",    ST_CLASS },
     {"return",   ST_RETURN },

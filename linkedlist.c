@@ -29,6 +29,24 @@ void linkedlist_append(struct LinkedList *ll, void *value)
     }
 }
 
+void linkedlist_prepend(struct LinkedList *ll, void *value)
+{
+    struct LinkedListNode *lnode = allocator_malloc(sizeof(*lnode));
+    lnode->prev = NULL;
+    lnode->next = NULL;
+    lnode->value = value;
+    ll->length++;
+    if (ll->head == NULL) {
+        ll->head = lnode;
+        ll->tail = lnode;
+    } else {
+        struct LinkedListNode *oldhead = ll->head;
+        ll->head = lnode;
+        oldhead->prev = ll->head;
+        ll->head->next = oldhead;
+    }
+}
+
 void linkedlist_reverse(struct LinkedList **ll_ptr)
 {
     if ((*ll_ptr)->head == NULL) {
