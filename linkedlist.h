@@ -12,6 +12,7 @@ struct LinkedListNode {
 };
 
 struct LinkedList {
+    Allocator allocator;
     unsigned long length;
     struct LinkedListNode *head;
     struct LinkedListNode *tail;
@@ -23,7 +24,7 @@ struct LinkedList {
 #define linkedlist_foreach_reverse(lnode, start_node) \
     for (struct LinkedListNode *lnode = start_node; lnode != NULL; lnode = lnode->prev)
 
-struct LinkedList *linkedlist_new(void);
+struct LinkedList *linkedlist_new(Allocator a);
 void linkedlist_append(struct LinkedList *ll, void *value);
 void linkedlist_prepend(struct LinkedList *ll, void *value);
 void linkedlist_print(struct LinkedList *ll, void (*printer)(void *));

@@ -2,9 +2,9 @@
 #include "linkedlist.h"
 #include "printers.h"
 
-static void print_statements_indent(Statements *stmts, int indent);
-static void print_definitions(struct LinkedList *lst, char sep, int indent);
-static void print_statement_indent(struct Statement *stmt, int indent);
+static void print_statements_indent(struct Globals *globals, Statements *stmts, int indent);
+static void print_definitions(struct Globals *globals, struct LinkedList *lst, char sep, int indent);
+static void print_statement_indent(struct Globals *globals, struct Statement *stmt, int indent);
 
 static const int TAB_WIDTH = 4;
 
@@ -176,7 +176,7 @@ void print_frames(struct StackFrames *sfs)
 {
     printf("all variables:");
     for (size_t i = 0; i < sfs->index; i++) {
-        // printf(" { %s: ", lookup_symbol(sfs->names[i]));
+        // printf(" { %s: ", lookup_symbol(globals, sfs->names[i]));
         printf(" { %lu: ", i);
         printf("%" PRIi64 " }, ", (int64_t) sfs->values[i].integer);
     }
@@ -193,7 +193,7 @@ void print_frames(struct StackFrames *sfs)
                   : sfs->frame_offsets[i];
         printf("frame %ld: [ ", (unsigned long) i);
         for (size_t j = lower; j < upper; j++) {
-            // printf(" { %s: ", lookup_symbol(sfs->names[j]));
+            // printf(" { %s: ", lookup_symbol(globals, sfs->names[j]));
             printf(" { %lu: ", j);
             printf("%" PRIi64 " }, ", sfs->values[j].integer);
         }
@@ -218,7 +218,7 @@ void print_heap(struct Heap *heap)
 // {
 //     for (uint64_t i = 0; i < length; i++) {
 //         struct ClassType clst = table[i];
-//         printf("class %s {\n", lookup_symbol(clst.name));
+//         printf("class %s {\n", lookup_symbol(globals, clst.name));
 //         print_definitions(clst.definitions, ';', TAB_WIDTH);
 //         // for (Methods *methods = cls->methods; methods != NULL; methods = methods->next) {
 //         //     struct FunDef *method = (struct FunDef *) methods->value;
@@ -227,10 +227,10 @@ void print_heap(struct Heap *heap)
 //         // }
 //         printf("}");
 //         // struct ClassType clst = table[i];
-//         // printf("%" PRIu64 ": class %s {\n", i, lookup_symbol(clst.name));
+//         // printf("%" PRIu64 ": class %s {\n", i, lookup_symbol(globals, clst.name));
 //         // print_definitions(lst, sep, )
 //         // for (uint64_t j = 0; j < clst.count; j++) {
-//         //     printf("    %s;\n", lookup_symbol(clst.types[j]));
+//         //     printf("    %s;\n", lookup_symbol(globals, clst.types[j]));
 //         // }
 //         // printf("}\n");
 //     }
@@ -240,7 +240,7 @@ void print_heap(struct Heap *heap)
 // {
 //     for (uint64_t i = 0; i < length; i++) {
 //         struct FunctionType ft = table[i];
-//         printf("function %s(", lookup_symbol(ft.name));
+//         printf("function %s(", lookup_symbol(globals, ft.name));
 //         print_definitions(ft.definitions, ',', 0);
 //         printf(") {\n");
 //         // print_statements_indent(ft.stmts, TAB_WIDTH);
@@ -248,9 +248,9 @@ void print_heap(struct Heap *heap)
 //     }
 //     //for (uint64_t i = 0; i < length; i++) {
 //     //    struct FunctionType ft = table[i];
-//     //    printf("%" PRIu64 ": function %s(", i, lookup_symbol(ft.name));
+//     //    printf("%" PRIu64 ": function %s(", i, lookup_symbol(globals, ft.name));
 //     //    for (uint64_t j = 0; j < ft.count; j++) {
-//     //        printf("%s", lookup_symbol(ft.types[j]));
+//     //        printf("%s", lookup_symbol(globals, ft.types[j]));
 //     //        if (j != ft.count - 1) printf(", ");
 //     //    }
 //     //    printf(")\n");
@@ -260,77 +260,77 @@ void print_heap(struct Heap *heap)
 
 /* AST printers. Currently used for debugging purposes but could be used for 
  * building a formatter in the future */
-void print_expr(struct Expr *expr)
+void print_expr(struct Globals *globals, struct Expr *expr)
 {
     printf("(");
     switch (expr->op) {
     case OP_OR:
-        print_value(expr->val1);
+        print_value(globals, expr->val1);
         printf(" || ");
-        print_value(expr->val2);
+        print_value(globals, expr->val2);
         break;
     case OP_AND:
-        print_value(expr->val1);
+        print_value(globals, expr->val1);
         printf(" && ");
-        print_value(expr->val2);
+        print_value(globals, expr->val2);
         break;
     case OP_EQEQ:
-        print_value(expr->val1);
+        print_value(globals, expr->val1);
         printf(" == ");
-        print_value(expr->val2);
+        print_value(globals, expr->val2);
         break;
     case OP_NOT_EQ:
-        print_value(expr->val1);
+        print_value(globals, expr->val1);
         printf(" != ");
-        print_value(expr->val2);
+        print_value(globals, expr->val2);
         break;
     case OP_GREATER_EQ:
-        print_value(expr->val1);
+        print_value(globals, expr->val1);
         printf(" >= ");
-        print_value(expr->val2);
+        print_value(globals, expr->val2);
         break;
     case OP_GREATER:
-        print_value(expr->val1);
+        print_value(globals, expr->val1);
         printf(" > ");
-        print_value(expr->val2);
+        print_value(globals, expr->val2);
         break;
     case OP_LESS_EQ:
-        print_value(expr->val1);
+        print_value(globals, expr->val1);
         printf(" <= ");
-        print_value(expr->val2);
+        print_value(globals, expr->val2);
         break;
     case OP_LESS:
-        print_value(expr->val1);
+        print_value(globals, expr->val1);
         printf(" < ");
-        print_value(expr->val2);
+        print_value(globals, expr->val2);
         break;
     case OP_PLUS:
-        print_value(expr->val1);
+        print_value(globals, expr->val1);
         printf(" + ");
-        print_value(expr->val2);
+        print_value(globals, expr->val2);
         break;
     case OP_MINUS:
-        print_value(expr->val1);
+        print_value(globals, expr->val1);
         printf(" - ");
-        print_value(expr->val2);
+        print_value(globals, expr->val2);
         break;
     case OP_STAR:
-        print_value(expr->val1);
+        print_value(globals, expr->val1);
         printf(" * ");
-        print_value(expr->val2);
+        print_value(globals, expr->val2);
         break;
     case OP_SLASH:
-        print_value(expr->val1);
+        print_value(globals, expr->val1);
         printf(" / ");
-        print_value(expr->val2);
+        print_value(globals, expr->val2);
         break;
     case OP_UNARY_PLUS:
         printf("+");
-        print_value(expr->val1);
+        print_value(globals, expr->val1);
         break;
     case OP_UNARY_MINUS:
         printf("-");
-        print_value(expr->val1);
+        print_value(globals, expr->val1);
         break;
     default:
         assert("Error, not implemented" && false);
@@ -339,36 +339,36 @@ void print_expr(struct Expr *expr)
     printf(")");
 }
 
-static void print_funcall(Symbol funname, Values *vals)
+static void print_funcall(struct Globals *globals, Symbol funname, Values *vals)
 {
-    printf("%s", lookup_symbol(funname));
+    printf("%s", lookup_symbol(globals, funname));
     printf("(");
     if (vals != NULL) {
         linkedlist_foreach(lnode, vals->head) {
-            print_value(lnode->value);
+            print_value(globals, lnode->value);
             if (lnode->next != NULL) printf(", ");
         }
     }
     printf(")");
 }
 
-static void print_get(struct Accessor *get)
+static void print_get(struct Globals *globals, struct Accessor *get)
 {
-    printf("%s", lookup_symbol(get->definition->name));
+    printf("%s", lookup_symbol(globals, get->definition->name));
     linkedlist_foreach(lnode, get->lvalues->head) {
     // for (LValues *lvalues = get->lvalues; lvalues != NULL; lvalues = lvalues->next) {
         struct LValue *lvalue = lnode->value;
         if (lvalue->type == LV_PROPERTY) {
-            printf(".%s", lookup_symbol(lvalue->property));
+            printf(".%s", lookup_symbol(globals, lvalue->property));
         } else {
             printf("[");
-            print_value(lvalue->index);
+            print_value(globals, lvalue->index);
             printf("]");
         }
     }
 }
 
-void print_value(struct Value *val)
+void print_value(struct Globals *globals, struct Value *val)
 {
     switch (val->vtype) {
     case VTYPE_STRING:
@@ -387,19 +387,19 @@ void print_value(struct Value *val)
         printf("null");
         break;
     case VTYPE_EXPR:
-        print_expr(val->expr);
+        print_expr(globals, val->expr);
         break;
     case VTYPE_BUILTIN_FUNCALL:
     case VTYPE_FUNCALL:
-        print_funcall(val->funcall->funname, val->funcall->args);
+        print_funcall(globals, val->funcall->funname, val->funcall->args);
         break;
     case VTYPE_BUILTIN_CONSTRUCTOR:
     case VTYPE_CONSTRUCTOR:
         printf("new ");
-        print_funcall(val->constructor->funname, val->constructor->args);
+        print_funcall(globals, val->constructor->funname, val->constructor->args);
         break;
     case VTYPE_GET:
-        print_get(val->get);
+        print_get(globals, val->get);
         break;
     default:
         assert("Error, not implemented" && false);
@@ -412,14 +412,14 @@ static void left_pad(int indent) {
     for (int i = 0; i < indent; i++) putchar(' ');
 }
 
-static void print_definitions(struct LinkedList *lst, char sep, int indent)
+static void print_definitions(struct Globals *globals, struct LinkedList *lst, char sep, int indent)
 {
     struct Definition *def = NULL;
     linkedlist_foreach(lnode, lst->head) {
         def = lnode->value;
         if (sep == ';') left_pad(indent);
-        printf("%s: ", lookup_symbol(def->name));
-        printf("%s", lookup_symbol(def->type));
+        printf("%s: ", lookup_symbol(globals, def->name));
+        printf("%s", lookup_symbol(globals, def->type));
         if (sep == ';') {
             printf(";\n");
         } else if (lnode->next && sep == ',') {
@@ -429,8 +429,8 @@ static void print_definitions(struct LinkedList *lst, char sep, int indent)
     // while (lst != NULL) {
     //     def = (struct Definition *) lst->value;
     //     if (sep == ';') left_pad(indent);
-    //     printf("%s: ", lookup_symbol(def->name));
-    //     printf("%s", lookup_symbol(def->type));
+    //     printf("%s: ", lookup_symbol(globals, def->name));
+    //     printf("%s", lookup_symbol(globals, def->type));
     //     if (sep == ';') {
     //         printf(";\n");
     //     } else if (lst->next && sep == ',') {
@@ -440,40 +440,40 @@ static void print_definitions(struct LinkedList *lst, char sep, int indent)
     // }
 }
 
-static void print_set(struct Set *set)
+static void print_set(struct Globals *globals, struct Set *set)
 {
     if (set->is_define) printf("let ");
     Symbol symbol = set->to_set->definition->name;
-    char *strsym = lookup_symbol(symbol);
+    char *strsym = lookup_symbol(globals, symbol);
     printf("%s", strsym);
     if (set->to_set->lvalues != NULL) {
         linkedlist_foreach(lnode, set->to_set->lvalues->head) {
         // for (LValues *lvalues = set->to_set->lvalues; lvalues != NULL; lvalues = lvalues->next) {
             struct LValue *lvalue = lnode->value;
             if (lvalue->type == LV_PROPERTY) {
-                printf(".%s", lookup_symbol(lvalue->property));
+                printf(".%s", lookup_symbol(globals, lvalue->property));
             } else {
                 printf("[");
-                print_value(lvalue->index);
+                print_value(globals, lvalue->index);
                 printf("]");
             }
         }
     }
     printf(" = ");
-    print_value(set->val);
+    print_value(globals, set->val);
     printf(";");
 }
 
-static void print_if(struct IfStatement *if_stmt, int indent)
+static void print_if(struct Globals *globals, struct IfStatement *if_stmt, int indent)
 {
     printf("if ");
-    print_value(if_stmt->condition);
+    print_value(globals, if_stmt->condition);
     printf(" {\n");
-    print_statements_indent(if_stmt->if_stmts, indent + TAB_WIDTH);
+    print_statements_indent(globals, if_stmt->if_stmts, indent + TAB_WIDTH);
     if (if_stmt->else_stmts) {
         left_pad(indent);
         printf("} else {\n");
-        print_statements_indent(if_stmt->else_stmts, indent + TAB_WIDTH);
+        print_statements_indent(globals, if_stmt->else_stmts, indent + TAB_WIDTH);
     }
     left_pad(indent);
     printf("}");
@@ -484,69 +484,69 @@ static void print_if(struct IfStatement *if_stmt, int indent)
 // struct Value *condition;
 // struct Statement *increment;
 // Statements *stmts;
-static void print_for(struct For *for_stmt, int indent)
+static void print_for(struct Globals *globals, struct For *for_stmt, int indent)
 {
     printf("for (\n");
-    print_statement_indent(for_stmt->init, indent + TAB_WIDTH);
+    print_statement_indent(globals, for_stmt->init, indent + TAB_WIDTH);
     left_pad(indent + TAB_WIDTH);
-    print_value(for_stmt->condition);
+    print_value(globals, for_stmt->condition);
     printf(";\n");
-    print_statement_indent(for_stmt->increment, indent + TAB_WIDTH);
+    print_statement_indent(globals, for_stmt->increment, indent + TAB_WIDTH);
     left_pad(indent);
     printf(") {\n");
-    print_statements_indent(for_stmt->stmts, indent + TAB_WIDTH);
+    print_statements_indent(globals, for_stmt->stmts, indent + TAB_WIDTH);
     left_pad(indent);
     printf("}");
 }
 
-static void print_while(struct While *while_stmt, int indent)
+static void print_while(struct Globals *globals, struct While *while_stmt, int indent)
 {
     printf("while ");
-    print_value(while_stmt->condition);
+    print_value(globals, while_stmt->condition);
     printf(" {\n");
-    print_statements_indent(while_stmt->stmts, indent + TAB_WIDTH);
+    print_statements_indent(globals, while_stmt->stmts, indent + TAB_WIDTH);
     left_pad(indent);
     printf("}");
 }
 
-static void print_statement_indent(struct Statement *stmt, int indent)
+static void print_statement_indent(struct Globals *globals, struct Statement *stmt, int indent)
 {
     left_pad(indent);
     switch (stmt->type) {
         case STMT_LET:
             printf("let ");
-            print_definitions(stmt->let, ',', indent);
+            print_definitions(globals, stmt->let, ',', indent);
             break;
         case STMT_SET:
-            print_set(stmt->set);
+            print_set(globals, stmt->set);
             break;
         case STMT_IF:
-            print_if(stmt->if_stmt, indent);
+            print_if(globals, stmt->if_stmt, indent);
             break;
         case STMT_WHILE:
-            print_while(stmt->while_stmt, indent);
+            print_while(globals, stmt->while_stmt, indent);
             break;
         case STMT_RETURN:
             printf("return");
             if (stmt->ret != NULL) {
                 printf(" ");
-                print_value(stmt->ret);
+                print_value(globals, stmt->ret);
             }
             printf(";");
             break;
         case STMT_FOR:
-            print_for(stmt->for_stmt, indent);
+            print_for(globals, stmt->for_stmt, indent);
             break;
         case STMT_FOREACH:
             printf("print_statement not yet implemented for this type");
             break;
         case STMT_BUILTIN_FUNCALL:
         case STMT_FUNCALL:
-            printf("%s", lookup_symbol(stmt->funcall->funname));
+            printf("%s", lookup_symbol(globals, stmt->funcall->funname));
             printf("(");
             if (stmt->funcall->args != NULL) {
                 linkedlist_foreach(lnode, stmt->funcall->args->head) {
-                    print_value(lnode->value);
+                    print_value(globals, lnode->value);
                     if (lnode->next != NULL) printf(", ");
                 }
             }
@@ -559,41 +559,41 @@ static void print_statement_indent(struct Statement *stmt, int indent)
     printf("\n");
 }
 
-static void print_statements_indent(Statements *stmts, int indent)
+static void print_statements_indent(struct Globals *globals, Statements *stmts, int indent)
 {
     linkedlist_foreach(stmt, stmts->head) {
-        print_statement_indent(stmt->value, indent);
+        print_statement_indent(globals, stmt->value, indent);
     }
 }
 
-void print_statement(struct Statement *stmt)
+void print_statement(struct Globals *globals, struct Statement *stmt)
 {
-    print_statement_indent(stmt, 0);
+    print_statement_indent(globals, stmt, 0);
 }
 
-void print_statements(Statements *stmts)
+void print_statements(struct Globals *globals, Statements *stmts)
 {
-    print_statements_indent(stmts, 0);
+    print_statements_indent(globals, stmts, 0);
 }
 
-void print_fundef(struct FunDef *fundef, int indent, int ismethod)
+void print_fundef(struct Globals *globals, struct FunDef *fundef, int indent, int ismethod)
 {
     left_pad(indent);
     if (!ismethod) {
         printf("function ");
     }
-    printf("%s(", lookup_symbol(fundef->name));
-    print_definitions(fundef->args, ',', indent);
-    printf("): %s {\n", lookup_symbol(fundef->rettype));
-    print_statements_indent(fundef->stmts, TAB_WIDTH + indent);
+    printf("%s(", lookup_symbol(globals, fundef->name));
+    print_definitions(globals, fundef->args, ',', indent);
+    printf("): %s {\n", lookup_symbol(globals, fundef->rettype));
+    print_statements_indent(globals, fundef->stmts, TAB_WIDTH + indent);
     left_pad(indent);
     printf("}");
 }
 
-void print_class(struct Class *cls, int indent)
+void print_class(struct Globals *globals, struct Class *cls, int indent)
 {
-    printf("class %s {\n", lookup_symbol(cls->name));
-    print_definitions(cls->definitions, ';', indent + TAB_WIDTH);
+    printf("class %s {\n", lookup_symbol(globals, cls->name));
+    print_definitions(globals, cls->definitions, ';', indent + TAB_WIDTH);
     // for (Methods *methods = cls->methods; methods != NULL; methods = methods->next) {
     //     struct FunDef *method = (struct FunDef *) methods->value;
     //     print_fundef(method, indent + TAB_WIDTH, 1);
@@ -602,37 +602,37 @@ void print_class(struct Class *cls, int indent)
     printf("}");
 }
 
-static void print_tld_indent(struct TopLevelDecl *tld, int indent)
+static void print_tld_indent(struct Globals *globals, struct TopLevelDecl *tld, int indent)
 {
     switch (tld->type) {
         case TLD_TYPE_CLASS:
-            print_class(tld->cls, indent);
+            print_class(globals, tld->cls, indent);
             break;
         case TLD_TYPE_FUNDEF:
-            print_fundef(tld->fundef, indent, 0);
+            print_fundef(globals, tld->fundef, indent, 0);
             break;
     }
     printf("\n\n");
 }
 
-static void print_tlds_indent(TopLevelDecls *tlds, int indent)
+static void print_tlds_indent(struct Globals *globals, TopLevelDecls *tlds, int indent)
 {
-    printf("%" PRIu64 " functions defined\n", globals.function_count);
-    printf("%" PRIu64 " classes defined\n", globals.class_count);
+    printf("%" PRIu64 " functions defined\n", globals->function_count);
+    printf("%" PRIu64 " classes defined\n", globals->class_count);
     // while (tlds != NULL)
     linkedlist_foreach(tld, tlds->head) {
-        print_tld_indent(tld->value, indent);
+        print_tld_indent(globals, tld->value, indent);
     }
 }
 
-void print_tlds(TopLevelDecls *tlds)
+void print_tlds(struct Globals *globals, TopLevelDecls *tlds)
 {
-    print_tlds_indent(tlds, 0);
+    print_tlds_indent(globals, tlds, 0);
 }
 
-void print_ft_node(struct FunctionCallTableNode *fn)
+void print_ft_node(struct Globals *globals, struct FunctionCallTableNode *fn)
 {
-    printf("%s: ", lookup_symbol(fn->function));
+    printf("%s: ", lookup_symbol(globals, fn->function));
     linkedlist_foreach(lnode, fn->callsites->head) {
     // for (struct List *calls = fn->callsites; calls != NULL; calls = calls->next) {
         printf("%" PRIu64 "", *((uint64_t *) lnode->value));
@@ -641,11 +641,11 @@ void print_ft_node(struct FunctionCallTableNode *fn)
     printf("\n");
 }
 
-void print_ft(struct FunctionCallTable *ft)
+void print_ft(struct Globals *globals, struct FunctionCallTable *ft)
 {
     if (ft == NULL) return;
-    print_ft_node(ft->node);
-    print_ft(ft->left);
-    print_ft(ft->right);
+    print_ft_node(globals, ft->node);
+    print_ft(globals, ft->left);
+    print_ft(globals, ft->right);
 }
 

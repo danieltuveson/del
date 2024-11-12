@@ -22,9 +22,9 @@ struct FunctionCallTableNode {
     struct LinkedList *callsites;
 };
 
-struct FunctionCallTable *new_ft(uint64_t function);
-struct FunctionCallTableNode *add_ft_node(struct FunctionCallTable *ft, Symbol function,
+struct FunctionCallTable *new_ft(struct Globals *globals, uint64_t function);
+struct FunctionCallTableNode *add_ft_node(struct Globals *globals, struct FunctionCallTable *ft, Symbol function,
         uint64_t loc);
-void add_callsite(struct FunctionCallTable *ft, Symbol function, uint64_t callsite);
+void add_callsite(struct Globals *globals, struct FunctionCallTable *ft, Symbol function, uint64_t callsite);
 
 #endif

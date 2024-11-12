@@ -10,6 +10,6 @@ struct FileContext {
     char *input;
 };
 
-bool readfile(struct FileContext *file);
+bool readfile(struct Globals *globals, struct FileContext *file);
 
 #endif

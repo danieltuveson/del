@@ -51,6 +51,8 @@ enum TokenType {
     ST_DOT,
     ST_TRUE,
     ST_FALSE,
+    ST_INC,
+    ST_DEC
 };
 
 struct Token {
@@ -81,9 +83,9 @@ struct Lexer {
     Tokens *tokens;
 };
 
-void lexer_init(struct Lexer *lexer, bool include_comments);
-bool tokenize(struct Lexer *lexer);
-void print_token(struct Token *token);
-void print_lexer(struct Lexer *lexer);
+void lexer_init(struct Globals *globals, struct Lexer *lexer, bool include_comments);
+bool tokenize(struct Globals *globals);
+void print_token(struct Globals *globals, struct Token *token);
+void print_lexer(struct Globals *globals, struct Lexer *lexer);
 
 #endif

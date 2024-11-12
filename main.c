@@ -39,20 +39,25 @@ int _main()
 
 int main(int argc, char *argv[])
 {
+    struct Globals globals = { {0}, 0, NULL, NULL, NULL, NULL, 0, 0, 0, NULL, NULL };
     int ret = EXIT_FAILURE;
     if (argc != 2) {
         printf("Error: expecting input file\nExample usage:\n./del hello_world.del\n");
         goto FAIL;
     }
 
+    globals.allocator = allocator_new();
+
+
 #if DEBUG
     printf("........ READING FILE : %s ........\n", argv[1]);
 #endif
     struct FileContext file = { argv[1], 0, NULL };
-    if (!readfile(&file)) {
+    if (!readfile(&globals, &file)) {
         printf("Error: could not read contents of empty file\n");
         goto FAIL;
     }
+
     globals.file = &file;
 #if DEBUG
     printf("%s\n", globals.file->input);
@@ -61,16 +66,16 @@ int main(int argc, char *argv[])
     printf("........ TOKENIZING INPUT ........\n");
 #endif
     struct Lexer lexer;
-    lexer_init(&lexer, false);
-    if (!tokenize(&lexer)) {
+    lexer_init(&globals, &lexer, false);
+    globals.lexer = &lexer;
+    if (!tokenize(&globals)) {
         // print_error(&(lexer.error));
-        printf("Error at line %d column %d: %s\n", lexer.error.line_number, lexer.error.column_number,
-                lexer.error.message);
+        printf("Error at line %d column %d: %s\n", globals.lexer->error.line_number, globals.lexer->error.column_number,
+                globals.lexer->error.message);
         goto FAIL;
     }
-    globals.lexer = &lexer;
 #if DEBUG
-    print_lexer(&lexer);
+    print_lexer(globals.lexer);
     print_memory_usage();
 #endif
 
@@ -82,12 +87,13 @@ int main(int argc, char *argv[])
 
     printf("........ PARSING AST FROM TOKENS ........\n");
 #endif
-    struct Parser parser = { lexer.tokens->head, &lexer };
-    globals.parser = &parser;
-    globals.ast = parse_tlds(&parser);
+    // struct Parser parser = { globals.lexer.tokens->head, &lexer };
+    // globals.parser = &parser;
+    globals.parser = globals.lexer->tokens->head;
+    globals.ast = parse_tlds(&globals);
 
     if (!globals.ast) {
-        error_print();
+        error_print(&globals);
         goto FAIL;
     }
 #if DEBUG
@@ -97,8 +103,8 @@ int main(int argc, char *argv[])
 
     printf("````````````````` CODE `````````````````\n");
 #endif
-    struct Class *clst = allocator_malloc(globals.class_count * sizeof(*clst));
-    struct FunDef *ft = allocator_malloc(globals.function_count * sizeof(*ft));
+    struct Class *clst = allocator_malloc(globals.allocator, globals.class_count * sizeof(*clst));
+    struct FunDef *ft = allocator_malloc(globals.allocator, globals.function_count * sizeof(*ft));
     struct ClassTable class_table = { globals.class_count, clst };
     struct FunctionTable function_table = { globals.function_count, ft };
     DelValue instructions[INSTRUCTIONS_MAX];
@@ -110,7 +116,7 @@ int main(int argc, char *argv[])
 
     printf("`````````````` TYPECHECK ```````````````\n");
 #endif
-    if (typecheck(&class_table, &function_table)) {
+    if (typecheck(&globals, &class_table, &function_table)) {
 #if DEBUG
         printf("program has typechecked\n");
 #endif
@@ -123,7 +129,8 @@ int main(int argc, char *argv[])
 #if DEBUG
     printf("`````````````` COMPILE ```````````````\n");
 #endif
-    compile(&cc, globals.ast);
+    globals.cc = &cc;
+    compile(&globals, globals.ast);
 #if DEBUG
     printf("\n");
     printf("````````````` INSTRUCTIONS `````````````\n");
@@ -142,6 +149,6 @@ int main(int argc, char *argv[])
 
     ret = EXIT_SUCCESS;
 FAIL:
-    allocator_freeall();
+    allocator_freeall(globals.allocator);
     return ret;
 }

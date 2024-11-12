@@ -11,6 +11,7 @@
 #include <inttypes.h>
 #include <string.h>
 #include <assert.h>
+#include "allocator.h"
 
 #define INSTRUCTIONS_MAX        10000
 #define STACK_MAX               256
@@ -29,9 +30,10 @@ struct Globals {
     // Stores compile-time error message
     char error[ERROR_MESSAGE_MAX];
     // Stores main structs used throughout the program
+    Allocator allocator;
     struct FileContext *file;
     struct Lexer *lexer;
-    struct Parser *parser;
+    struct LinkedListNode *parser;
     // Used to store strings for each symbol
     struct LinkedList *symbol_table; 
     // Keep track of number of functions and classes parsed
@@ -41,6 +43,8 @@ struct Globals {
     Symbol entrypoint;
     // Stores actual ast content (a list of top level definitions)
     struct LinkedList *ast;
+    // Stores compiler context
+    struct CompilerContext *cc;
 };
 
 /* Types that objects can have */
@@ -59,15 +63,12 @@ typedef uint64_t Type;
 
 static inline bool is_object(Type val) { return val > BUILTIN_CONCAT; }
 
-// Global variable to hold ast of currently parsed ast
-extern struct Globals globals;
-
 /* List functions */
-void init_symbol_table(void);
+void init_symbol_table(struct Globals *globals);
 // struct List *new_list(void *value);
 // struct List *append(struct List *list, void *value);
 // struct List *seek_end(struct List *list);
-char *lookup_symbol(uint64_t symbol);
+char *lookup_symbol(struct Globals *globals, uint64_t symbol);
 bool is_builtin(uint64_t symbol);
 
 #endif

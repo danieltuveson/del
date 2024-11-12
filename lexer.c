@@ -35,7 +35,9 @@ struct TokenMapping symbols2[] = {
     {"==",       ST_EQEQ },
     {"!=",       ST_NOT_EQ },
     {"<=",       ST_LESS_EQ },
-    {">=",       ST_GREATER_EQ }
+    {">=",       ST_GREATER_EQ },
+    {"++",       ST_INC },
+    {"--",       ST_DEC }
 };
 
 struct TokenMapping symbols1[] = {
@@ -61,27 +63,27 @@ struct TokenMapping symbols1[] = {
     {".",        ST_DOT }
 };
 
-static struct Token *new_token(struct Lexer *lexer, int start, int end, enum TokenType type)
+static struct Token *new_token(struct Globals *globals, int start, int end, enum TokenType type)
 {
-    struct Token *token = allocator_malloc(sizeof(*token));
+    struct Token *token = allocator_malloc(globals->allocator, sizeof(*token));
     token->start = start;
     token->end = end;
-    token->line_number = lexer->error.line_number;
-    token->column_number = lexer->error.column_number;
+    token->line_number = globals->lexer->error.line_number;
+    token->column_number = globals->lexer->error.column_number;
     token->type = type;
     return token;
 }
 
-static struct Token *new_symbol_token(struct Lexer *lexer, int start, int end, Symbol symbol)
+static struct Token *new_symbol_token(struct Globals *globals, int start, int end, Symbol symbol)
 {
-    struct Token *token = new_token(lexer, start, end, T_SYMBOL);
+    struct Token *token = new_token(globals, start, end, T_SYMBOL);
     token->symbol = symbol;
     return token;
 }
 
-static struct Token *new_integer_token(struct Lexer *lexer, int start, int end, uint64_t integer)
+static struct Token *new_integer_token(struct Globals *globals, int start, int end, uint64_t integer)
 {
-    struct Token *token = new_token(lexer, start, end, T_INT);
+    struct Token *token = new_token(globals, start, end, T_INT);
     token->integer = integer;
     return token;
 }
@@ -93,9 +95,9 @@ static struct Token *new_integer_token(struct Lexer *lexer, int start, int end, 
 //     return token;
 // }
 
-static struct Token *new_string_token(struct Lexer *lexer, int start, int end, char *str)
+static struct Token *new_string_token(struct Globals *globals, int start, int end, char *str)
 {
-    struct Token *token = new_token(lexer, start, end, T_STRING);
+    struct Token *token = new_token(globals, start, end, T_STRING);
     token->string = str;
     return token;
 }
@@ -117,24 +119,24 @@ static inline bool is_terminal(char c)
     return is_symbol(c) || is_space(c) || c == '\0';
 }
 
-static inline char peek(struct Lexer *lexer)
+static inline char peek(struct Globals *globals)
 {
-    return globals.file->input[lexer->offset];
+    return globals->file->input[globals->lexer->offset];
 }
 
-static inline bool has_next(struct Lexer *lexer)
+static inline bool has_next(struct Globals *globals)
 {
-    return lexer->offset <= globals.file->length && peek(lexer) != '\0';
+    return globals->lexer->offset <= globals->file->length && peek(globals) != '\0';
 }
 
-static inline char next(struct Lexer *lexer)
+static inline char next(struct Globals *globals)
 {
-    lexer->error.column_number++;
-    if (globals.file->input[lexer->offset] == '\n') {
-        lexer->error.column_number = 1;
-        lexer->error.line_number++;
+    globals->lexer->error.column_number++;
+    if (globals->file->input[globals->lexer->offset] == '\n') {
+        globals->lexer->error.column_number = 1;
+        globals->lexer->error.line_number++;
     }
-    return globals.file->input[lexer->offset++];
+    return globals->file->input[globals->lexer->offset++];
 }
 
 // Checks if lexer matches given string, consuming the characters it reads on success
@@ -143,12 +145,12 @@ static inline char next(struct Lexer *lexer)
 // and set to false if not. 
 // For example if we want to parse 'for' 'forever' should not be a match so we should require it
 // to end in a terminal. If we parse '>=', it's okay if the next character is not a terminal  
-static int match(struct Lexer *lexer, char *str, bool require_terminal)
+static int match(struct Globals *globals, char *str, bool require_terminal)
 {
-    int init_offset = lexer->offset;
-    int i = lexer->offset;
+    int init_offset = globals->lexer->offset;
+    int i = globals->lexer->offset;
     while (true) {
-        char c = globals.file->input[i];
+        char c = globals->file->input[i];
         char strc = str[i - init_offset];
         if (strc == '\0' && (!require_terminal || is_terminal(c))) {
             break;
@@ -158,30 +160,30 @@ static int match(struct Lexer *lexer, char *str, bool require_terminal)
         }
         i++;
     }
-    lexer->offset = i;
-    lexer->error.column_number += i - init_offset;
+    globals->lexer->offset = i;
+    globals->lexer->error.column_number += i - init_offset;
     return i - init_offset;
 }
 
-static void tokenize_comment(struct Lexer *lexer)
+static void tokenize_comment(struct Globals *globals)
 {
     char c = '\0';
-    int init_offset = lexer->offset;
-    while (peek(lexer) != '\n' && peek(lexer) != '\0') {
-        c = next(lexer);
+    int init_offset = globals->lexer->offset;
+    while (peek(globals) != '\n' && peek(globals) != '\0') {
+        c = next(globals);
     }
-    if (lexer->include_comments) {
+    if (globals->lexer->include_comments) {
         if (c == '\r') {
-            linkedlist_append(lexer->tokens, new_token(lexer, init_offset, lexer->offset - 1, T_COMMENT));
+            linkedlist_append(globals->lexer->tokens, new_token(globals, init_offset, globals->lexer->offset - 1, T_COMMENT));
         } else {
-            linkedlist_append(lexer->tokens, new_token(lexer, init_offset, lexer->offset, T_COMMENT));
+            linkedlist_append(globals->lexer->tokens, new_token(globals, init_offset, globals->lexer->offset, T_COMMENT));
         }
     }
 }
 
-static char *make_string(char *input, int start, int end)
+static char *make_string(struct Globals *globals, char *input, int start, int end)
 {
-    char *str = allocator_malloc(sizeof(char) * (end - start + 1));
+    char *str = allocator_malloc(globals->allocator, sizeof(char) * (end - start + 1));
     for (int i = start; i < end; i++) {
         str[i - start] = input[i];
     }
@@ -190,59 +192,59 @@ static char *make_string(char *input, int start, int end)
 }
 
 // TODO: handle escape sequences
-static void tokenize_string(struct Lexer *lexer)
+static void tokenize_string(struct Globals *globals)
 {
-    int init_offset = lexer->offset;
-    while (peek(lexer) != '"') {
-        if (peek(lexer) == '\n' || peek(lexer) == '\0') {
-            lexer->error.message = "Unexpected end of string";
+    int init_offset = globals->lexer->offset;
+    while (peek(globals) != '"') {
+        if (peek(globals) == '\n' || peek(globals) == '\0') {
+            globals->lexer->error.message = "Unexpected end of string";
             return;
         }
-        next(lexer);
+        next(globals);
     }
-    char *str = make_string(globals.file->input, init_offset, lexer->offset);
-    linkedlist_append(lexer->tokens, new_string_token(lexer, init_offset, lexer->offset, str));
-    next(lexer);
+    char *str = make_string(globals, globals->file->input, init_offset, globals->lexer->offset);
+    linkedlist_append(globals->lexer->tokens, new_string_token(globals, init_offset, globals->lexer->offset, str));
+    next(globals);
 }
 
-static bool match_simple_token_list(struct Lexer *lexer, struct TokenMapping *tm_list, size_t length,
+static bool match_simple_token_list(struct Globals *globals, struct TokenMapping *tm_list, size_t length,
     bool require_terminal)
 {
-    int init_offset = lexer->offset;
+    int init_offset = globals->lexer->offset;
     for (size_t i = 0; i < length; i++) {
         struct TokenMapping tm = tm_list[i];
-        if (match(lexer, tm.string, require_terminal)) {
-            linkedlist_append(lexer->tokens, new_token(lexer, init_offset, lexer->offset, tm.type));
+        if (match(globals, tm.string, require_terminal)) {
+            linkedlist_append(globals->lexer->tokens, new_token(globals, init_offset, globals->lexer->offset, tm.type));
             return true;
         }
     }
     return false;
 }
 
-#define match_simple_token_list_m(lexer, tm_list, require_terminal) \
-    match_simple_token_list(lexer, tm_list,\
+#define match_simple_token_list_m(globals, tm_list, require_terminal) \
+    match_simple_token_list(globals, tm_list,\
         (sizeof(tm_list) / sizeof(struct TokenMapping)), require_terminal)
 
-static bool match_simple_token(struct Lexer *lexer)
+static bool match_simple_token(struct Globals *globals)
 {
-    return match_simple_token_list_m(lexer, symbols2, false) ||
-           match_simple_token_list_m(lexer, symbols1, false) ||
-           match_simple_token_list_m(lexer, keywords, true);
+    return match_simple_token_list_m(globals, symbols2, false) ||
+           match_simple_token_list_m(globals, symbols1, false) ||
+           match_simple_token_list_m(globals, keywords, true);
 }
 
 #undef match_simple_token_list_m
 
 // Convert string to int64_t. Assumes null terminated string with valid characters
-static int64_t str_to_int64(struct Lexer *lexer, int init_offset, int count)
+static int64_t str_to_int64(struct Globals *globals, int init_offset, int count)
 {
     const int64_t INT64_MAX_HIGHPART = 922337203685477580;
     const int64_t INT64_MAX_LOWPART  = 7;
     int64_t num = 0;
     for (int i = init_offset; i < init_offset + count; i++) {
-        int64_t digit = globals.file->input[i] - '0';
+        int64_t digit = globals->file->input[i] - '0';
         // If we're about to overflow, return with an error
         if (num > INT64_MAX_HIGHPART || (num == INT64_MAX_HIGHPART && digit > INT64_MAX_LOWPART)) {
-            lexer->error.message = "integer literal exceeds maximum allowed size of integer";
+            globals->lexer->error.message = "integer literal exceeds maximum allowed size of integer";
             return 0;
         }
         num = num * 10 + digit;
@@ -251,20 +253,20 @@ static int64_t str_to_int64(struct Lexer *lexer, int init_offset, int count)
 }
 
 // TODO: make this work for double
-static void tokenize_number(struct Lexer *lexer)
+static void tokenize_number(struct Globals *globals)
 {
-    int init_offset = lexer->offset;
-    while (isdigit(peek(lexer))) {
-        next(lexer);
+    int init_offset = globals->lexer->offset;
+    while (isdigit(peek(globals))) {
+        next(globals);
     }
-    if (!is_terminal(peek(lexer))) {
-        lexer->error.message = "unexpected character in integer literal";
+    if (!is_terminal(peek(globals))) {
+        globals->lexer->error.message = "unexpected character in integer literal";
         return;
     }
-    int count = lexer->offset - init_offset;
-    int64_t num = str_to_int64(lexer, init_offset, count);
-    if (!lexer->error.message) {
-        linkedlist_append(lexer->tokens, new_integer_token(lexer, init_offset, lexer->offset, num));
+    int count = globals->lexer->offset - init_offset;
+    int64_t num = str_to_int64(globals, init_offset, count);
+    if (!globals->lexer->error.message) {
+        linkedlist_append(globals->lexer->tokens, new_integer_token(globals, init_offset, globals->lexer->offset, num));
     }
 }
 
@@ -274,11 +276,11 @@ static bool is_symbol_token(char c)
 }
 
 // TODO: rewrite this to use globals
-static Symbol add_symbol(char *yytext, int yyleng)
+static Symbol add_symbol(struct Globals *globals, char *yytext, int yyleng)
 {
-    if (globals.symbol_table == NULL) init_symbol_table();
+    if (globals->symbol_table == NULL) init_symbol_table(globals);
     /* Adds symbols to symbol table */
-    struct LinkedListNode *symbol_table = globals.symbol_table->head;
+    struct LinkedListNode *symbol_table = globals->symbol_table->head;
     uint64_t cnt = 0;
     char *symbol;
     while (1) {
@@ -292,42 +294,42 @@ static Symbol add_symbol(char *yytext, int yyleng)
             symbol_table = symbol_table->next;
         }
     }
-    symbol = allocator_malloc((yyleng + 1) * sizeof(char));
+    symbol = allocator_malloc(globals->allocator, (yyleng + 1) * sizeof(char));
     strcpy(symbol, yytext);
     // symbol_table->next = new_list(symbol);
-    linkedlist_append(globals.symbol_table, symbol);
+    linkedlist_append(globals->symbol_table, symbol);
 addsymbol:
     if (strcmp(yytext, "main") == 0) {
-        globals.entrypoint = cnt;
+        globals->entrypoint = cnt;
     }
     return cnt;
 }
 
-static void tokenize_symbol(struct Lexer *lexer)
+static void tokenize_symbol(struct Globals *globals)
 {
-    int init_offset = lexer->offset;
-    while (is_symbol_token(peek(lexer))) {
-        next(lexer);
+    int init_offset = globals->lexer->offset;
+    while (is_symbol_token(peek(globals))) {
+        next(globals);
     }
-    if (!is_terminal(peek(lexer))) {
-        lexer->error.message = "unexpected character in integer literal";
+    if (!is_terminal(peek(globals))) {
+        globals->lexer->error.message = "unexpected character in integer literal";
         return;
     }
-    int count = lexer->offset - init_offset;
-    char *text = allocator_malloc(count + 1);
-    memcpy(text, globals.file->input + init_offset, count);
+    int count = globals->lexer->offset - init_offset;
+    char *text = allocator_malloc(globals->allocator, count + 1);
+    memcpy(text, globals->file->input + init_offset, count);
     text[count] = '\0';
-    Symbol symbol = add_symbol(text, count);
-    linkedlist_append(lexer->tokens, new_symbol_token(lexer, init_offset, lexer->offset, symbol));
+    Symbol symbol = add_symbol(globals, text, count);
+    linkedlist_append(globals->lexer->tokens, new_symbol_token(globals, init_offset, globals->lexer->offset, symbol));
 }
 
-void print_token(struct Token *token)
+void print_token(struct Globals *globals, struct Token *token)
 {
     printf("Type: %d, Start: %d, End: %d, Content: '", token->type, token->start, token->end);
     for (int i = token->start; i < token->end; i++) {
-        if (globals.file->input[i] == '\0') printf("**NULL**");
-        if (globals.file->input[i] == '\n') printf("**NEWLINE**");
-        printf("%c", globals.file->input[i]);
+        if (globals->file->input[i] == '\0') printf("**NULL**");
+        if (globals->file->input[i] == '\n') printf("**NEWLINE**");
+        printf("%c", globals->file->input[i]);
     }
     printf("'");
     switch (token->type) {
@@ -338,7 +340,7 @@ void print_token(struct Token *token)
             printf(", Value: '%s'", token->string);
             break;
         case T_SYMBOL:
-            printf(", Value: '%s'", lookup_symbol(token->symbol));
+            printf(", Value: '%s'", lookup_symbol(globals, token->symbol));
             break;
         default:
             break;
@@ -346,19 +348,19 @@ void print_token(struct Token *token)
     printf("\n");
 }
 
-void print_lexer(struct Lexer *lexer)
+void print_lexer(struct Globals *globals, struct Lexer *lexer)
 {
     printf("lexer {\n");
     printf("  [\n");
     for (struct LinkedListNode *node = lexer->tokens->head; node != NULL; node = node->next) {
         printf("    ");
-        print_token(node->value);
+        print_token(globals, node->value);
     }
     printf("  ]\n");
     printf("}\n");
 }
 
-void lexer_init(struct Lexer *lexer, bool include_comments)
+void lexer_init(struct Globals *globals, struct Lexer *lexer, bool include_comments)
 {
     lexer->error.message = NULL;
     lexer->error.line_number = 1;
@@ -367,34 +369,34 @@ void lexer_init(struct Lexer *lexer, bool include_comments)
     // lexer->input_length = input_length;
     lexer->include_comments = include_comments;
     lexer->offset = 0;
-    lexer->tokens = linkedlist_new();
+    lexer->tokens = linkedlist_new(globals->allocator);
 }
 
-bool tokenize(struct Lexer *lexer)
+bool tokenize(struct Globals *globals)
 {
-    if (!has_next(lexer)) {
-        lexer->error.message = "File is empty";
+    if (!has_next(globals)) {
+        globals->lexer->error.message = "File is empty";
         return false;
     }
-    while (has_next(lexer)) {
-        if (is_space(peek(lexer))) {
+    while (has_next(globals)) {
+        if (is_space(peek(globals))) {
             // ignore whitespace
-            next(lexer);
-        } else if (match(lexer, "//", false)) {
-            tokenize_comment(lexer);
-        } else if (isdigit(peek(lexer))) {
-            tokenize_number(lexer);
-        } else if (peek(lexer) ==  '"') {
-            next(lexer);
-            tokenize_string(lexer);
-        } else if (match_simple_token(lexer)) {
+            next(globals);
+        } else if (match(globals, "//", false)) {
+            tokenize_comment(globals);
+        } else if (isdigit(peek(globals))) {
+            tokenize_number(globals);
+        } else if (peek(globals) ==  '"') {
+            next(globals);
+            tokenize_string(globals);
+        } else if (match_simple_token(globals)) {
             // Do nothing, match_simple_token will consume the token on success
-        } else if (isalpha(peek(lexer)) || peek(lexer) == '_') {
-            tokenize_symbol(lexer);
+        } else if (isalpha(peek(globals)) || peek(globals) == '_') {
+            tokenize_symbol(globals);
         } else {
-            lexer->error.message = "illegal characters in token";
+            globals->lexer->error.message = "illegal characters in token";
         }
-        if (lexer->error.message) {
+        if (globals->lexer->error.message) {
             return false;
         }
     }

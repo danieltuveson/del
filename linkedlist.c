@@ -2,9 +2,10 @@
 #include "allocator.h"
 #include "linkedlist.h"
 
-struct LinkedList *linkedlist_new(void)
+struct LinkedList *linkedlist_new(Allocator a)
 {
-    struct LinkedList *ll = allocator_malloc(sizeof(*ll));
+    struct LinkedList *ll = allocator_malloc(a, sizeof(*ll));
+    ll->allocator = a;
     ll->length = 0;
     ll->head = NULL;
     ll->tail = NULL;
@@ -13,7 +14,7 @@ struct LinkedList *linkedlist_new(void)
 
 void linkedlist_append(struct LinkedList *ll, void *value)
 {
-    struct LinkedListNode *lnode = allocator_malloc(sizeof(*lnode));
+    struct LinkedListNode *lnode = allocator_malloc(ll->allocator, sizeof(*lnode));
     lnode->prev = NULL;
     lnode->next = NULL;
     lnode->value = value;
@@ -31,7 +32,7 @@ void linkedlist_append(struct LinkedList *ll, void *value)
 
 void linkedlist_prepend(struct LinkedList *ll, void *value)
 {
-    struct LinkedListNode *lnode = allocator_malloc(sizeof(*lnode));
+    struct LinkedListNode *lnode = allocator_malloc(ll->allocator, sizeof(*lnode));
     lnode->prev = NULL;
     lnode->next = NULL;
     lnode->value = value;

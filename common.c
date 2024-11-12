@@ -2,21 +2,19 @@
 #include "allocator.h"
 #include "linkedlist.h"
 
-struct Globals globals = { {0}, NULL, NULL, NULL, NULL, 0, 0, 0, NULL };
-
-static void add_symbol_helper(char *sym, size_t size)
+static void add_symbol_helper(struct Globals *globals, char *sym, size_t size)
 {
-    char *symbol = allocator_malloc(size);
+    char *symbol = allocator_malloc(globals->allocator, size);
     strcpy(symbol, sym);
-    if (globals.symbol_table == NULL) {
-        globals.symbol_table = linkedlist_new();
+    if (globals->symbol_table == NULL) {
+        globals->symbol_table = linkedlist_new(globals->allocator);
     }
-    linkedlist_append(globals.symbol_table, symbol);
+    linkedlist_append(globals->symbol_table, symbol);
 }
 
-#define add_symbol(sym) add_symbol_helper(sym, sizeof(sym))
+#define add_symbol(sym) add_symbol_helper(globals, sym, sizeof(sym))
 
-void init_symbol_table(void)
+void init_symbol_table(struct Globals *globals)
 {
     /* Add types to symbol table
      * Important Note: the order of these must be the same as the order in which they are
@@ -37,19 +35,15 @@ void init_symbol_table(void)
 }
 #undef add_symbol
 
-char *lookup_symbol(uint64_t symbol)
+char *lookup_symbol(struct Globals *globals, uint64_t symbol)
 {
     uint64_t cnt = 0;
-    // printf("something bad happens here?\n");
-    linkedlist_foreach(lnode, globals.symbol_table->head) {
-        // printf("looking...\n");
+    linkedlist_foreach(lnode, globals->symbol_table->head) {
         if (cnt == symbol) {
-            // printf("nope, returned without issue\n");
             return lnode->value;
         }
         cnt++;
     }
-    // printf("returns null. This should not happen!!!\n");
     return NULL;
 }
 

@@ -23,6 +23,6 @@ struct CompilerContext {
     struct ClassTable *class_table;
 };
 
-size_t compile(struct CompilerContext *cc, TopLevelDecls *tlds);
+size_t compile(struct Globals *globals, TopLevelDecls *tlds);
 
 #endif

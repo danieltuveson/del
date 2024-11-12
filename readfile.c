@@ -3,7 +3,7 @@
 #include "readfile.h"
 
 // Populates FileContext on success
-bool readfile(struct FileContext *file)
+bool readfile(struct Globals *globals, struct FileContext *file)
 {
     FILE *fp = fopen(file->filename, "r");
     if (!fp) {
@@ -22,7 +22,7 @@ bool readfile(struct FileContext *file)
     }
     rewind(fp);
 
-    file->input = allocator_malloc(file->length + 1);
+    file->input = allocator_malloc(globals->allocator, file->length + 1);
     if ((long) fread(file->input, 1, file->length, fp) != file->length) {
         printf("%s", generic_error);
         return false;

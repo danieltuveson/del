@@ -22,5 +22,5 @@ function main() {
     for let j = 0; j < num_iters; j = j + 1 {
         x = fib(90) - x / 2;
     }
-    print(x);
+    println(x);
 }

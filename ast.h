@@ -30,6 +30,10 @@ enum ValueType {
 };
 
 enum OperatorType {
+    // Binary ops
+    OP_GET,
+    // OP_SET,
+    // OP_INDEX,
     OP_OR,
     OP_AND,
     OP_EQEQ,
@@ -43,8 +47,10 @@ enum OperatorType {
     OP_STAR,
     OP_SLASH,
     OP_PERCENT,
+    // Unary ops
     OP_UNARY_PLUS,
     OP_UNARY_MINUS
+    // OP_INVOKE
 };
 
 enum TLDType {
@@ -189,47 +195,48 @@ struct Definition *lookup_property(struct Class *cls, Symbol name);
 uint64_t lookup_property_index(struct Class *cls, Symbol name);
 
 /* TLD constructors */
-struct TopLevelDecl *new_class(Symbol symbol, Definitions *definitions, Methods *methods);
-struct TopLevelDecl *new_tld_fundef(Symbol symbol, Type rettype, Definitions *args,
+struct TopLevelDecl *new_class(struct Globals *globals, Symbol symbol, Definitions *definitions, Methods *methods);
+struct TopLevelDecl *new_tld_fundef(struct Globals *globals, Symbol symbol, Type rettype, Definitions *args,
         Statements *stmts);
-struct FunDef *new_fundef(Symbol symbol, Type rettype, Definitions *args, Statements *stmts);
+struct FunDef *new_fundef(struct Globals *globals, Symbol symbol, Type rettype, Definitions *args, Statements *stmts);
 
 /* Statement constructors */
-struct Statement *new_set(Symbol symbol, struct Value *val, LValues *lvalues, bool is_define);
-struct Statement *new_if(struct Value *condition, Statements *if_stmts);
-struct Statement *add_elseif(struct IfStatement *if_stmt, struct Statement *elseif_stmt);
+struct Statement *new_set(struct Globals *globals, Symbol symbol, struct Value *val, LValues *lvalues, bool is_define);
+struct Statement *new_if(struct Globals *globals, struct Value *condition, Statements *if_stmts);
+struct Statement *add_elseif(struct Globals *globals, struct IfStatement *if_stmt, struct Statement *elseif_stmt);
 void add_else(struct IfStatement *if_stmt, Statements *else_stmts);
-struct Statement *new_while(struct Value *condition, Statements *stmts);
-struct Statement *new_for(struct Statement *init, struct Value *condition,
+struct Statement *new_while(struct Globals *globals, struct Value *condition, Statements *stmts);
+struct Statement *new_for(struct Globals *globals, struct Statement *init, struct Value *condition,
         struct Statement *increment, Statements *stmts);
-struct Statement *new_let(Definitions *let);
-struct Definition *new_define(Symbol name, Type type);
-// struct Statement *new_sfuncall(Symbol funname, Values *args);
-struct Statement *new_sfuncall(Symbol funname, Values *args, bool is_builtin);
-struct Statement *new_return(struct Value *val);
+struct Statement *new_let(struct Globals *globals, Definitions *let);
+struct Definition *new_define(struct Globals *globals, Symbol name, Type type);
+// struct Statement *new_sfuncall(struct Globals *globals, Symbol funname, Values *args);
+struct Statement *new_sfuncall(struct Globals *globals, Symbol funname, Values *args, bool is_builtin);
+struct Statement *new_return(struct Globals *globals, struct Value *val);
 
 /* Value constructors */
-struct Value *new_string(char *string);
-// struct Value *new_symbol(uint64_t symbol);
-struct Value *new_integer(long integer);
-struct Value *new_floating(double floating);
-struct Value *new_boolean(int boolean);
-struct Value *new_null(void);
-struct Value *new_vfuncall(Symbol funname, Values *args, bool is_builtin);
-struct Value *new_constructor(Symbol funname, Values *args, bool is_builtin);
-struct Value *new_get(Symbol symbol, LValues *lvalues);
-struct Value *new_expr(struct Expr *expr);
-struct LValue *new_property(Symbol property);
-struct LValue *new_index(struct Value *index);
+struct Value *new_string(struct Globals *globals, char *string);
+// struct Value *new_symbol(struct Globals *globals, uint64_t symbol);
+struct Value *new_integer(struct Globals *globals, long integer);
+struct Value *new_floating(struct Globals *globals, double floating);
+struct Value *new_boolean(struct Globals *globals, int boolean);
+struct Value *new_null(struct Globals *globals);
+struct Value *new_vfuncall(struct Globals *globals, Symbol funname, Values *args, bool is_builtin);
+struct Value *new_constructor(struct Globals *globals, Symbol funname, Values *args, bool is_builtin);
+struct Value *new_get(struct Globals *globals, Symbol symbol, LValues *lvalues);
+struct Value *new_expr(struct Globals *globals, struct Expr *expr);
+struct LValue *new_property(struct Globals *globals, Symbol property);
+struct LValue *new_index(struct Globals *globals, struct Value *index);
 
 /* Expression constructors */
 
 /* Unary */
-struct Expr *unary_plus(struct Value *val1);
-struct Expr *unary_minus(struct Value *val1);
+struct Expr *unary_plus(struct Globals *globals, struct Value *val1);
+struct Expr *unary_minus(struct Globals *globals, struct Value *val1);
 
 /* Binary */
-#define bin_decl(name) struct Expr *name(struct Value *val1, struct Value *val2);
+#define bin_decl(name) struct Expr *name(struct Globals *globals, struct Value *val1, struct Value *val2);
+// bin_decl(bin_dot)
 bin_decl(bin_or)
 bin_decl(bin_and)
 bin_decl(bin_eqeq)
