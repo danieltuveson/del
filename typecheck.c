@@ -340,6 +340,7 @@ static Type typecheck_get(struct Globals *globals, struct TypeCheckerContext *co
 
 static Type typecheck_value(struct Globals *globals, struct TypeCheckerContext *context, struct Value *val)
 {
+    Symbol name;
     switch (val->vtype) {
         case VTYPE_STRING:
             return TYPE_STRING;
@@ -373,7 +374,7 @@ static Type typecheck_value(struct Globals *globals, struct TypeCheckerContext *
             val->type = typecheck_get(globals, context, val->get);
             return val->type;
         case VTYPE_BUILTIN_FUNCALL:
-            Symbol name = val->funcall->funname;
+            name = val->funcall->funname;
             if (name == BUILTIN_READ) {
                 val->type = TYPE_STRING;
                 return typecheck_read(val->funcall->args);

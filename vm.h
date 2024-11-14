@@ -58,14 +58,27 @@ typedef struct {
     DelValue value;
 } HeapValue;
 
+enum VirtualMachineStatus {
+    VM_STATUS_ERROR = 0, 
+    VM_STATUS_COMPLETED = 1, 
+    VM_STATUS_PAUSE = 2
+};
+
 struct VirtualMachine {
+    enum VirtualMachineStatus status;
     struct StackFrames sfs;
     struct Stack stack;
     struct Heap heap;
-    uint64_t ip;
-    int iterations;
+    size_t ip;
+    size_t scope_offset;
+    uint64_t ret;
+    DelValue val1;
+    DelValue val2;
+    size_t iterations;
+    DelValue *instructions;
 };
 
-int vm_execute(DelValue *instructions);
+void vm_init(struct VirtualMachine *vm, DelValue *instructions);
+uint64_t vm_execute(struct VirtualMachine *vm);
 
 #endif

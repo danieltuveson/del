@@ -1,5 +1,5 @@
 // Various defines used to implement threaded interpretation in the VMs main loop
-#ifndef THREADED_CODE_ENABLED
+#if !THREADED_CODE_ENABLED
 
     #define vm_break break
     #define vm_case(opcode) case opcode

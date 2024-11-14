@@ -197,6 +197,7 @@ static void print_string(struct Stack *stack, struct Heap *heap)
 
 static void print(struct Stack *stack, struct Heap *heap)
 {
+    size_t ptr, location, count;
     DelValue dval, dtype;
     dtype = pop(stack);
     Type t = dtype.type;
@@ -225,9 +226,9 @@ static void print(struct Stack *stack, struct Heap *heap)
             print_string(stack, heap);
             break;
         default:
-            size_t ptr = pop(stack).offset;
-            size_t location = get_location(ptr);
-            size_t count = get_count(ptr);
+            ptr = pop(stack).offset;
+            location = get_location(ptr);
+            count = get_count(ptr);
             if (location == 0) {
                 printf("null");
             } else {
@@ -295,17 +296,35 @@ static inline bool read(struct Stack *stack, struct Heap *heap)
 //     return push_heap(heap, stack);
 // }
 
-int vm_execute(DelValue *instructions)
+void vm_init(struct VirtualMachine *vm, DelValue *instructions)
 {
-    struct StackFrames sfs = {0};
-    struct Stack stack = {0};
-    struct Heap heap = {0};
-    size_t ip = 0;
-    size_t scope_offset = 0;
-    uint64_t ret = 0;
-    DelValue val1 = { .integer = 0 };
-    DelValue val2 = { .integer = 0 };
-    size_t iterations = 0;
+    // I think these should all be zero'd by default, so shouldn't need this?
+    // vm->sfs = {0};
+    // vm->stack = {0};
+    // vm->heap = {0};
+    // vm->ip = 0;
+    // vm->scope_offset = 0;
+    // vm->ret = 0;
+    // vm->val1 = { .integer = 0 };
+    // vm->val2 = { .integer = 0 };
+    // vm->iterations = 0;
+    vm->instructions = instructions;
+}
+
+uint64_t vm_execute(struct VirtualMachine *vm)
+{
+    // Define local variables for VM fields, for convenience (and maybe efficiency)
+    enum VirtualMachineStatus status = vm->status;
+    struct StackFrames sfs = vm->sfs;
+    struct Stack stack = vm->stack;
+    struct Heap heap = vm->heap;
+    size_t ip = vm->ip;
+    size_t scope_offset = vm->scope_offset;
+    uint64_t ret = vm->ret;
+    DelValue val1 = vm->val1;
+    DelValue val2 = vm->val2;
+    size_t iterations = vm->iterations;
+    DelValue *instructions = vm->instructions;
 #include "threading.h"
     while (1) {
         switch (instructions[ip].opcode) {
@@ -328,6 +347,7 @@ int vm_execute(DelValue *instructions)
             #undef PUSH_N
             vm_case(PUSH_HEAP):
                 if (!push_heap(&heap, &stack)) {
+                    status = VM_STATUS_ERROR;
                     goto exit_loop;
                 }
                 vm_break;
@@ -411,10 +431,12 @@ int vm_execute(DelValue *instructions)
             vm_case(GET_HEAP):
                 if (!get_heap(&heap, &stack)) {
                     printf("Error: null pointer exception\n");
+                    status = VM_STATUS_ERROR;
                     goto exit_loop;
                 }
                 vm_break;
             vm_case(EXIT):
+                status = VM_STATUS_COMPLETED;
                 goto exit_loop;
             vm_case(CALL):
                 // symbol = (Symbol) pop(&stack);
@@ -438,6 +460,7 @@ int vm_execute(DelValue *instructions)
                 vm_break;
             vm_case(READ):
                 if (!read(&stack, &heap)) {
+                    status = VM_STATUS_ERROR;
                     goto exit_loop;
                 }
                 vm_break;
@@ -462,15 +485,22 @@ int vm_execute(DelValue *instructions)
             vm_case(FLOAT_UNARY_MINUS):
             default:
                 printf("unknown instruction encountered: '%" PRIu64 "'", instructions[ip].offset);
+                status = VM_STATUS_ERROR;
                 goto exit_loop;
         }
         ip++;
-        iterations++;
+        // iterations++;
+        // For fun, lets exit whenever we reach 100 iterations
+        //if (iterations % 100 == 0) {
+        //    status = VM_STATUS_PAUSE;
+        //    goto exit_loop;
+        //}
 #if DEBUG
         print_stack(&stack);
         print_heap(&heap);
         if (iterations > 200000) {
             printf("infinite loop detected, ending execution\n");
+            status = VM_STATUS_ERROR;
             goto exit_loop;
         }
 #endif
@@ -481,6 +511,18 @@ exit_loop:
     print_frames(&sfs);
     print_heap(&heap);
 #endif
+    // Update state of VM before exiting
+    vm->status = status;
+    vm->sfs = sfs;
+    vm->stack = stack;
+    vm->heap = heap;
+    vm->ip = ip;
+    vm->scope_offset = scope_offset;
+    vm->ret = ret;
+    vm->val1 = val1;
+    vm->val2 = val2;
+    vm->iterations = iterations;
+    vm->instructions = instructions;
     return ret;
 }
 
