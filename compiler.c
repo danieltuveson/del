@@ -72,7 +72,6 @@ static inline void compile_chars(struct Globals *globals, char chars[8])
 
 static inline void compile_float(struct Globals *globals, double floating)
 {
-    assert("floating point not implemented\n" && 0);
     push(globals);
     globals->cc->instructions[next(globals)].floating = floating;
 }
@@ -312,29 +311,109 @@ static void compile_value(struct Globals *globals, struct Value *val)
     }
 }
 
-/* Scrunched up because it's boring */
 static void compile_expr(struct Globals *globals, struct Expr *expr)
 {
     struct Value *val1, *val2;
     val1 = expr->val1;
     val2 = expr->val2;
     switch (expr->op) {
-        case OP_OR:          compile_binary_op(globals, val1, val2, OR);   break;
-        case OP_AND:         compile_binary_op(globals, val1, val2, AND);  break;
-        case OP_EQEQ:        compile_binary_op(globals, val1, val2, EQ);   break;
-        case OP_NOT_EQ:      compile_binary_op(globals, val1, val2, NEQ);  break;
-        case OP_GREATER_EQ:  compile_binary_op(globals, val1, val2, GTE);  break;
-        case OP_GREATER:     compile_binary_op(globals, val1, val2, GT);   break;
-        case OP_LESS_EQ:     compile_binary_op(globals, val1, val2, LTE);  break;
-        case OP_LESS:        compile_binary_op(globals, val1, val2, LT);   break;
-        case OP_PLUS:        compile_binary_op(globals, val1, val2, ADD);  break;
-        case OP_MINUS:       compile_binary_op(globals, val1, val2, SUB);  break;
-        case OP_STAR:        compile_binary_op(globals, val1, val2, MUL);  break;
-        case OP_SLASH:       compile_binary_op(globals, val1, val2, DIV);  break;
-        case OP_PERCENT:     compile_binary_op(globals, val1, val2, MOD);  break;
-        case OP_UNARY_PLUS:  compile_unary_op(globals, val1, UNARY_PLUS);  break;
-        case OP_UNARY_MINUS: compile_unary_op(globals, val1, UNARY_MINUS); break;
-        default: printf("Error cannot compile expression\n"); assert(false); break;
+        case OP_OR:
+           compile_binary_op(globals, val1, val2, OR);
+           break;
+        case OP_AND:
+           compile_binary_op(globals, val1, val2, AND);
+           break;
+        case OP_EQEQ:
+           if (val1->type == TYPE_FLOAT) {
+               compile_binary_op(globals, val1, val2, FLOAT_EQ);
+           } else {
+               compile_binary_op(globals, val1, val2, EQ);
+           }
+           break;
+        case OP_NOT_EQ:
+           if (val1->type == TYPE_FLOAT) {
+               compile_binary_op(globals, val1, val2, FLOAT_NEQ);
+           } else {
+               compile_binary_op(globals, val1, val2, NEQ);
+           }
+           break;
+        case OP_GREATER_EQ:
+           if (val1->type == TYPE_FLOAT) {
+               compile_binary_op(globals, val1, val2, FLOAT_GTE);
+           } else {
+               compile_binary_op(globals, val1, val2, GTE);
+           }
+           break;
+        case OP_GREATER:
+           if (val1->type == TYPE_FLOAT) {
+               compile_binary_op(globals, val1, val2, FLOAT_GT);
+           } else {
+               compile_binary_op(globals, val1, val2, GT);
+           }
+           break;
+        case OP_LESS_EQ:
+           if (val1->type == TYPE_FLOAT) {
+               compile_binary_op(globals, val1, val2, FLOAT_LTE);
+           } else {
+               compile_binary_op(globals, val1, val2, LTE);
+           }
+           break;
+        case OP_LESS:
+           if (val1->type == TYPE_FLOAT) {
+               compile_binary_op(globals, val1, val2, FLOAT_LT);
+           } else {
+               compile_binary_op(globals, val1, val2, LT);
+           }
+           break;
+        case OP_PLUS:
+           if (val1->type == TYPE_FLOAT) {
+               compile_binary_op(globals, val1, val2, FLOAT_ADD);
+           } else {
+               compile_binary_op(globals, val1, val2, ADD);
+           }
+           break;
+        case OP_MINUS:
+           if (val1->type == TYPE_FLOAT) {
+               compile_binary_op(globals, val1, val2, FLOAT_SUB);
+           } else {
+               compile_binary_op(globals, val1, val2, SUB);
+           }
+           break;
+        case OP_STAR:
+           if (val1->type == TYPE_FLOAT) {
+               compile_binary_op(globals, val1, val2, FLOAT_MUL);
+           } else {
+               compile_binary_op(globals, val1, val2, MUL);
+           }
+           break;
+        case OP_SLASH:
+           if (val1->type == TYPE_FLOAT) {
+               compile_binary_op(globals, val1, val2, FLOAT_DIV);
+           } else {
+               compile_binary_op(globals, val1, val2, DIV);
+           }
+           break;
+        case OP_PERCENT:
+           compile_binary_op(globals, val1, val2, MOD);
+           break;
+        case OP_UNARY_PLUS:
+           if (val1->type == TYPE_FLOAT) {
+               compile_unary_op(globals, val1, FLOAT_UNARY_PLUS);
+           } else {
+               compile_unary_op(globals, val1, UNARY_PLUS);
+           }
+           break;
+        case OP_UNARY_MINUS:
+           if (val1->type == TYPE_FLOAT) {
+               compile_unary_op(globals, val1, FLOAT_UNARY_MINUS);
+           } else {
+               compile_unary_op(globals, val1, UNARY_PLUS);
+           }
+           break;
+        default:
+           printf("Error cannot compile expression\n");
+           assert(false);
+           break;
     }
 }
 

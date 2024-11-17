@@ -1,0 +1,9 @@
+function main() {
+    let x = 1.99;
+    let y = 99.01;
+    println(x, " + ", y, " = ", x + y);
+    y = 0.0;
+    println(x, " / ", y, " = ", x / y, " ... oops");
+    x = 0.0;
+    println(x, " / ", y, " = ", x / y, " ... okay I'll cut it out");
+}

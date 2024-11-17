@@ -261,8 +261,7 @@ static struct Value *parse_subexpr(struct Globals *globals)
     if (match(globals, T_INT)) {
         return new_integer(globals, nth_token(old_head, 1)->integer);
     } else if (match(globals, T_FLOAT)) {
-        // TODO: parse float
-        assert("TODO: parse float" && false);
+        return new_floating(globals, nth_token(old_head, 1)->floating);
     } else if (match(globals, T_STRING)) {
         return new_string(globals, nth_token(old_head, 1)->string);
     } else if (match(globals, ST_TRUE)) {

@@ -11,6 +11,7 @@
 #include <inttypes.h>
 #include <string.h>
 #include <assert.h>
+#include <errno.h>
 #include "allocator.h"
 
 #define INSTRUCTIONS_MAX        10000

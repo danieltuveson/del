@@ -58,6 +58,11 @@ static inline void push_integer(struct Stack *stack, int64_t integer)
     stack->values[stack->offset++].integer = integer;
 }
 
+static inline void push_floating(struct Stack *stack, double floating)
+{
+    stack->values[stack->offset++].floating = floating;
+}
+
 static inline void push_offset(struct Stack *stack, size_t offset)
 {
     stack->values[stack->offset++].offset = offset;
@@ -91,11 +96,18 @@ static inline void switch_op(struct Stack *stack)
     stack->values[index2.offset] = temp;
 }
 
-#define eval_binary_op(stack_ptr, v1, v2, op) \
-    do { \
-        v1 = pop(stack_ptr); \
-        v2 = pop(stack_ptr); \
-        push_integer(stack_ptr, (v2.integer op v1.integer)); } while (0)
+#define eval_binary_op(stack_ptr, v1, v2, op) do { \
+    v1 = pop(stack_ptr); \
+    v2 = pop(stack_ptr); \
+    push_integer(stack_ptr, (v2.integer op v1.integer)); \
+} while (0)
+
+#define eval_binary_op_f(stack_ptr, v1, v2, op) do { \
+    v1 = pop(stack_ptr); \
+    v2 = pop(stack_ptr); \
+    push_floating(stack_ptr, (v2.floating op v1.floating)); \
+    errno = 0; \
+} while (0)
 
 /* Pops values from the stack and pushes them onto the heap */
 static inline bool push_heap(struct Heap *heap, struct Stack *stack)
@@ -228,7 +240,7 @@ static void print(struct Stack *stack, struct Heap *heap)
         default:
             ptr = pop(stack).offset;
             location = get_location(ptr);
-            count = get_count(ptr);
+            count = get_count(ptr) / 2;
             if (location == 0) {
                 printf("null");
             } else {
@@ -311,6 +323,32 @@ void vm_init(struct VirtualMachine *vm, DelValue *instructions)
     vm->instructions = instructions;
 }
 
+#if DEBUG
+#define emergency_break() do {\
+    print_stack(&stack);\
+    print_heap(&heap);\
+    if (iterations > 200000) {\
+        printf("infinite loop detected, ending execution\n");\
+        status = VM_STATUS_ERROR;\
+        goto exit_loop;\
+    }\
+} while(0)
+#else
+#define emergency_break()
+#endif
+
+#define on_break() do {\
+    ip++;\
+    iterations++;\
+    /* For fun, lets exit whenever we reach 100 iterations */ \
+    if (iterations % 100 == 0) {\
+        status = VM_STATUS_PAUSE;\
+        goto exit_loop;\
+    }\
+    emergency_break();\
+} while(0)
+
+
 uint64_t vm_execute(struct VirtualMachine *vm)
 {
     // Define local variables for VM fields, for convenience (and maybe efficiency)
@@ -360,7 +398,14 @@ uint64_t vm_execute(struct VirtualMachine *vm)
             vm_case(ADD): eval_binary_op(&stack, val1, val2, +);  vm_break;
             vm_case(SUB): eval_binary_op(&stack, val1, val2, -);  vm_break;
             vm_case(MUL): eval_binary_op(&stack, val1, val2, *);  vm_break;
-            vm_case(DIV): eval_binary_op(&stack, val2, val1, /);  vm_break;
+            vm_case(DIV): 
+                if (val2.integer == 0) {
+                    printf("Error: division by zero\n");
+                    status = VM_STATUS_ERROR;
+                    goto exit_loop;
+                }
+                eval_binary_op(&stack, val2, val1, /);
+                vm_break;
             vm_case(MOD): eval_binary_op(&stack, val2, val1, %);  vm_break;
             vm_case(EQ):  eval_binary_op(&stack, val1, val2, ==); vm_break;
             vm_case(NEQ): eval_binary_op(&stack, val1, val2, !=); vm_break;
@@ -416,14 +461,14 @@ uint64_t vm_execute(struct VirtualMachine *vm)
                 val1 = pop(&stack);
                 if (!val1.integer) {
                     ip = pop(&stack).offset;
-                    ip--; // reverse the effects of the ip++ below
+                    ip--; // reverse the effects of the ip++ in vm_break
                 } else {
                     pop(&stack);
                 }
                 vm_break;
             vm_case(JMP):
                 ip = pop(&stack).offset;
-                ip--; // reverse the effects of the ip++ below
+                ip--; // reverse the effects of the ip++ in vm_break
                 vm_break;
             vm_case(POP):
                 ret = pop(&stack).integer;
@@ -468,42 +513,35 @@ uint64_t vm_execute(struct VirtualMachine *vm)
                 print(&stack, &heap);
                 vm_break;
             }
+            vm_case(FLOAT_ADD): eval_binary_op_f(&stack, val1, val2, +);  vm_break;
+            vm_case(FLOAT_SUB): eval_binary_op_f(&stack, val1, val2, -);  vm_break;
+            vm_case(FLOAT_MUL): eval_binary_op_f(&stack, val1, val2, *);  vm_break;
+            vm_case(FLOAT_DIV): eval_binary_op_f(&stack, val2, val1, /);  vm_break;
+            vm_case(FLOAT_EQ):  eval_binary_op_f(&stack, val1, val2, ==); vm_break;
+            vm_case(FLOAT_NEQ): eval_binary_op_f(&stack, val1, val2, !=); vm_break;
+            vm_case(FLOAT_LTE): eval_binary_op_f(&stack, val1, val2, <=); vm_break;
+            vm_case(FLOAT_GTE): eval_binary_op_f(&stack, val1, val2, >=); vm_break;
+            vm_case(FLOAT_LT):  eval_binary_op_f(&stack, val1, val2, <);  vm_break;
+            vm_case(FLOAT_GT):  eval_binary_op_f(&stack, val1, val2, >);  vm_break;
+            vm_case(FLOAT_UNARY_PLUS):
+                val1 = pop(&stack);
+                push_floating(&stack, val1.floating);
+                vm_break;
+            vm_case(FLOAT_UNARY_MINUS):
+                val1 = pop(&stack);
+                push_floating(&stack, (-1 * val1.floating));
+                vm_break;
             vm_case(PUSH_STRING):
             vm_case(GET_CHAR):
             vm_case(SET_CHAR):
-            vm_case(FLOAT_ADD):
-            vm_case(FLOAT_SUB):
-            vm_case(FLOAT_MUL):
-            vm_case(FLOAT_DIV):
-            vm_case(FLOAT_EQ):
-            vm_case(FLOAT_NEQ):
-            vm_case(FLOAT_LT):
-            vm_case(FLOAT_LTE):
-            vm_case(FLOAT_GT):
-            vm_case(FLOAT_GTE):
-            vm_case(FLOAT_UNARY_PLUS):
-            vm_case(FLOAT_UNARY_MINUS):
             default:
                 printf("unknown instruction encountered: '%" PRIu64 "'", instructions[ip].offset);
                 status = VM_STATUS_ERROR;
                 goto exit_loop;
         }
-        ip++;
-        // iterations++;
-        // For fun, lets exit whenever we reach 100 iterations
-        //if (iterations % 100 == 0) {
-        //    status = VM_STATUS_PAUSE;
-        //    goto exit_loop;
-        //}
-#if DEBUG
-        print_stack(&stack);
-        print_heap(&heap);
-        if (iterations > 200000) {
-            printf("infinite loop detected, ending execution\n");
-            status = VM_STATUS_ERROR;
-            goto exit_loop;
-        }
-#endif
+        // Note: any statements to be executed before looping back to the top should be done
+        // in the on_break macro. When threaded code is enabled, statements below this line
+        // will not execute
     }
 exit_loop:
 #if DEBUG

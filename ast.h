@@ -31,9 +31,6 @@ enum ValueType {
 
 enum OperatorType {
     // Binary ops
-    OP_GET,
-    // OP_SET,
-    // OP_INDEX,
     OP_OR,
     OP_AND,
     OP_EQEQ,
@@ -50,7 +47,6 @@ enum OperatorType {
     // Unary ops
     OP_UNARY_PLUS,
     OP_UNARY_MINUS
-    // OP_INVOKE
 };
 
 enum TLDType {
@@ -118,8 +114,6 @@ struct Value {
     Type type;
     union {
         char *string;
-        // Symbol string;
-        // Symbol symbol; // "get" has replaced this
         long integer;
         double floating;
         long boolean;
@@ -131,9 +125,6 @@ struct Value {
 };
 
 struct Set {
-    // Symbol symbol;
-    // Type type;
-    // LValues *lvalues; // May be null
     bool is_define;
     struct Accessor *to_set;
     struct Value *val;

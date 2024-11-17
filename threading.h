@@ -1,7 +1,8 @@
 // Various defines used to implement threaded interpretation in the VMs main loop
 #if !THREADED_CODE_ENABLED
 
-    #define vm_break break
+    #define vm_break on_break(); break
+
     #define vm_case(opcode) case opcode
     #define vm_switch(val) switch (val)
 
@@ -16,9 +17,7 @@
         target = targets[opcode];\
         goto *target
 
-    #define vm_break \
-        ip++;\
-        vm_loop
+    #define vm_break on_break(); vm_loop
 
     #define vm_case(opcode) opcode
     #define vm_switch(val) if (true)

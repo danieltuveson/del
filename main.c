@@ -54,7 +54,7 @@ bool read_and_compile(DelValue *instructions, Allocator allocator, char *filenam
     globals.file = &file;
 #if DEBUG
     printf("%s\n", globals.file->input);
-    print_memory_usage();
+    print_memory_usage(globals.allocator);
 
     printf("........ TOKENIZING INPUT ........\n");
 #endif
@@ -68,8 +68,8 @@ bool read_and_compile(DelValue *instructions, Allocator allocator, char *filenam
         return false;
     }
 #if DEBUG
-    print_lexer(globals.lexer);
-    print_memory_usage();
+    print_lexer(&globals, globals.lexer);
+    print_memory_usage(globals.allocator);
 #endif
 
 #if DEBUG
@@ -90,9 +90,9 @@ bool read_and_compile(DelValue *instructions, Allocator allocator, char *filenam
         return false;
     }
 #if DEBUG
-    print_tlds(globals.ast);
+    print_tlds(&globals, globals.ast);
     printf("\n");
-    print_memory_usage();
+    print_memory_usage(globals.allocator);
 
     printf("````````````````` CODE `````````````````\n");
 #endif
@@ -103,7 +103,7 @@ bool read_and_compile(DelValue *instructions, Allocator allocator, char *filenam
     struct CompilerContext cc = { instructions, 0, NULL, &class_table };
     assert(globals.ast != NULL);
 #if DEBUG
-    print_tlds(globals.ast);
+    print_tlds(&globals, globals.ast);
     printf("\n");
 
     printf("`````````````` TYPECHECK ```````````````\n");
@@ -127,7 +127,7 @@ bool read_and_compile(DelValue *instructions, Allocator allocator, char *filenam
     printf("\n");
     printf("````````````` INSTRUCTIONS `````````````\n");
     printf("function table:\n");
-    print_ft(cc.funcall_table);
+    print_ft(&globals, cc.funcall_table);
     printf("\n");
     print_instructions(&cc);
     printf("\n");

@@ -81,19 +81,21 @@ static struct Token *new_symbol_token(struct Globals *globals, int start, int en
     return token;
 }
 
-static struct Token *new_integer_token(struct Globals *globals, int start, int end, uint64_t integer)
+static struct Token *new_integer_token(struct Globals *globals, int start, int end,
+        uint64_t integer)
 {
     struct Token *token = new_token(globals, start, end, T_INT);
     token->integer = integer;
     return token;
 }
 
-// static struct Token *new_floating_token(int start, int end, double floating)
-// {
-//     struct Token *token = new_token(start, end, T_FLOAT);
-//     token->floating = floating;
-//     return token;
-// }
+static struct Token *new_floating_token(struct Globals *globals, int start, int end,
+        double floating)
+{
+    struct Token *token = new_token(globals, start, end, T_FLOAT);
+    token->floating = floating;
+    return token;
+}
 
 static struct Token *new_string_token(struct Globals *globals, int start, int end, char *str)
 {
@@ -252,21 +254,45 @@ static int64_t str_to_int64(struct Globals *globals, int init_offset, int count)
     return num;
 }
 
-// TODO: make this work for double
-static void tokenize_number(struct Globals *globals)
+static bool check_digit_part(struct Globals *globals)
 {
-    int init_offset = globals->lexer->offset;
     while (isdigit(peek(globals))) {
         next(globals);
     }
     if (!is_terminal(peek(globals))) {
-        globals->lexer->error.message = "unexpected character in integer literal";
+        globals->lexer->error.message = "unexpected character in numeric literal";
+        return false;
+    }
+    return true;
+}
+
+static void tokenize_number(struct Globals *globals)
+{
+    int init_offset = globals->lexer->offset;
+    if (!check_digit_part(globals)) {
         return;
     }
-    int count = globals->lexer->offset - init_offset;
-    int64_t num = str_to_int64(globals, init_offset, count);
+    struct Token *token = NULL;
+    if (peek(globals) == '.') {
+        // float
+        // Currently only parses floats of the form nnn.nnn
+        next(globals);
+        if (!check_digit_part(globals)) {
+            return;
+        }
+        char *end;
+        double num = strtod(globals->file->input + init_offset, &end);
+        assert(end == globals->file->input + globals->lexer->offset);
+        errno = 0; // reset in event that it overflows (we don't care)
+        token = new_floating_token(globals, init_offset, globals->lexer->offset, num);
+    } else {
+        // int
+        int count = globals->lexer->offset - init_offset;
+        int64_t num = str_to_int64(globals, init_offset, count);
+        token = new_integer_token(globals, init_offset, globals->lexer->offset, num);
+    }
     if (!globals->lexer->error.message) {
-        linkedlist_append(globals->lexer->tokens, new_integer_token(globals, init_offset, globals->lexer->offset, num));
+        linkedlist_append(globals->lexer->tokens, token);
     }
 }
 
@@ -275,7 +301,6 @@ static bool is_symbol_token(char c)
     return (isalnum(c) || c == '_');
 }
 
-// TODO: rewrite this to use globals
 static Symbol add_symbol(struct Globals *globals, char *yytext, int yyleng)
 {
     if (globals->symbol_table == NULL) init_symbol_table(globals);
