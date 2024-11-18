@@ -37,7 +37,7 @@ int _main()
     return 0;
 }
 
-bool read_and_compile(DelValue *instructions, Allocator allocator, char *filename)
+bool read_and_compile(struct Vector **instructions_ptr, Allocator allocator, char *filename)
 {
     struct Globals globals = { {0}, 0, NULL, NULL, NULL, NULL, 0, 0, 0, NULL, NULL };
     globals.allocator = allocator;
@@ -62,8 +62,9 @@ bool read_and_compile(DelValue *instructions, Allocator allocator, char *filenam
     lexer_init(&globals, &lexer, false);
     globals.lexer = &lexer;
     if (!tokenize(&globals)) {
-        // print_error(&(lexer.error));
-        printf("Error at line %d column %d: %s\n", globals.lexer->error.line_number, globals.lexer->error.column_number,
+        printf("Error at line %d column %d: %s\n",
+                globals.lexer->error.line_number,
+                globals.lexer->error.column_number,
                 globals.lexer->error.message);
         return false;
     }
@@ -100,7 +101,7 @@ bool read_and_compile(DelValue *instructions, Allocator allocator, char *filenam
     struct FunDef *ft = allocator_malloc(globals.allocator, globals.function_count * sizeof(*ft));
     struct ClassTable class_table = { globals.class_count, clst };
     struct FunctionTable function_table = { globals.function_count, ft };
-    struct CompilerContext cc = { instructions, 0, NULL, &class_table };
+    struct CompilerContext cc = { NULL, NULL, &class_table };
     assert(globals.ast != NULL);
 #if DEBUG
     print_tlds(&globals, globals.ast);
@@ -123,13 +124,14 @@ bool read_and_compile(DelValue *instructions, Allocator allocator, char *filenam
 #endif
     globals.cc = &cc;
     compile(&globals, globals.ast);
+    *instructions_ptr = globals.cc->instructions;
 #if DEBUG
     printf("\n");
     printf("````````````` INSTRUCTIONS `````````````\n");
     printf("function table:\n");
     print_ft(&globals, cc.funcall_table);
     printf("\n");
-    print_instructions(&cc);
+    print_instructions(cc.instructions);
     printf("\n");
 #endif
     return true;
@@ -137,34 +139,58 @@ bool read_and_compile(DelValue *instructions, Allocator allocator, char *filenam
 
 int main(int argc, char *argv[])
 {
-    if (argc < 2) {
+    // if (argc < 2) {
+    if (argc != 2) {
         printf("Error: expecting input file\nExample usage:\n./del hello_world.del\n");
         return false;
     } else if (argc > 10) {
         printf("Error: too many input files\n");
         return false;
     }
-    DelValue instructions_list[10][INSTRUCTIONS_MAX];
+
+    Allocator allocator = allocator_new();
+    struct Vector *instructions;
+    if (!read_and_compile(&instructions, allocator, argv[1])) {
+        allocator_freeall(allocator);
+        return EXIT_FAILURE;
+    }
+    allocator_freeall(allocator);
+
+    struct VirtualMachine vm = {};
+    vm_init(&vm, instructions->values);
+    int ret = vm_execute(&vm);
+    if (ret == VM_STATUS_ERROR) {
+        vector_free(instructions);
+        return EXIT_FAILURE;
+    }
+
+    vector_free(instructions);
+    return EXIT_SUCCESS;
+
+#if 0
+    DelValue **instructions_list = calloc(argc - 1, sizeof(**instructions_list));
     for (int i = 1; i < argc; i++) {
+        struct Vector *instructions = vector_new(128, INSTRUCTIONS_MAX);
         printf("reading file %d\n", i);
-        DelValue *instructions = instructions_list[i-1];
         Allocator allocator = allocator_new();
         if (!read_and_compile(instructions, allocator, argv[i])) {
             allocator_freeall(allocator);
             return EXIT_FAILURE;
         }
+        printf("compiling instructions %d\n", i);
+        instructions_list[i-1] = instructions->values;
         allocator_freeall(allocator);
     }
 
 #if DEBUG
     printf("`````````````` EXECUTION ```````````````\n");
 #endif
-    struct VirtualMachine vms[10] = {0};
+    struct VirtualMachine **vms = calloc(argc - 1, sizeof(**vms));
     for (int i = 0; i < argc - 1; i++) {
         printf("initializing vm %d\n", i+1);
-        struct VirtualMachine *vm = &(vms[i]);
-        DelValue *instructions = instructions_list[i];
-        vm_init(vm, instructions);
+        struct VirtualMachine vm = vms + i;
+        // DelValue *instructions = instructions_list[i]->values;
+        vm_init(vm, instructions_list[i]);
     }
     bool is_finished[10] = {0};
     bool all_done = false;
@@ -175,10 +201,10 @@ int main(int argc, char *argv[])
                 continue;
             }
             // printf("running file %d\n", i+1);
-            struct VirtualMachine *vm = &(vms[i]);
-            DelValue *instructions = instructions_list[i];
+            struct VirtualMachine *vm = vms + i;
+            // DelValue *instructions = instructions_list[i];
             // struct VirtualMachine vm = {0};
-            vm_init(vm, instructions);
+            // vm_init(vm, instructions);
             int ret = vm_execute(vm);
             // printf("\n==== VM PAUSED ====\n");
             // printf("instruction status: %u\n", vm->status);
@@ -191,6 +217,9 @@ int main(int argc, char *argv[])
         }
     }
     // allocator_freeall(allocator);
+    free(vms);
+    free(instructions_list);
     return EXIT_SUCCESS;
+#endif
 }
 

@@ -14,9 +14,12 @@
 #include <errno.h>
 #include "allocator.h"
 
+// #define VM_INSTANCES_MAX        10000
 #define INSTRUCTIONS_MAX        10000
+// #define INSTRUCTIONS_MAX        UINT64_MAX
 #define STACK_MAX               256
 #define HEAP_MAX                1024
+// #define HEAP_MAX                UINT64_MAX
 #define ERROR_MESSAGE_MAX       250
 
 #define IN_BYTES(val) 8 * val

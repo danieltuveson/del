@@ -21,7 +21,7 @@ void print_ft_node(struct Globals *globals, struct FunctionCallTableNode *fn);
 void print_ft(struct Globals *globals, struct FunctionCallTable *ft);
 
 /* VM printers */
-void print_instructions(struct CompilerContext *cc);
+void print_instructions(struct Vector *instructions);
 void print_stack(struct Stack *stack);
 void print_frames(struct StackFrames *sfs);
 void print_heap(struct Heap *heap);

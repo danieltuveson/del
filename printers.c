@@ -1,6 +1,7 @@
 #include "common.h"
 #include "linkedlist.h"
 #include "printers.h"
+#include "vector.h"
 
 static void print_statements_indent(struct Globals *globals, Statements *stmts, int indent);
 static void print_definitions(struct Globals *globals, struct LinkedList *lst, char sep, int indent);
@@ -8,16 +9,15 @@ static void print_statement_indent(struct Globals *globals, struct Statement *st
 
 static const int TAB_WIDTH = 4;
 
-void print_instructions(struct CompilerContext *cc)
+void print_instructions(struct Vector *instructions)
 {
-    int length = cc->offset;
-    DelValue *instructions = cc->instructions;
-    for (int i = 0; i < length; i++) {
-        printf("%-5d", i);
-        switch (instructions[i].opcode) {
+    size_t length = instructions->length;
+    for (size_t i = 0; i < length; i++) {
+        printf("%-5lu", i);
+        switch (instructions->values[i].opcode) {
             case PUSH:
                 i++;
-                printf("PUSH %" PRIu64 "\n", instructions[i].integer);
+                printf("PUSH %" PRIu64 "\n", instructions->values[i].integer);
                 break;
             case PUSH_0:
                 printf("PUSH_0\n");
@@ -96,7 +96,7 @@ void print_instructions(struct CompilerContext *cc)
                 break;
             case GET_LOCAL:
                 i++;
-                printf("GET_LOCAL %" PRIu64 "\n", instructions[i].offset);
+                printf("GET_LOCAL %" PRIu64 "\n", instructions->values[i].offset);
                 break;
             case GET_LOCAL_0:
                 printf("GET_LOCAL_0\n");
@@ -153,7 +153,7 @@ void print_instructions(struct CompilerContext *cc)
                 printf("READ\n");
                 break;
             default:
-                printf("***non-printable instruction: %d***\n", instructions[i].opcode);
+                printf("***non-printable instruction: %d***\n", instructions->values[i].opcode);
         }
     }
 }

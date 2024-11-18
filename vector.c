@@ -48,7 +48,7 @@ void vector_free(struct Vector *vector)
     free(vector);
 }
 
-static void vector_grow(struct Vector **vector_ptr, size_t new_capacity)
+static void internal_vector_grow(struct Vector **vector_ptr, size_t new_capacity)
 {
     struct Vector *old_vector = *vector_ptr;
     *vector_ptr = vector_new(new_capacity, old_vector->max_capacity);
@@ -56,6 +56,14 @@ static void vector_grow(struct Vector **vector_ptr, size_t new_capacity)
     (*vector_ptr)->min_capacity = old_vector->min_capacity;
     memcpy((*vector_ptr)->values, old_vector->values, sizeof(DelValue) * old_vector->length);
     vector_free(old_vector);
+}
+
+void vector_grow(struct Vector **vector_ptr, size_t n)
+{
+    DelValue v = { .integer = 0 };
+    for (size_t i = 0; i < n; i++) {
+        vector_append(vector_ptr, v);
+    }
 }
 
 struct Vector *vector_append(struct Vector **vector_ptr, DelValue value)
@@ -66,7 +74,7 @@ struct Vector *vector_append(struct Vector **vector_ptr, DelValue value)
         if (new_capacity > vector->max_capacity) {
             return NULL;
         }
-        vector_grow(vector_ptr, new_capacity);
+        internal_vector_grow(vector_ptr, new_capacity);
         vector = *vector_ptr;
     }
     vector->values[vector->length] = value;
@@ -80,7 +88,7 @@ static inline void vector_shrink_internal(struct Vector **vector_ptr)
     if (LIST_SHRINK_FACTOR * vector->length <= vector->capacity) {
         size_t new_capacity = vector->capacity / LIST_GROWTH_FACTOR;
         if (new_capacity >= vector->min_capacity) {
-            vector_grow(vector_ptr, new_capacity);
+            internal_vector_grow(vector_ptr, new_capacity);
         }
     }
 }

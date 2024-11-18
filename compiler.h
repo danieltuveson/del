@@ -17,8 +17,7 @@ typedef union {
 } DelValue;
 
 struct CompilerContext {
-    DelValue *instructions;
-    size_t offset;
+    struct Vector *instructions;
     struct FunctionCallTable *funcall_table;
     struct ClassTable *class_table;
 };

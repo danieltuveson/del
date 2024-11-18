@@ -310,16 +310,6 @@ static inline bool read(struct Stack *stack, struct Heap *heap)
 
 void vm_init(struct VirtualMachine *vm, DelValue *instructions)
 {
-    // I think these should all be zero'd by default, so shouldn't need this?
-    // vm->sfs = {0};
-    // vm->stack = {0};
-    // vm->heap = {0};
-    // vm->ip = 0;
-    // vm->scope_offset = 0;
-    // vm->ret = 0;
-    // vm->val1 = { .integer = 0 };
-    // vm->val2 = { .integer = 0 };
-    // vm->iterations = 0;
     vm->instructions = instructions;
 }
 
@@ -337,14 +327,18 @@ void vm_init(struct VirtualMachine *vm, DelValue *instructions)
 #define emergency_break()
 #endif
 
+#define pause_after(n) do {\
+    if (iterations % n == 0) {\
+        status = VM_STATUS_PAUSE;\
+        goto exit_loop;\
+    }\
+} while(0)
+
 #define on_break() do {\
     ip++;\
     iterations++;\
     /* For fun, lets exit whenever we reach 100 iterations */ \
-    if (iterations % 100 == 0) {\
-        status = VM_STATUS_PAUSE;\
-        goto exit_loop;\
-    }\
+    /* pause_after(100); */\
     emergency_break();\
 } while(0)
 

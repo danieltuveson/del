@@ -4,6 +4,7 @@
 #include "typecheck.h"
 #include "printers.h"
 #include "compiler.h"
+#include "vector.h"
 
 static void compile_value(struct Globals *globals, struct Value *val);
 static void compile_expr(struct Globals *globals, struct Expr *expr);
@@ -12,14 +13,16 @@ static void compile_statements(struct Globals *globals, Statements *stmts);
 
 /* Move offset pointer to the empty element. Return the offset of the last element added */
 static inline size_t next(struct Globals *globals) {
-    assert("offset is out of bounds\n" && globals->cc->offset < INSTRUCTIONS_MAX - 1);
-    return globals->cc->offset++;
+    assert("offset is out of bounds\n" && globals->cc->instructions->length < INSTRUCTIONS_MAX - 1);
+    vector_grow(&(globals->cc->instructions), 1);
+    return globals->cc->instructions->length - 1;
 }
 
 /* Add instruction to instruction set */
 static inline void load_opcode(struct Globals *globals, enum Code opcode)
 {
-    globals->cc->instructions[next(globals)].opcode = opcode;
+    DelValue value = { .opcode = opcode };
+    vector_append(&(globals->cc->instructions), value);
 }
 
 static inline void push(struct Globals *globals)
@@ -29,7 +32,8 @@ static inline void push(struct Globals *globals)
 
 static inline void load_offset(struct Globals *globals, size_t offset)
 {
-    globals->cc->instructions[next(globals)].offset = offset;
+    DelValue value = { .offset = offset };
+    vector_append(&(globals->cc->instructions), value);
 }
 
 static void compile_heap(struct Globals *globals, size_t count, size_t metadata)
@@ -60,20 +64,24 @@ static inline void compile_int(struct Globals *globals, int64_t integer)
             break;
         default:
             push(globals);
-            globals->cc->instructions[next(globals)].integer = integer;
+            DelValue value = { .integer = integer };
+            vector_append(&(globals->cc->instructions), value);
     }
 }
 
 static inline void compile_chars(struct Globals *globals, char chars[8])
 {
     push(globals);
-    memcpy(globals->cc->instructions[next(globals)].chars, chars, 8);
+    DelValue value;
+    memcpy(value.chars, chars, 8);
+    vector_append(&(globals->cc->instructions), value);
 }
 
 static inline void compile_float(struct Globals *globals, double floating)
 {
     push(globals);
-    globals->cc->instructions[next(globals)].floating = floating;
+    DelValue value = { .floating = floating };
+    vector_append(&(globals->cc->instructions), value);
 }
 
 static inline void compile_bool(struct Globals *globals, int64_t boolean)
@@ -84,7 +92,8 @@ static inline void compile_bool(struct Globals *globals, int64_t boolean)
 static inline void compile_type(struct Globals *globals, Type type)
 {
     push(globals);
-    globals->cc->instructions[next(globals)].type = type;
+    DelValue value = { .type = type };
+    vector_append(&(globals->cc->instructions), value);
 }
 
 static void compile_get_local(struct Globals *globals, size_t offset)
@@ -180,7 +189,7 @@ static void compile_funargs(struct Globals *globals, Definitions *defs)
  */
 static void compile_fundef(struct Globals *globals, struct FunDef *fundef)
 {
-    add_ft_node(globals, globals->cc->funcall_table, fundef->name, globals->cc->offset);
+    add_ft_node(globals, globals->cc->funcall_table, fundef->name, globals->cc->instructions->length);
     compile_funargs(globals, fundef->args);
     compile_statements(globals, fundef->stmts);
 }
@@ -270,7 +279,7 @@ static void compile_funcall(struct Globals *globals, struct FunCall *funcall)
     push(globals);
     add_callsite(globals, globals->cc->funcall_table, funcall->funname, next(globals));
     load_opcode(globals, JMP);
-    globals->cc->instructions[bookmark].offset = globals->cc->offset;
+    globals->cc->instructions->values[bookmark].offset = globals->cc->instructions->length;
     load_opcode(globals, POP_SCOPE);
 }
 
@@ -485,19 +494,19 @@ static void compile_if(struct Globals *globals, struct IfStatement *stmt)
     }
 
     // set JNE jump to go to after if statement
-    globals->cc->instructions[if_offset].offset = globals->cc->offset;
+    globals->cc->instructions->values[if_offset].offset = globals->cc->instructions->length;
 
     if (stmt->else_stmts) {
         compile_statements(globals, stmt->else_stmts);
         // set JMP jump to go to after else statement when if statement is true
-        globals->cc->instructions[else_offset].offset = globals->cc->offset;
+        globals->cc->instructions->values[else_offset].offset = globals->cc->instructions->length;
     }
 }
 
 static void compile_loop(struct Globals *globals, struct Value *cond,
         Statements *stmts, struct Statement *increment)
 {
-    size_t top_of_loop = globals->cc->offset;
+    size_t top_of_loop = globals->cc->instructions->length;
     push(globals);
     size_t old_offset = next(globals);
     compile_value(globals, cond);
@@ -507,7 +516,7 @@ static void compile_loop(struct Globals *globals, struct Value *cond,
     push(globals);
     load_offset(globals, top_of_loop);
     load_opcode(globals, JMP);
-    globals->cc->instructions[old_offset].offset = globals->cc->offset; // set JNE jump to go to end of loop
+    globals->cc->instructions->values[old_offset].offset = globals->cc->instructions->length; // set JNE jump to go to end of loop
 }
 
 static void compile_while(struct Globals *globals, struct While *while_stmt)
@@ -618,18 +627,18 @@ static void compile_tlds(struct Globals *globals, TopLevelDecls *tlds)
 }
 
 // Looks through compiled bytecode and adds references to where function is defined
-static void resolve_function_declarations_help(DelValue *instructions,
+static void resolve_function_declarations_help(struct Vector *instructions,
     struct FunctionCallTableNode *fn)
 {
     linkedlist_foreach(lnode, fn->callsites->head) {
         uint64_t *callsite = lnode->value;
         // printf("callsite %" PRIu64 " updated with function %s at location %" PRIu64,
         //         *callsite, lookup_symbol(fn->function), fn->location);
-        instructions[*callsite].offset = fn->location;
+        instructions->values[*callsite].offset = fn->location;
     }
 }
 
-static void resolve_function_declarations(DelValue *instructions,
+static void resolve_function_declarations(struct Vector *instructions,
         struct FunctionCallTable *funcall_table)
 {
     if (funcall_table == NULL) return;
@@ -643,9 +652,10 @@ static void resolve_function_declarations(DelValue *instructions,
 
 size_t compile(struct Globals *globals, TopLevelDecls *tlds)
 {
+    globals->cc->instructions = vector_new(128, INSTRUCTIONS_MAX);
     compile_tlds(globals, tlds);
     resolve_function_declarations(globals->cc->instructions, globals->cc->funcall_table);
-    return globals->cc->offset;
+    return globals->cc->instructions->length;
     // run_tests();
     // printf("compiler under construction. come back later.\n");
     // exit(0);

@@ -19,6 +19,7 @@ void vector_free(struct Vector *vector);
 struct Vector *vector_append(struct Vector **vector_ptr, DelValue value);
 DelValue vector_pop(struct Vector **vector_ptr);
 void vector_shrink(struct Vector **vector_ptr, size_t n);
+void vector_grow(struct Vector **vector_ptr, size_t n);
 void vector_print(struct Vector *vector);
 
 static inline DelValue vector_index(struct Vector *vector, size_t i)
