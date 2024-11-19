@@ -205,10 +205,10 @@ void print_frames(struct StackFrames *sfs)
 void print_heap(struct Heap *heap)
 {
     printf("heap:   [ memory usage: %lu, objcount: %ld, offset: %ld, values: { ", 
-            IN_BYTES(heap->offset), heap->objcount, heap->offset);
-    for (size_t i = 0; i < heap->offset; i++) {
-        printf("%" PRIu64 "", heap->values[i].integer);
-        if (i != heap->offset - 1) printf(", ");
+            IN_BYTES(heap->vector->length), heap->objcount, heap->vector->length);
+    for (size_t i = 0; i < heap->vector->length; i++) {
+        printf("%" PRIu64 "", heap->vector->values[i].integer);
+        if (i != heap->vector->length - 1) printf(", ");
     }
     printf(" } ]\n");
 }

@@ -11,10 +11,10 @@
 // - frame_offsets_index: stores the index of the top of frame_start
 struct StackFrames {
     size_t index;
-    DelValue values[HEAP_MAX];
+    DelValue values[STACK_MAX];
     // struct Vector *frames;
     size_t frame_offsets_index;
-    size_t frame_offsets[HEAP_MAX];
+    size_t frame_offsets[STACK_MAX];
     // struct Vector *frame_offsets;
 };
 
@@ -43,8 +43,9 @@ struct Stack {
  */
 struct Heap {
     size_t objcount;
-    size_t offset; 
-    DelValue values[HEAP_MAX];
+    struct Vector *vector;
+    // size_t offset; 
+    // DelValue values[HEAP_MAX];
 };
 
 // int64_t integer;
@@ -79,6 +80,7 @@ struct VirtualMachine {
 };
 
 void vm_init(struct VirtualMachine *vm, DelValue *instructions);
+void vm_free(struct VirtualMachine *vm);
 uint64_t vm_execute(struct VirtualMachine *vm);
 
 #endif

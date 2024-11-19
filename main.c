@@ -160,10 +160,12 @@ int main(int argc, char *argv[])
     vm_init(&vm, instructions->values);
     int ret = vm_execute(&vm);
     if (ret == VM_STATUS_ERROR) {
+        vm_free(&vm);
         vector_free(instructions);
         return EXIT_FAILURE;
     }
 
+    vm_free(&vm);
     vector_free(instructions);
     return EXIT_SUCCESS;
 

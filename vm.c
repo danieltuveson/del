@@ -114,16 +114,18 @@ static inline bool push_heap(struct Heap *heap, struct Stack *stack)
 {
     size_t count = pop(stack).offset;
     size_t metadata = pop(stack).offset;
-    size_t ptr = heap->offset;
+    size_t ptr = heap->vector->length;
     set_count(&ptr, count);
     set_metadata(&ptr, metadata);
-    size_t new_usage = heap->offset + count;
-    if (new_usage > HEAP_MAX) {
+    size_t new_usage = heap->vector->length + count;
+    if (new_usage > heap->vector->max_capacity) {
         printf("Fatal runtime error: out of memory\n");
-        printf("Requested %lu bytes but VM only has a capacity of %u bytes\n", IN_BYTES(new_usage), HEAP_MAX_BYTES);
+        printf("Requested %lu bytes but VM only has a capacity of %lu bytes\n",
+                IN_BYTES(new_usage), 
+                IN_BYTES(heap->vector->max_capacity));
         return false;
     }
-    // heap->values[heap->offset++] = count;
+    // heap->values[heap->vector->length++] = count;
     // printf("count: %" PRIu64 "\n", count);
     // printf("location: %" PRIu64 "\n", location);
     for (size_t i = 0; i < count; i++) {
@@ -131,7 +133,7 @@ static inline bool push_heap(struct Heap *heap, struct Stack *stack)
         // char str[9] = {0};
         // uint64_as_string(value, str, 0);
         // printf("value: %" PRIu64 "\n", value);
-        heap->values[heap->offset++] = value;
+        vector_append(&(heap->vector), value);
     }
     // Store count in bits before location
     push_offset(stack, ptr);
@@ -151,7 +153,7 @@ static inline bool get_heap(struct Heap *heap, struct Stack *stack)
     if (ptr == 0) {
         return false;
     }
-    push_offset(stack, heap->values[location + index].offset);
+    push_offset(stack, heap->vector->values[location + index].offset);
     return true;
 }
 
@@ -161,7 +163,7 @@ static inline void set_heap(struct Heap *heap, struct Stack *stack)
     size_t ptr = pop(stack).offset;
     DelValue value = pop(stack);
     size_t location = get_location(ptr);
-    heap->values[location + index] = value;
+    heap->vector->values[location + index] = value;
 }
 
 static inline void stack_frame_enter(struct StackFrames *sfs)
@@ -203,7 +205,7 @@ static void print_string(struct Stack *stack, struct Heap *heap)
     size_t location = get_location(ptr);
     size_t count = get_count(ptr);
     for (int i = count - 1; i >= 0; i--) {
-        printf("%.*s", 8, heap->values[location + i].chars);
+        printf("%.*s", 8, heap->vector->values[location + i].chars);
     }
 }
 
@@ -308,9 +310,16 @@ static inline bool read(struct Stack *stack, struct Heap *heap)
 //     return push_heap(heap, stack);
 // }
 
+// Assumes that vm is stack allocated / zeroed out
 void vm_init(struct VirtualMachine *vm, DelValue *instructions)
 {
+    vm->heap.vector = vector_new(128, HEAP_MAX);
     vm->instructions = instructions;
+}
+
+void vm_free(struct VirtualMachine *vm)
+{
+    vector_free(vm->heap.vector);
 }
 
 #if DEBUG
