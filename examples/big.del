@@ -5325,6 +5325,7 @@ function big1() {
     a = 1;
     a = 1;
     a = 1;
+    return;
 }
 
 
@@ -10650,6 +10651,7 @@ function big2() {
     a = 1;
     a = 1;
     a = 1;
+    return;
 }
 
 
@@ -15975,6 +15977,7 @@ function big3() {
     a = 1;
     a = 1;
     a = 1;
+    return;
 }
 
 
@@ -21300,6 +21303,7 @@ function big4() {
     a = 1;
     a = 1;
     a = 1;
+    return;
 }
 
 
@@ -26625,6 +26629,7 @@ function big5() {
     a = 1;
     a = 1;
     a = 1;
+    return;
 }
 
 
@@ -31950,6 +31955,7 @@ function big6() {
     a = 1;
     a = 1;
     a = 1;
+    return;
 }
 
 
@@ -37275,5 +37281,6 @@ function big7() {
     a = 1;
     a = 1;
     a = 1;
+    return;
 }
 

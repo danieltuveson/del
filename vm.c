@@ -393,14 +393,25 @@ uint64_t vm_execute(struct VirtualMachine *vm)
             vm_case(SUB): eval_binary_op(&stack, val1, val2, -);  vm_break;
             vm_case(MUL): eval_binary_op(&stack, val1, val2, *);  vm_break;
             vm_case(DIV): 
-                if (val2.integer == 0) {
+                val1 = pop(&stack);
+                val2 = pop(&stack);
+                if (val1.integer == 0) {
                     printf("Error: division by zero\n");
                     status = VM_STATUS_ERROR;
                     goto exit_loop;
                 }
-                eval_binary_op(&stack, val2, val1, /);
+                push_integer(&stack, (val2.integer / val1.integer));
                 vm_break;
-            vm_case(MOD): eval_binary_op(&stack, val2, val1, %);  vm_break;
+            vm_case(MOD):
+                val1 = pop(&stack);
+                val2 = pop(&stack);
+                if (val1.integer == 0) {
+                    printf("Error: division by zero\n");
+                    status = VM_STATUS_ERROR;
+                    goto exit_loop;
+                }
+                push_integer(&stack, (val2.integer % val1.integer));
+                vm_break;
             vm_case(EQ):  eval_binary_op(&stack, val1, val2, ==); vm_break;
             vm_case(NEQ): eval_binary_op(&stack, val1, val2, !=); vm_break;
             vm_case(LTE): eval_binary_op(&stack, val1, val2, <=); vm_break;

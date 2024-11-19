@@ -15,8 +15,8 @@
 #include "allocator.h"
 
 // #define VM_INSTANCES_MAX        10000
-#define INSTRUCTIONS_MAX        10000
-// #define INSTRUCTIONS_MAX        UINT64_MAX
+// #define INSTRUCTIONS_MAX        100000
+#define INSTRUCTIONS_MAX        UINT64_MAX
 #define STACK_MAX               256
 #define HEAP_MAX                1024
 // #define HEAP_MAX                UINT64_MAX
