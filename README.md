@@ -49,7 +49,6 @@ function main() {
   - Function pointers
   - Module / namespace solutions
   - Error handling
-- Get rid of global context struct
 - Windows support
 
 

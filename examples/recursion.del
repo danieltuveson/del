@@ -1,0 +1,24 @@
+
+// Tests that lots of stack frames won't break the program
+// (or will fail in a sane way)
+function recursiveSum(start : int, stop : int, sum : int) : int {
+    if start > stop {
+        return sum;
+    }
+    return recursiveSum(start+1, stop, sum+start);
+}
+
+function nothing() {
+    nothing();
+    return;
+}
+
+function main() {
+    println("is anything allowed???");
+    let n = 100;
+    println("Sum of 0 to ", n, ": ", recursiveSum(0, n, 0));
+    nothing();
+    n = 1000;
+    println("This will crash");
+    recursiveSum(0, n, 0);
+}

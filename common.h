@@ -17,7 +17,7 @@
 // #define VM_INSTANCES_MAX        10000
 // #define INSTRUCTIONS_MAX        100000
 #define INSTRUCTIONS_MAX        UINT64_MAX
-#define STACK_MAX               256
+#define STACK_MAX               1000
 // #define HEAP_MAX                1024
 #define HEAP_MAX                UINT64_MAX
 #define ERROR_MESSAGE_MAX       250

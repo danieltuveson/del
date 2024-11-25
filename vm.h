@@ -11,10 +11,10 @@
 // - frame_offsets_index: stores the index of the top of frame_start
 struct StackFrames {
     size_t index;
-    DelValue values[STACK_MAX];
+    DelValue *values; //[STACK_MAX];
     // struct Vector *frames;
     size_t frame_offsets_index;
-    size_t frame_offsets[STACK_MAX];
+    size_t *frame_offsets; //[STACK_MAX];
     // struct Vector *frame_offsets;
 };
 
