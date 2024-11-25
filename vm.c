@@ -43,11 +43,9 @@ static inline size_t get_location(HeapPointer ptr)
     return ptr & LOCATION_MASK;
 }
 
-// int64_t integer;
-// size_t offset;
-// double floating;
-// char character;
-// enum Code opcode;
+// NOTE: push does not check for overflow
+// Any call of push that is not preceded by an equal or greater number of pops
+// should check for overflow
 static inline void push(struct Stack *stack, DelValue val)
 {
     stack->values[stack->offset++] = val;
@@ -257,6 +255,7 @@ static void print(struct Stack *stack, struct Heap *heap)
     }
 }
 
+// TODO: Check that stack does not overflow when pushing
 static inline bool read(struct Stack *stack, struct Heap *heap)
 {
     char packed[8] = {0};
@@ -361,6 +360,15 @@ void vm_free(struct VirtualMachine *vm)
     emergency_break();\
 } while(0)
 
+// Bounds check on pushes to stack
+#define check_push() do {\
+    printf("Stack offset: %lu\n", stack.offset);\
+    if (stack.offset >= STACK_MAX - 1) { \
+        printf("Error: stack overflow (calculation too large)\n");\
+        status = VM_STATUS_ERROR;\
+        goto exit_loop;\
+    }\
+} while(0)
 
 uint64_t vm_execute(struct VirtualMachine *vm)
 {
@@ -381,6 +389,7 @@ uint64_t vm_execute(struct VirtualMachine *vm)
         switch (instructions[ip].opcode) {
             vm_case(PUSH):
                 ip++;
+                check_push();
                 push(&stack, instructions[ip]);
 #if DEBUG
                 print_stack(&stack);
@@ -389,6 +398,7 @@ uint64_t vm_execute(struct VirtualMachine *vm)
                 vm_break;
             #define PUSH_N(n)\
             vm_case(PUSH_ ## n):\
+                check_push();\
                 push_integer(&stack, n);\
                 vm_break
             PUSH_N(0);
@@ -466,11 +476,13 @@ uint64_t vm_execute(struct VirtualMachine *vm)
                 ip++;
                 scope_offset = instructions[ip].offset;
                 val1 = get_local(&sfs, scope_offset);
+                check_push();
                 push(&stack, val1);
                 vm_break;
             #define GET_LOCAL_N(n)\
             vm_case(GET_LOCAL_ ## n):\
                 val1 = get_local(&sfs, n);\
+                check_push();\
                 push(&stack, val1);\
                 vm_break
             GET_LOCAL_N(0);
