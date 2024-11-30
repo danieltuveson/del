@@ -36,14 +36,14 @@ static inline void load_offset(struct Globals *globals, size_t offset)
     vector_append(&(globals->cc->instructions), value);
 }
 
-static void compile_heap(struct Globals *globals, size_t count, size_t metadata)
+static void compile_heap(struct Globals *globals, size_t metadata, size_t count)
 {
-    // load count
-    push(globals);
-    load_offset(globals, count);
-    // load metadata
+    // Load metadata
     push(globals);
     load_offset(globals, metadata);
+    // Load count
+    push(globals);
+    load_offset(globals, count);
     load_opcode(globals, PUSH_HEAP);
 }
 

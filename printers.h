@@ -26,5 +26,9 @@ void print_stack(struct Stack *stack);
 void print_frames(struct StackFrames *sfs);
 void print_heap(struct Heap *heap);
 
+/* Misc. */
+void print_binary_helper(uint64_t num, size_t length);
+#define print_binary(num) print_binary_helper((uint64_t)num, sizeof(num))
+
 #endif
 

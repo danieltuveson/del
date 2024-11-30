@@ -649,3 +649,20 @@ void print_ft(struct Globals *globals, struct FunctionCallTable *ft)
     print_ft(globals, ft->right);
 }
 
+void print_binary_helper(uint64_t num, size_t length)
+{
+    size_t bit_width = length * 8;
+    for (int i = bit_width - 1; i >= 0; i--) {
+        uint64_t part = (num & (UINT64_C(1) << i)) >> i;
+        if (part == 1) {
+            printf("1");
+        } else {
+            printf("0");
+        }
+        if (i != 0 && i % 8 == 0) {
+            putchar('_');
+        }
+    }
+    printf("\n");
+}
+

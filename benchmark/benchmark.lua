@@ -21,7 +21,7 @@ function main()
     local num_iters = 1000000
     local x = 2
     for i = 0, num_iters do
-        x = fib(90) - x // 2
+        x = fib(90) - x / 2
     end
     return x
 end

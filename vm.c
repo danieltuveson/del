@@ -166,24 +166,17 @@ static inline void set_heap(struct Heap *heap, struct Stack *stack)
 
 static inline void stack_frame_enter(struct StackFrames *sfs)
 {
-    // printf("Entering frame %lu\n", sfs->frame_offsets->length);
-    // DelValue val = { .offset = sfs->index };
-    // vector_append(&(sfs->frame_offsets), val);
     sfs->frame_offsets[sfs->frame_offsets_index++] = sfs->index;
 }
 
 static inline void stack_frame_exit(struct StackFrames *sfs)
 {
-    // printf("Exiting frame %lu\n", sfs->frame_offsets->length);
-    // sfs->index = vector_pop(&(sfs->frame_offsets)).offset;
     sfs->frame_offsets_index--;
     sfs->index = sfs->frame_offsets[sfs->frame_offsets_index];
 }
 
 static inline size_t stack_frame_offset(struct StackFrames *sfs)
 {
-    // printf("sfs->frame_offsets->length: %ld\n", sfs->frame_offsets->length);
-    // return sfs->frame_offsets->values[sfs->frame_offsets->length - 1].offset;
     return sfs->frame_offsets[sfs->frame_offsets_index-1];
 }
 
@@ -318,6 +311,7 @@ static inline bool read(struct Stack *stack, struct Heap *heap)
 // Assumes that vm is stack allocated / zeroed out
 void vm_init(struct VirtualMachine *vm, DelValue *instructions)
 {
+    vm->stack.values = calloc(STACK_MAX, sizeof(*(vm->stack.values)));
     vm->sfs.values = calloc(STACK_MAX, sizeof(*(vm->sfs.values)));
     vm->sfs.frame_offsets = calloc(STACK_MAX, sizeof(*(vm->sfs.frame_offsets)));
     vm->heap.vector = vector_new(128, HEAP_MAX);
@@ -362,7 +356,6 @@ void vm_free(struct VirtualMachine *vm)
 
 // Bounds check on pushes to stack
 #define check_push() do {\
-    printf("Stack offset: %lu\n", stack.offset);\
     if (stack.offset >= STACK_MAX - 1) { \
         printf("Error: stack overflow (calculation too large)\n");\
         status = VM_STATUS_ERROR;\
