@@ -1,5 +1,5 @@
 function main() {
-    for let i = 0; i < 10000000; i = i + 1 {
+    for let i = 0; i < 10000000; i++ {
         let str = "this will leak memory, but should get freed when the VM ";
         let str2 = "is done running this program.";
     }

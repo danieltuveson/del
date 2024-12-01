@@ -23,7 +23,7 @@ class Range {
 
 function sum(r : Range) : int {
     let sum = 0;
-    for (let i = r.start; i <= r.end; i = i + 1) {
+    for let i = r.start; i <= r.end; i++ {
         sum = sum + i;
     }
     return sum;

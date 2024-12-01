@@ -7,7 +7,7 @@ function fib(n : int) : int {
     } else if n == 1 {
         return fibn_minus_1;
     }
-    for let i = 2; i <= n; i = i + 1 {
+    for let i = 2; i <= n; i++ {
         fibn = fibn_minus_1 + fibn_minus_2;
         fibn_minus_2 = fibn_minus_1;
         fibn_minus_1 = fibn;
@@ -19,7 +19,7 @@ function main() {
     // Can only go up to 90, until we create a BigInt class
     let num_iters = 1000000;
     let x = 2;
-    for let j = 0; j < num_iters; j = j + 1 {
+    for let i = 0; i < num_iters; i++ {
         x = fib(90) - x / 2;
     }
     println(x);

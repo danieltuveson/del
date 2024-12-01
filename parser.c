@@ -330,6 +330,15 @@ static Definitions *parse_symbols(struct Globals *globals)
     return defs;
 }
 
+static struct Statement *new_increment(struct Globals *globals, Symbol symbol,
+        struct LinkedList *lvalues, int number)
+{
+    struct Value *get = new_get(globals, symbol, lvalues);
+    struct Value *one = new_integer(globals, number);
+    struct Value *expr = new_expr(globals, bin_plus(globals, get, one));
+    return new_set(globals, symbol, expr, lvalues, false);
+}
+
 // accessors: accessor accessors { $$ = append($2, $1); }
 //          | accessor ST_EQ { $$ = new_list($1); }
 // 
@@ -346,6 +355,10 @@ static struct Statement *parse_lhs(struct Globals *globals, Symbol symbol)
             // assert("TODO: update parse_sfuncall to accept accessors" && false);
             // return NULL;
             return parse_sfuncall(globals, symbol, new_sfuncall);
+        } else if (match(globals, ST_INC)) {
+            return new_increment(globals, symbol, lvalues, 1);
+        } else if (match(globals, ST_DEC)) {
+            return new_increment(globals, symbol, lvalues, -1);
         }
         if (match(globals, ST_DOT)) {
             struct LinkedListNode *old_head = globals->parser;
