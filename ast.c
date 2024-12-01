@@ -62,6 +62,7 @@ struct FunDef *new_fundef(struct Globals *globals, Symbol symbol, Type rettype, 
     struct FunDef *fundef = allocator_malloc(globals->allocator, sizeof(struct FunDef));
     fundef->name = symbol;
     fundef->rettype = rettype;
+    fundef->num_locals = 0;
     fundef->args = args;
     fundef->stmts = stmts;
     return fundef;

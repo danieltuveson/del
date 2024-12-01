@@ -63,6 +63,7 @@ struct Class {
 struct FunDef {
     Symbol name;
     Type rettype;
+    uint64_t num_locals; // I don't know if I have a purpose for this
     Definitions *args;
     Statements *stmts;
 };

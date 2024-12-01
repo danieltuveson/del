@@ -5,9 +5,6 @@
 #include "printers.h"
 #include "typecheck.h"
 
-#define ALL_GOOD 1
-#define BAD_STUFF 0
-
 #define find_open_loc(i, table, length, symbol)\
     for (i = symbol % length; table[i].name != 0; i = i == length - 1 ? 0 : i + 1)
 
@@ -420,7 +417,8 @@ static Type typecheck_value(struct Globals *globals, struct TypeCheckerContext *
 // }
 
 // TODO: finish making this work
-static Type typecheck_lvalue(struct Globals *globals, struct TypeCheckerContext *context, struct Definition *def,
+static Type typecheck_lvalue(struct Globals *globals, struct TypeCheckerContext *context,
+        struct Definition *def,
         LValues *lvalues)
 {
     if (!is_object(def->type)) {
@@ -437,14 +435,16 @@ static Type typecheck_lvalue(struct Globals *globals, struct TypeCheckerContext 
                 cls = lookup_class(context->cls_table, def->type);
                 if (cls == NULL) {
                     printf("Error: '%s' is not an object and does not have property '%s'\n",
-                            lookup_symbol(globals, def->name), lookup_symbol(globals, lvalue->property));
+                            lookup_symbol(globals, def->name),
+                            lookup_symbol(globals, lvalue->property));
                     return TYPE_UNDEFINED;
                 }
                 Type old_type = def->type;
                 def = lookup_property(cls, lvalue->property);
                 if (def == NULL) {
                     printf("Error: %s instance has no property called '%s'\n",
-                            lookup_symbol(globals, old_type), lookup_symbol(globals, lvalue->property));
+                            lookup_symbol(globals, old_type),
+                            lookup_symbol(globals, lvalue->property));
                     return TYPE_UNDEFINED;
                 }
                 lvalue->type = def->type;
@@ -457,12 +457,15 @@ static Type typecheck_lvalue(struct Globals *globals, struct TypeCheckerContext 
     return def->type;
 }
 
-static bool typecheck_set(struct Globals *globals, struct TypeCheckerContext *context, struct Set *set)
+static bool typecheck_set(struct Globals *globals, struct TypeCheckerContext *context,
+        struct Set *set)
 {
     Type lhs_type, rhs_type;
     // If this is a combo definition + set, add definition to scope
     if (set->is_define) {
-        assert(linkedlist_is_empty(set->to_set->lvalues)); // Not syntactically valid, should never happen
+        assert(linkedlist_is_empty(set->to_set->lvalues)); // Not syntactically valid, should
+                                                           // never happen
+        context->enclosing_func->num_locals++;
         struct Definition *def = allocator_malloc(globals->allocator, sizeof(*def));
         def->name = set->to_set->definition->name;
         def->type = TYPE_UNDEFINED;
@@ -473,7 +476,8 @@ static bool typecheck_set(struct Globals *globals, struct TypeCheckerContext *co
     // Make sure left side has been declared
     struct Definition *def = lookup_var(context->scope, set->to_set->definition->name);
     if (def == NULL) {
-        printf("Error: Symbol '%s' is used before it is declared\n", lookup_symbol(globals, set->to_set->definition->name));
+        printf("Error: Symbol '%s' is used before it is declared\n",
+                lookup_symbol(globals, set->to_set->definition->name));
         return false;
     }
     // Typecheck left side of set
@@ -525,18 +529,21 @@ static Type typecheck_get(struct Globals *globals, struct TypeCheckerContext *co
     return type;
 }
 
-static bool scope_vars(struct Globals *globals, struct Scope *scope, Definitions *defs)
+static bool scope_vars(struct Globals *globals, struct TypeCheckerContext *context,
+        Definitions *defs)
 {
     linkedlist_foreach(lnode, defs->head) {
         struct Definition *def = lnode->value;
-        if (!add_var(globals, scope, def)) {
+        if (!add_var(globals, context->scope, def)) {
             return false;
         }
+        context->enclosing_func->num_locals++;
     }
     return true;
 }
 
-static bool typecheck_if(struct Globals *globals, struct TypeCheckerContext *context, struct IfStatement *if_stmt)
+static bool typecheck_if(struct Globals *globals, struct TypeCheckerContext *context,
+        struct IfStatement *if_stmt)
 {
     Type t0 = typecheck_value(globals, context, if_stmt->condition);
     if (t0 == TYPE_UNDEFINED) {
@@ -722,7 +729,8 @@ static bool typecheck_statement(struct Globals *globals, struct TypeCheckerConte
         case STMT_SET:
             return typecheck_set(globals, context, stmt->set);
         case STMT_LET:
-            return scope_vars(globals, context->scope, stmt->let);
+            ret = scope_vars(globals, context, stmt->let);
+            return ret;
         case STMT_IF: {
             enter_scope(globals, &(context->scope), false);
             ret = typecheck_if(globals, context, stmt->if_stmt);
@@ -785,10 +793,10 @@ static bool typecheck_fundef(struct Globals *globals, struct TypeCheckerContext 
     enter_scope(globals, &scope, true);
     context->enclosing_func = fundef;
     context->scope = scope;
-    bool ret = scope_vars(globals, context->scope, fundef->args);
+    bool ret = scope_vars(globals, context, fundef->args);
     if (!ret) {
         exit_scope(&scope);
-        return ret;
+        return false;
     }
     ret = typecheck_statements(globals, context, fundef->stmts);
     exit_scope(&scope);
@@ -828,7 +836,8 @@ bool typecheck(struct Globals *globals, struct ClassTable *class_table,
         return false;
     }
     struct TypeCheckerContext context = { NULL, function_table, class_table, NULL };
-    return typecheck_tlds(globals, &context, globals->ast);
+    bool is_success = typecheck_tlds(globals, &context, globals->ast);
+    return is_success;
 }
 
 #undef find_open_loc

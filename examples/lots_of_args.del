@@ -1,0 +1,46 @@
+
+function inner(i: int) : int {
+    if (i == 100) {
+        return i;
+    }
+    return inner(i+1);
+}
+
+function nothing() {
+    nothing();
+    return;
+}
+
+function main() {
+    nothing();
+}
+
+// function manyArgs(
+//     a0 : int,
+//     a1 : int,
+//     a2 : int,
+//     a3 : int,
+//     a4 : int,
+//     a5 : int,
+//     a6 : int,
+//     a7 : int,
+//     a8 : int,
+//     a9 : int,
+//     a10 : int,
+//     a11 : int
+// ) : int {
+//     let local = 3222222;
+//     let other = 11111;
+//     let thing = 9090;
+//     return thing;
+// }
+// 
+// function main() {
+//     let a = 49999;
+//     let b = 9999999;
+//     let local = manyArgs(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11);
+//     println(local);
+//     let x = 111;
+//     let y = 333;
+// }
+// 

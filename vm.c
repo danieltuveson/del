@@ -320,6 +320,7 @@ void vm_init(struct VirtualMachine *vm, DelValue *instructions)
 
 void vm_free(struct VirtualMachine *vm)
 {
+    free(vm->stack.values);
     free(vm->sfs.values);
     free(vm->sfs.frame_offsets);
     vector_free(vm->heap.vector);
@@ -463,6 +464,7 @@ uint64_t vm_execute(struct VirtualMachine *vm)
             SET_LOCAL_N(3);
             #undef SET_LOCAL_N
             vm_case(DEFINE):
+                // TODO: Figure out how to make this compile-time only
                 sfs.index++;
                 vm_break;
             vm_case(GET_LOCAL):
