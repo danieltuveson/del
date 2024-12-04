@@ -194,14 +194,14 @@ static void compile_fundef(struct Globals *globals, struct FunDef *fundef)
     compile_statements(globals, fundef->stmts);
 }
 
-static void compile_constructor(struct Globals *globals, struct FunCall *funcall)
+static void compile_constructor(struct Globals *globals, struct Constructor *constructor)
 {
-    linkedlist_foreach_reverse(lnode, funcall->args->tail) {
+    linkedlist_foreach_reverse(lnode, constructor->funcall->args->tail) {
         struct Value *value = lnode->value;
         compile_type(globals, value->type);
         compile_value(globals, value);
     }
-    compile_heap(globals, 0, 2 * funcall->args->length);
+    compile_heap(globals, 0, 2 * constructor->funcall->args->length);
 }
 
     // load(globals, GET_LOCAL);
@@ -311,7 +311,7 @@ static void compile_value(struct Globals *globals, struct Value *val)
             compile_builtin_funcall(globals, val->funcall); 
             break;
         case VTYPE_CONSTRUCTOR:
-            compile_constructor(globals, val->funcall);
+            compile_constructor(globals, val->constructor);
             break;
         case VTYPE_GET:
             compile_get(globals, val->get);

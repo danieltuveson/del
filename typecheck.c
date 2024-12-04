@@ -26,7 +26,7 @@ static bool typecheck_statements(struct Globals *globals, struct TypeCheckerCont
 static bool typecheck_statement(struct Globals *globals, struct TypeCheckerContext *context, struct Statement *stmt);
 static bool typecheck_funcall(struct Globals *globals, struct TypeCheckerContext *context, struct FunCall *funcall,
                               struct FunDef *fundef);
-static Type typecheck_constructor(struct Globals *globals, struct TypeCheckerContext *context, struct FunCall *constructor);
+static Type typecheck_constructor(struct Globals *globals, struct TypeCheckerContext *context, struct Constructor *constructor);
 
 #define table_lookup(table, length, symbol)\
     uint64_t i = symbol % length;\
@@ -678,16 +678,17 @@ static bool typecheck_print(struct Globals *globals, struct TypeCheckerContext *
 //     Methods *methods;
 // };
 // TODO: make this handle non-trivial constructors
-static Type typecheck_constructor(struct Globals *globals, struct TypeCheckerContext *context, struct FunCall *constructor)
+static Type typecheck_constructor(struct Globals *globals, struct TypeCheckerContext *context, struct Constructor *constructor)
 {
-    struct Class *cls = lookup_class(context->cls_table, constructor->funname);
+    struct FunCall *funcall = constructor->funcall;
+    struct Class *cls = lookup_class(context->cls_table, funcall->funname);
     if (cls == NULL) {
-        printf("Error: no class named %s\n", lookup_symbol(globals, constructor->funname));
+        printf("Error: no class named %s\n", lookup_symbol(globals, funcall->funname));
         return TYPE_UNDEFINED;
     }
 
     uint64_t class_def_count       = cls->definitions  == NULL ? 0 : cls->definitions->length;
-    uint64_t constructor_arg_count = constructor->args == NULL ? 0 : constructor->args->length;
+    uint64_t constructor_arg_count = funcall->args == NULL ? 0 : funcall->args->length;
     if (class_def_count == 0 && constructor_arg_count == 0) {
         return cls->name;
     } else if (class_def_count != constructor_arg_count) {
@@ -698,9 +699,9 @@ static Type typecheck_constructor(struct Globals *globals, struct TypeCheckerCon
     }
 
     // Validate arguments
-    struct LinkedListNode *vals = constructor->args->head;
+    struct LinkedListNode *vals = funcall->args->head;
     struct LinkedListNode *defs = cls->definitions->head;
-    for (uint64_t i = 0; i < constructor->args->length; i++) {
+    for (uint64_t i = 0; i < funcall->args->length; i++) {
         struct Value *val = vals->value;
         struct Definition *fun_arg_def = defs->value;
         Type val_type = typecheck_value(globals, context, val);

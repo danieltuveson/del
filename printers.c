@@ -396,7 +396,7 @@ void print_value(struct Globals *globals, struct Value *val)
     case VTYPE_BUILTIN_CONSTRUCTOR:
     case VTYPE_CONSTRUCTOR:
         printf("new ");
-        print_funcall(globals, val->constructor->funname, val->constructor->args);
+        print_funcall(globals, val->constructor->funcall->funname, val->constructor->funcall->args);
         break;
     case VTYPE_GET:
         print_get(globals, val->get);

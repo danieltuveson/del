@@ -212,6 +212,8 @@ static Values *parse_args(struct Globals *globals)
     }                                                   \
     } while (false)
 
+// static struct Value *parse_vfuncall(struct Globals *globals, Symbol symbol,
+//     struct Value *func(struct Globals *, Symbol, Values *, bool))
 static struct Value *parse_vfuncall(struct Globals *globals, Symbol symbol,
     struct Value *func(struct Globals *, Symbol, Values *, bool))
 {
@@ -219,6 +221,35 @@ static struct Value *parse_vfuncall(struct Globals *globals, Symbol symbol,
     bool builtin = is_builtin(symbol);
     parse_call(globals, val, symbol, func, builtin);
     return val;
+}
+
+static Types *parse_type_args(struct Globals *globals)
+{
+    // TODO
+    return NULL;
+}
+
+static struct Value *parse_constructor(struct Globals *globals, Symbol symbol)
+{
+    bool builtin = is_builtin(symbol);
+    Types *types = NULL;
+    Values *vals = NULL;
+    if (match(globals, ST_LESS)) {
+        types = parse_type_args(globals);
+        if (types == NULL) {
+            return NULL;
+        }
+    }
+    if (!match(globals, ST_OPEN_PAREN)) {
+        error_parser(globals, "Expected list of arguments");
+        return NULL;
+    }
+    if (match(globals, ST_CLOSE_PAREN)) {
+        return new_constructor(globals, symbol, types, NULL, builtin);
+    } else if ((vals = parse_args(globals))) {
+        return new_constructor(globals, symbol, types, vals, builtin);
+    }
+    return NULL;
 }
 
 static struct Value *parse_get(struct Globals *globals, Symbol symbol)
@@ -288,8 +319,8 @@ static struct Value *parse_subexpr(struct Globals *globals)
         // } else {
         //     return new_symbol(symbol);
         // }
-    } else if (match(globals, ST_NEW) && match(globals, T_SYMBOL) && match(globals, ST_OPEN_PAREN)) {
-        return parse_vfuncall(globals, nth_token(old_head, 2)->symbol, new_constructor);
+    } else if (match(globals, ST_NEW) && match(globals, T_SYMBOL)) {
+        return parse_constructor(globals, nth_token(old_head, 2)->symbol);
     }
     error_parser(globals, "Unexpected token in expression");
     return NULL;

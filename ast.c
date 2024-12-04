@@ -230,12 +230,15 @@ struct Value *new_vfuncall(struct Globals *globals, Symbol funname, Values *args
     return val;
 }
 
-struct Value *new_constructor(struct Globals *globals, Symbol funname, Values *args, bool is_builtin)
+struct Value *new_constructor(struct Globals *globals, Symbol funname,
+        Types *types, Values *args, bool is_builtin)
 {
     // Constructor name should be same as classname
     enum ValueType t = is_builtin ? VTYPE_BUILTIN_CONSTRUCTOR : VTYPE_CONSTRUCTOR;
     struct Value *val = new_value(globals, t, funname);
-    val->funcall = new_funcall(globals, funname, args);
+    val->constructor = allocator_malloc(globals->allocator, sizeof(struct Constructor));
+    val->constructor->types = types;
+    val->constructor->funcall = new_funcall(globals, funname, args);
     return val;
 }
 

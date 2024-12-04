@@ -10,6 +10,7 @@ struct Statement;
 /* Typedefs for void* lists, to keep track of their contents */
 typedef struct LinkedList TopLevelDecls;
 typedef struct LinkedList Values;
+typedef struct LinkedList Types;
 typedef struct LinkedList Statements;
 typedef struct LinkedList Definitions;
 typedef struct LinkedList Methods;
@@ -79,6 +80,11 @@ struct FunCall {
     Values *args;
 };
 
+struct Constructor {
+    Types *types;
+    struct FunCall *funcall;
+};
+
 struct Expr {
     enum OperatorType op;
     struct Value *val1;
@@ -120,7 +126,7 @@ struct Value {
         long boolean;
         struct Expr *expr;
         struct FunCall *funcall;
-        struct FunCall *constructor;
+        struct Constructor *constructor;
         struct Accessor *get;
     };
 };
@@ -214,7 +220,7 @@ struct Value *new_floating(struct Globals *globals, double floating);
 struct Value *new_boolean(struct Globals *globals, int boolean);
 struct Value *new_null(struct Globals *globals);
 struct Value *new_vfuncall(struct Globals *globals, Symbol funname, Values *args, bool is_builtin);
-struct Value *new_constructor(struct Globals *globals, Symbol funname, Values *args, bool is_builtin);
+struct Value *new_constructor(struct Globals *globals, Symbol funname, Types *types, Values *args, bool is_builtin);
 struct Value *new_get(struct Globals *globals, Symbol symbol, LValues *lvalues);
 struct Value *new_expr(struct Globals *globals, struct Expr *expr);
 struct LValue *new_property(struct Globals *globals, Symbol property);
