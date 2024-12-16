@@ -2,6 +2,7 @@
 #define VM_H
 
 #include "common.h"
+#include "del.h"
 
 // Struct of arrays storing stack frames
 // - names: stores "hashes" of variable names.
@@ -56,12 +57,6 @@ typedef struct {
     Type type;
     DelValue value;
 } HeapValue;
-
-enum VirtualMachineStatus {
-    VM_STATUS_ERROR = 0, 
-    VM_STATUS_COMPLETED = 1, 
-    VM_STATUS_PAUSE = 2
-};
 
 struct VirtualMachine {
     enum VirtualMachineStatus status;
