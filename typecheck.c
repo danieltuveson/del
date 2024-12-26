@@ -295,6 +295,35 @@ static Type typecheck_expression(struct Globals *globals, struct TypeCheckerCont
     };
 }
 
+static Type typecheck_new_array(struct Globals *globals, struct TypeCheckerContext *context,
+        struct Constructor *constructor)
+{
+    // Validate type parameter
+    uint64_t constructor_types_count = constructor->types == NULL ? 0 : constructor->types->length;
+    if (constructor_types_count != 1) {
+        printf("Error: Array expects 1 type parameter but got %" PRIu64 "\n", constructor_types_count);
+        return TYPE_UNDEFINED;
+    }
+    // Validate arguments
+    struct FunCall *funcall = constructor->funcall;
+    uint64_t constructor_arg_count = funcall->args == NULL ? 0 : funcall->args->length;
+    if (constructor_arg_count != 1) {
+        printf("Error: Array expects 1 argument but got %" PRIu64 "\n", constructor_arg_count);
+        return TYPE_UNDEFINED;
+    }
+    struct Value *arg = funcall->args->head->value;
+    Type arg_type = typecheck_value(globals, context, arg);
+    if (arg_type == TYPE_UNDEFINED) {
+        return TYPE_UNDEFINED;
+    } else if (arg_type != TYPE_INT) {
+        printf("Error: expected argument to be of type int, but got argument of type %s\n",
+                lookup_symbol(globals, arg_type));
+        return TYPE_UNDEFINED;
+    }
+    Type *type_ptr = constructor->types->head->value;
+    return TYPE_ARRAY | (*type_ptr);
+}
+
 static Type typecheck_read(Values *args)
 {
     if (args == NULL || args->length == 0) {
@@ -356,9 +385,12 @@ static Type typecheck_value(struct Globals *globals, struct TypeCheckerContext *
             val->type = typecheck_constructor(globals, context, val->constructor);
             return val->type;
         case VTYPE_FUNCALL: {
-            struct FunDef *fundef = lookup_fun(context->fun_table, val->funcall->funname);
+            Symbol funname = val->funcall->access->definition->name;
+            assert(linkedlist_is_empty(val->funcall->access->lvalues));
+            struct FunDef *fundef = lookup_fun(context->fun_table, funname);
             if (fundef != NULL && fundef->rettype == TYPE_UNDEFINED) {
-                printf("Error: function %s does not return a value\n", lookup_symbol(globals, fundef->name));
+                printf("Error: function %s does not return a value\n",
+                        lookup_symbol(globals, fundef->name));
                 return TYPE_UNDEFINED;
             } else if (typecheck_funcall(globals, context, val->funcall, fundef)) {
                 val->type = fundef->rettype;
@@ -371,7 +403,8 @@ static Type typecheck_value(struct Globals *globals, struct TypeCheckerContext *
             val->type = typecheck_get(globals, context, val->get);
             return val->type;
         case VTYPE_BUILTIN_FUNCALL:
-            name = val->funcall->funname;
+            name = val->funcall->access->definition->name;
+            assert(linkedlist_is_empty(val->funcall->access->lvalues));
             if (name == BUILTIN_READ) {
                 val->type = TYPE_STRING;
                 return typecheck_read(val->funcall->args);
@@ -383,8 +416,13 @@ static Type typecheck_value(struct Globals *globals, struct TypeCheckerContext *
                 assert("Error: not implemented\n" && false);
             }
         case VTYPE_BUILTIN_CONSTRUCTOR:
-            assert("Error: not implemented\n" && false);
+            name = val->constructor->funcall->access->definition->name;
+            assert(linkedlist_is_empty(val->constructor->funcall->access->lvalues));
+            if (name == BUILTIN_ARRAY) {
+                return typecheck_new_array(globals, context, val->constructor);
+            } 
     }
+    assert("Error: unhandled typecheck_value\n" && false);
     return TYPE_UNDEFINED; // Doing this to silence compiler warning, should never happen
 }
 
@@ -610,12 +648,13 @@ static bool typecheck_return(struct Globals *globals, struct TypeCheckerContext 
     return true;
 }
 
-static bool typecheck_funcall(struct Globals *globals, struct TypeCheckerContext *context, struct FunCall *funcall,
-                              struct FunDef *fundef)
+static bool typecheck_funcall(struct Globals *globals, struct TypeCheckerContext *context,
+        struct FunCall *funcall, struct FunDef *fundef)
 {
     // struct FunDef *fundef = lookup_fun(context->fun_table, funcall->funname);
     if (fundef == NULL) {
-        printf("Error: no function named %s\n", lookup_symbol(globals, funcall->funname));
+        printf("Error: no function named %s\n",
+                lookup_symbol(globals, funcall->access->definition->name));
         return false;
     } 
 
@@ -680,10 +719,16 @@ static bool typecheck_print(struct Globals *globals, struct TypeCheckerContext *
 // TODO: make this handle non-trivial constructors
 static Type typecheck_constructor(struct Globals *globals, struct TypeCheckerContext *context, struct Constructor *constructor)
 {
+    if (constructor->types != NULL) {
+        printf("Error: class %s does not take type parameters\n",
+                lookup_symbol(globals, constructor->funcall->access->definition->name));
+        return TYPE_UNDEFINED;
+    }
     struct FunCall *funcall = constructor->funcall;
-    struct Class *cls = lookup_class(context->cls_table, funcall->funname);
+    Symbol funname = funcall->access->definition->name;
+    struct Class *cls = lookup_class(context->cls_table, funname);
     if (cls == NULL) {
-        printf("Error: no class named %s\n", lookup_symbol(globals, funcall->funname));
+        printf("Error: no class named %s\n", lookup_symbol(globals, funname));
         return TYPE_UNDEFINED;
     }
 
@@ -749,7 +794,7 @@ static bool typecheck_statement(struct Globals *globals, struct TypeCheckerConte
             exit_scope(&(context->scope));
             return ret;
         case STMT_BUILTIN_FUNCALL: {
-            Symbol name = stmt->funcall->funname;
+            Symbol name = stmt->funcall->access->definition->name;
             if (name == BUILTIN_PRINT || name == BUILTIN_PRINTLN) {
                 ret = typecheck_print(globals, context, stmt->funcall->args);
             } else {
@@ -758,7 +803,8 @@ static bool typecheck_statement(struct Globals *globals, struct TypeCheckerConte
             return ret;
         }
         case STMT_FUNCALL: {
-            struct FunDef *fundef = lookup_fun(context->fun_table, stmt->funcall->funname);
+            Symbol funname = stmt->funcall->access->definition->name;
+            struct FunDef *fundef = lookup_fun(context->fun_table, funname);
             ret = typecheck_funcall(globals, context, stmt->funcall, fundef);
             return ret;
             // return typecheck_funcall(globals, context, stmt->funcall) != TYPE_UNDEFINED; 
@@ -830,14 +876,51 @@ static bool typecheck_tlds(struct Globals *globals, struct TypeCheckerContext *c
     return true;
 }
 
-bool typecheck(struct Globals *globals, struct ClassTable *class_table,
-        struct FunctionTable *function_table)
+static struct ClassTable *init_class_table(struct Globals *globals)
 {
-    if (!add_types(globals->ast, class_table, function_table)) {
+    struct Class *clst = DEL_MALLOC(globals->class_count * sizeof(*clst));
+    struct ClassTable *class_table = DEL_MALLOC(sizeof(*class_table));
+    class_table->size = globals->class_count;
+    class_table->table = clst;
+    return class_table;
+}
+
+static struct FunctionTable *init_function_table(struct Globals *globals)
+{
+    struct FunDef *ft = DEL_MALLOC(globals->function_count * sizeof(*ft));
+    struct FunctionTable *function_table = DEL_MALLOC(sizeof(*function_table));
+    function_table->size = globals->function_count;
+    function_table->table = ft;
+    return function_table;
+}
+
+static struct TypeCheckerContext *init_typechecker(struct Globals *globals)
+{
+    struct ClassTable *class_table = init_class_table(globals);
+    struct FunctionTable *function_table = init_function_table(globals);
+    // Init typechecker context
+    struct TypeCheckerContext *context = DEL_MALLOC(sizeof(*context));
+    context->enclosing_func = NULL;
+    context->fun_table = function_table;
+    context->cls_table = class_table;
+    context->scope = NULL;
+    // Init compiler context
+    struct CompilerContext *cc = DEL_MALLOC(sizeof(*cc));
+    cc->instructions = NULL;
+    cc->funcall_table = NULL;
+    cc->class_table = class_table;
+    globals->cc = cc;
+    assert(globals->ast != NULL);
+    return context;
+}
+
+bool typecheck(struct Globals *globals)
+{
+    struct TypeCheckerContext *context = init_typechecker(globals);
+    if (!add_types(globals->ast, context->cls_table, context->fun_table)) {
         return false;
     }
-    struct TypeCheckerContext context = { NULL, function_table, class_table, NULL };
-    bool is_success = typecheck_tlds(globals, &context, globals->ast);
+    bool is_success = typecheck_tlds(globals, context, globals->ast);
     return is_success;
 }
 

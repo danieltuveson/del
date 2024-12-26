@@ -108,6 +108,7 @@ static inline void switch_op(struct Stack *stack)
 } while (0)
 
 /* Pops values from the stack and pushes them onto the heap */
+// TODO: Rewrite this + compiler so that push_heap allocates but doesn't set anything
 static inline bool push_heap(struct Heap *heap, struct Stack *stack)
 {
     size_t count = pop(stack).offset;
@@ -123,14 +124,9 @@ static inline bool push_heap(struct Heap *heap, struct Stack *stack)
                 IN_BYTES(heap->vector->max_capacity));
         return false;
     }
-    // heap->values[heap->vector->length++] = count;
-    // printf("count: %" PRIu64 "\n", count);
-    // printf("location: %" PRIu64 "\n", location);
+    // vector_grow(&(heap->vector), count);
     for (size_t i = 0; i < count; i++) {
         DelValue value = pop(stack);
-        // char str[9] = {0};
-        // uint64_as_string(value, str, 0);
-        // printf("value: %" PRIu64 "\n", value);
         vector_append(&(heap->vector), value);
     }
     // Store count in bits before location

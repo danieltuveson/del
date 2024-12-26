@@ -2,6 +2,22 @@ class Range {
     start: int;
     end: int;
     label: string;
+    function stuff(): int {
+        println("this is a method");
+        let x  = oirwjgowirjgwr;
+        return 4;
+    }
+    function morestuff(thing: int) {
+        println("this is also a method");
+        return;
+    }
+}
+
+class OnlyFuncs {
+    i : int;
+    function dostuff(stuff: int) {
+        return;
+    }
 }
 
 function sum(r : Range) : int {
@@ -16,6 +32,7 @@ function sum(r : Range) : int {
 
 function main() {
     let range = new Range(1, 5, "1 to 5");
+    // range.stuff();
     let sum = sum(range);
     println("The sum of ", range.label, " is: ", sum);
 }

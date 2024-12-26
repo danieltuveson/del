@@ -391,12 +391,13 @@ void print_value(struct Globals *globals, struct Value *val)
         break;
     case VTYPE_BUILTIN_FUNCALL:
     case VTYPE_FUNCALL:
-        print_funcall(globals, val->funcall->funname, val->funcall->args);
+        print_funcall(globals, val->funcall->access->definition->name, val->funcall->args);
         break;
     case VTYPE_BUILTIN_CONSTRUCTOR:
     case VTYPE_CONSTRUCTOR:
         printf("new ");
-        print_funcall(globals, val->constructor->funcall->funname, val->constructor->funcall->args);
+        struct FunCall *funcall = val->constructor->funcall;
+        print_funcall(globals, funcall->access->definition->name, funcall->args);
         break;
     case VTYPE_GET:
         print_get(globals, val->get);
@@ -542,7 +543,7 @@ static void print_statement_indent(struct Globals *globals, struct Statement *st
             break;
         case STMT_BUILTIN_FUNCALL:
         case STMT_FUNCALL:
-            printf("%s", lookup_symbol(globals, stmt->funcall->funname));
+            printf("%s", lookup_symbol(globals, stmt->funcall->access->definition->name));
             printf("(");
             if (stmt->funcall->args != NULL) {
                 linkedlist_foreach(lnode, stmt->funcall->args->head) {

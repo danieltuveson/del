@@ -19,6 +19,7 @@ struct ExprPair {
 // Forward declarations
 static struct Value *parse_subexpr(struct Globals *globals);
 static struct Statement *parse_statement(struct Globals *globals);
+static Type parse_type(struct Globals *globals);
 
 static inline bool parser_peek(struct Globals *globals, enum TokenType match)
 {
@@ -200,33 +201,48 @@ static Values *parse_args(struct Globals *globals)
     return vals;
 }
 
-#define parse_call(globals, rettype, symbol, func, builtin) \
+#define parse_call(globals, rettype, access, func, builtin) \
     do {                                                \
     Values *vals = NULL;                                \
     if (match(globals, ST_CLOSE_PAREN)) {               \
-        rettype = func(globals, symbol, NULL, builtin); \
+        rettype = func(globals, access, NULL, builtin); \
     } else if ((vals = parse_args(globals))) {          \
-        rettype = func(globals, symbol, vals, builtin); \
+        rettype = func(globals, access, vals, builtin); \
     } else {                                            \
         rettype = NULL;                                 \
     }                                                   \
     } while (false)
 
-// static struct Value *parse_vfuncall(struct Globals *globals, Symbol symbol,
-//     struct Value *func(struct Globals *, Symbol, Values *, bool))
-static struct Value *parse_vfuncall(struct Globals *globals, Symbol symbol,
-    struct Value *func(struct Globals *, Symbol, Values *, bool))
+static struct Value *parse_vfuncall(struct Globals *globals, struct Accessor *access,
+    struct Value *func(struct Globals *, struct Accessor *, Values *, bool))
 {
     struct Value *val;
-    bool builtin = is_builtin(symbol);
-    parse_call(globals, val, symbol, func, builtin);
+    bool builtin = is_builtin(access->definition->name);
+    parse_call(globals, val, access, func, builtin);
     return val;
 }
 
 static Types *parse_type_args(struct Globals *globals)
 {
-    // TODO
-    return NULL;
+    if (match(globals, ST_GREATER)) {
+        error_parser(globals, "Constructor for generic class cannot have empty type list");
+        return NULL;
+    }
+    Types *types = linkedlist_new(globals->allocator);
+    do {
+        Type type = parse_type(globals);
+        if (type == TYPE_UNDEFINED) {
+            return NULL;
+        }
+        Type *type_ptr = allocator_malloc(globals->allocator, sizeof(*type_ptr));
+        *type_ptr = type;
+        linkedlist_append(types, type_ptr);
+    } while (match(globals, ST_COMMA));
+    if (!match(globals, ST_GREATER)) {
+        error_parser(globals, "Unexpected end of type arguments in constructor");
+        return NULL;
+    }
+    return types;
 }
 
 static struct Value *parse_constructor(struct Globals *globals, Symbol symbol)
@@ -244,10 +260,11 @@ static struct Value *parse_constructor(struct Globals *globals, Symbol symbol)
         error_parser(globals, "Expected list of arguments");
         return NULL;
     }
+    struct Accessor *a = new_accessor(globals, symbol, linkedlist_new(globals->allocator));
     if (match(globals, ST_CLOSE_PAREN)) {
-        return new_constructor(globals, symbol, types, NULL, builtin);
+        return new_constructor(globals, a, types, NULL, builtin);
     } else if ((vals = parse_args(globals))) {
-        return new_constructor(globals, symbol, types, vals, builtin);
+        return new_constructor(globals, a, types, vals, builtin);
     }
     return NULL;
 }
@@ -311,7 +328,9 @@ static struct Value *parse_subexpr(struct Globals *globals)
     } else if (match(globals, T_SYMBOL)) {
         Symbol symbol = nth_token(old_head, 1)->symbol;
         if (match(globals, ST_OPEN_PAREN)) {
-            return parse_vfuncall(globals, symbol, new_vfuncall);
+            struct Accessor *a =
+                new_accessor(globals, symbol, linkedlist_new(globals->allocator));
+            return parse_vfuncall(globals, a, new_vfuncall);
         // } else if (parser_peek(parser, ST_DOT) || parser_peek(parser, ST_OPEN_BRACKET)) {
         } else { // if (parser_peek(parser, ST_DOT) || parser_peek(parser, ST_OPEN_BRACKET)) {
             return parse_get(globals, symbol);
@@ -326,12 +345,12 @@ static struct Value *parse_subexpr(struct Globals *globals)
     return NULL;
 }
 
-static struct Statement *parse_sfuncall(struct Globals *globals, Symbol symbol,
-    struct Statement *func(struct Globals *, Symbol, Values *, bool))
+static struct Statement *parse_sfuncall(struct Globals *globals, struct Accessor *access,
+    struct Statement *func(struct Globals *, struct Accessor *, Values *, bool))
 {
     struct Statement *stmt;
-    bool builtin = is_builtin(symbol);
-    parse_call(globals, stmt, symbol, func, builtin);
+    bool builtin = is_builtin(access->definition->name);
+    parse_call(globals, stmt, access, func, builtin);
     return stmt;
 }
 
@@ -385,7 +404,9 @@ static struct Statement *parse_lhs(struct Globals *globals, Symbol symbol)
         } else if (match(globals, ST_OPEN_PAREN)) {
             // assert("TODO: update parse_sfuncall to accept accessors" && false);
             // return NULL;
-            return parse_sfuncall(globals, symbol, new_sfuncall);
+            struct Accessor *a =
+                new_accessor(globals, symbol, linkedlist_new(globals->allocator));
+            return parse_sfuncall(globals, a, new_sfuncall);
         } else if (match(globals, ST_INC)) {
             return new_increment(globals, symbol, lvalues, 1);
         } else if (match(globals, ST_DEC)) {
@@ -523,7 +544,7 @@ static struct Statement *parse_statement(struct Globals *globals)
                 && (expr = parse_expr(globals)) && match(globals, ST_SEMICOLON) 
                 && (increment = parse_line(globals))) {
             if (redundant_paren != match(globals, ST_CLOSE_PAREN)) {
-                error_parser(globals, "mismatched parenthesis");
+                error_parser(globals, "Mismatched parenthesis");
                 return NULL;
             } else if ((stmts = parse_block(globals, "for block"))) {
                 return new_for(globals, init, expr, increment, stmts);
@@ -566,7 +587,7 @@ static Type parse_type(struct Globals *globals)
     } else if (match(globals, T_SYMBOL)) {
         return nth_token(old_head, 1)->symbol;
     }
-    error_parser(globals, "invalid type");
+    error_parser(globals, "Invalid type");
     return TYPE_UNDEFINED;
 }
 
@@ -580,16 +601,16 @@ static struct Definition *parse_definition(struct Globals *globals)
     struct LinkedListNode *old_head = globals->parser;
     Type type = TYPE_UNDEFINED;
     if (!match(globals, T_SYMBOL)) {
-        error_parser(globals, "expected variable name");
+        error_parser(globals, "Expected variable name");
         return NULL;
     } else if (match(globals, ST_COMMA) || match(globals, ST_CLOSE_PAREN)) {
-        error_parser(globals, "function argument is missing a type");
+        error_parser(globals, "Function argument is missing a type");
         return NULL;
     } else if (!(match(globals, ST_COLON))) {
-        error_parser(globals, "expected colon");
+        error_parser(globals, "Expected colon");
         return NULL;
     } else if ((type = parse_type(globals)) == TYPE_UNDEFINED) {
-        error_parser(globals, "invalid type");
+        error_parser(globals, "Invalid type");
         return NULL;
     }
     return new_define(globals, nth_token(old_head, 1)->symbol, type);
@@ -601,7 +622,7 @@ static struct Definition *parse_definition(struct Globals *globals)
 static Definitions *parse_fundef_args(struct Globals *globals)
 {
     if (!match(globals, ST_OPEN_PAREN)) {
-        error_parser(globals, "expected list of function arguments");
+        error_parser(globals, "Expected list of function arguments");
         return NULL;
     }
     Definitions *definitions = linkedlist_new(globals->allocator);
@@ -633,7 +654,7 @@ static struct TopLevelDecl *parse_fundef(struct Globals *globals)
     if (match(globals, T_SYMBOL)) {
         Symbol funname = nth_token(old_head, 1)->symbol;
         if (is_builtin(funname)) {
-            error_parser(globals, "cannot use builtin function name as declaration");
+            error_parser(globals, "Cannot use builtin function name as declaration");
             return NULL;
         }
         Definitions *defs = parse_fundef_args(globals);
@@ -652,77 +673,75 @@ static struct TopLevelDecl *parse_fundef(struct Globals *globals)
         }
         return new_tld_fundef(globals, funname, rettype, defs, stmts);
     }
-    error_parser(globals, "could not parse function");
+    error_parser(globals, "Could not parse function");
     return NULL;
 }
 
-static struct Definition *parse_class_definition(struct Globals *globals)
+static bool parse_class_definition(struct Globals *globals, Definitions *definitions,
+        TopLevelDecls *methods)
 {
     struct LinkedListNode *old_head = globals->parser;
     Type type = TYPE_UNDEFINED;
-    if (!match(globals, T_SYMBOL)) {
-        error_parser(globals, "expected property name");
-        return NULL;
-    } else if (match(globals, ST_SEMICOLON)) {
-        error_parser(globals, "class property is missing a type");
-        return NULL;
-    } else if (!(match(globals, ST_COLON))) {
-        error_parser(globals, "expected colon");
-        return NULL;
-    } else if ((type = parse_type(globals)) == TYPE_UNDEFINED) {
-        error_parser(globals, "invalid type");
-        return NULL;
+    char *err_msg = "expected property or method name";
+    if (parser_peek(globals, ST_FUNCTION) || parser_peek(globals, ST_GET)
+                || parser_peek(globals, ST_SET) || parser_peek(globals, ST_CONSTRUCTOR)) {
+        if (!match(globals, ST_FUNCTION)) {
+            printf("non-standard methods not yet implemented\n");
+            assert(false);
+        }
+        struct TopLevelDecl *tld = parse_fundef(globals);
+        if (tld == NULL) {
+            return false;
+        }
+        linkedlist_append(methods, tld);
+        return true;
+    } else if (match(globals, T_SYMBOL)) {
+        Symbol symbol = nth_token(old_head, 1)->symbol;
+        if (!match(globals, ST_COLON)) {
+            error_parser(globals, "Expected type declaration");
+            return false;
+        } else if ((type = parse_type(globals)) == TYPE_UNDEFINED) {
+            return false;
+        } else if (!match(globals, ST_SEMICOLON)) {
+            error_parser(globals, "Expected semicolon");
+            return false;
+        }
+        struct Definition *def = new_define(globals, symbol, type);
+        linkedlist_append(definitions, def);
+        return true;
     }
-    return new_define(globals, nth_token(old_head, 1)->symbol, type);
+    error_parser(globals, err_msg);
+    return false;
 }
 
 // class_definitions: definition ST_SEMICOLON { $$ = new_list($1); }
 //                  | definition ST_SEMICOLON class_definitions { $$ = append($3, $1); }
 // ;
-static Definitions *parse_class_defs(struct Globals *globals)
-{
-    if (!match(globals, ST_OPEN_BRACE)) {
-        error_parser(globals, "expected list of class properties");
-        return NULL;
-    }
-    Definitions *definitions = linkedlist_new(globals->allocator);
-    do {
-        if (match(globals, ST_CLOSE_BRACE)) {
-            return definitions;
-        }
-        struct Definition *definition = parse_class_definition(globals);
-        if (!definition) {
-            return NULL;
-        }
-        linkedlist_append(definitions, definition);
-    } while (match(globals, ST_SEMICOLON));
-    if (!match(globals, ST_CLOSE_BRACE)) {
-        error_parser(globals, "Unexpected end of property list");
-        return NULL;
-    }
-    return definitions;
-}
-
-// cls: ST_CLASS T_SYMBOL ST_OPEN_BRACE class_definitions methods ST_CLOSE_BRACE
-//        { $$ = new_class($2, $4, $5); }
-//    | ST_CLASS T_SYMBOL ST_OPEN_BRACE class_definitions ST_CLOSE_BRACE
-//        { $$ = new_class($2, $4, NULL); }
-//    | ST_CLASS T_SYMBOL ST_OPEN_BRACE methods ST_CLOSE_BRACE
-//        { $$ = new_class($2, NULL, $4); }
-// ;
 static struct TopLevelDecl *parse_class(struct Globals *globals)
 {
     struct LinkedListNode *old_head = globals->parser;
-    if (match(globals, T_SYMBOL)) {
-        Symbol class_name = nth_token(old_head, 1)->symbol;
-        Definitions *defs = parse_class_defs(globals);
-        if (!defs) {
+    if (!match(globals, T_SYMBOL)) {
+        error_parser(globals, "Expected class name");
+        return NULL;
+    }
+    Symbol class_name = nth_token(old_head, 1)->symbol;
+    Definitions *definitions = linkedlist_new(globals->allocator);
+    TopLevelDecls *methods = linkedlist_new(globals->allocator);
+    struct TopLevelDecl *tld = new_class(globals, class_name, definitions, methods);
+    if (!match(globals, ST_OPEN_BRACE)) {
+        error_parser(globals, "Expected '{'");
+        return NULL;
+    }
+    if (match(globals, ST_CLOSE_BRACE)) {
+        return tld;
+    }
+    do {
+        if (!parse_class_definition(globals, definitions, methods)) {
             return NULL;
         }
-        return new_class(globals, class_name, defs, NULL);
-    }
-    error_parser(globals, "could not parse class");
-    return NULL;
+    } while (!parser_peek(globals, ST_CLOSE_BRACE));
+    assert(match(globals, ST_CLOSE_BRACE));
+    return tld;
 }
 
 static struct TopLevelDecl *parse_tld(struct Globals *globals)
@@ -733,7 +752,7 @@ static struct TopLevelDecl *parse_tld(struct Globals *globals)
     } else if (match(globals, ST_CLASS)) {
         tld = parse_class(globals);
     } else {
-        error_parser(globals, "expected function or class.");
+        error_parser(globals, "Expected function or class.");
     }
     return tld;
 }

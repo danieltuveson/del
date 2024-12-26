@@ -12,14 +12,15 @@ static struct TopLevelDecl *new_tld(struct Globals *globals, enum TLDType tld_ty
     return tld;
 }
 
-struct TopLevelDecl *new_class(struct Globals *globals, Symbol symbol, Definitions *definitions, Methods *methods)
+struct TopLevelDecl *new_class(struct Globals *globals, Symbol symbol,
+        Definitions *definitions, TopLevelDecls *methods)
 {
     globals->class_count++;
     struct TopLevelDecl *tld = new_tld(globals, TLD_TYPE_CLASS);
     tld->cls = allocator_malloc(globals->allocator, sizeof(struct Class));
     tld->cls->name = symbol;
-    tld->cls->definitions = definitions == NULL ? NULL : definitions;
-    tld->cls->methods = methods == NULL ? NULL : methods;
+    tld->cls->definitions = definitions;
+    tld->cls->methods = methods;
     return tld;
 }
 
@@ -49,7 +50,7 @@ uint64_t lookup_property_index(struct Class *cls, Symbol name)
     return 0;
 }
 
-static struct Accessor *new_accessor(struct Globals *globals, Symbol symbol, LValues *lvalues)
+struct Accessor *new_accessor(struct Globals *globals, Symbol symbol, LValues *lvalues)
 {
     struct Accessor *accessor = allocator_malloc(globals->allocator, sizeof(struct Accessor));
     accessor->definition = new_define(globals, symbol, TYPE_UNDEFINED);
@@ -155,19 +156,21 @@ struct Definition *new_define(struct Globals *globals, Symbol name, Type type)
     return def;
 }
 
-static struct FunCall *new_funcall(struct Globals *globals, Symbol funname, Values *args)
+static struct FunCall *new_funcall(struct Globals *globals, struct Accessor *access,
+        Values *args)
 {
     struct FunCall *funcall = allocator_malloc(globals->allocator, sizeof(struct FunCall));
-    funcall->funname = funname;
+    funcall->access = access;
     funcall->args = args;
     return funcall;
 }
 
-struct Statement *new_sfuncall(struct Globals *globals, Symbol funname, Values *args, bool is_builtin)
+struct Statement *new_sfuncall(struct Globals *globals, struct Accessor *access, Values *args,
+        bool is_builtin)
 {
     enum StatementType t = is_builtin ? STMT_BUILTIN_FUNCALL : STMT_FUNCALL;
     struct Statement *stmt = new_stmt(globals, t);
-    stmt->funcall = new_funcall(globals, funname, args);
+    stmt->funcall = new_funcall(globals, access, args);
     return stmt;
 }
 
@@ -222,23 +225,24 @@ struct Value *new_null(struct Globals *globals)
     return val;
 }
 
-struct Value *new_vfuncall(struct Globals *globals, Symbol funname, Values *args, bool is_builtin)
+struct Value *new_vfuncall(struct Globals *globals, struct Accessor *access, Values *args,
+        bool is_builtin)
 {
     enum ValueType t = is_builtin ? VTYPE_BUILTIN_FUNCALL: VTYPE_FUNCALL;
     struct Value *val = new_value(globals, t, TYPE_UNDEFINED);
-    val->funcall = new_funcall(globals, funname, args);
+    val->funcall = new_funcall(globals, access, args);
     return val;
 }
 
-struct Value *new_constructor(struct Globals *globals, Symbol funname,
+struct Value *new_constructor(struct Globals *globals, struct Accessor *access,
         Types *types, Values *args, bool is_builtin)
 {
     // Constructor name should be same as classname
     enum ValueType t = is_builtin ? VTYPE_BUILTIN_CONSTRUCTOR : VTYPE_CONSTRUCTOR;
-    struct Value *val = new_value(globals, t, funname);
+    struct Value *val = new_value(globals, t, access->definition->name);
     val->constructor = allocator_malloc(globals->allocator, sizeof(struct Constructor));
     val->constructor->types = types;
-    val->constructor->funcall = new_funcall(globals, funname, args);
+    val->constructor->funcall = new_funcall(globals, access, args);
     return val;
 }
 

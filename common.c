@@ -26,17 +26,27 @@ void init_symbol_table(struct Globals *globals)
     add_symbol("int");
     add_symbol("float");
     add_symbol("string");
-    
+
     // Builtin functions
     add_symbol("print");
     add_symbol("println");
     add_symbol("read");
     add_symbol("concat");
+    add_symbol("Array");
+    
+    // Builtin methods 
+    add_symbol("constructor");
+    
+    // Generics
+    add_symbol("Array");
 }
 #undef add_symbol
 
 char *lookup_symbol(struct Globals *globals, uint64_t symbol)
 {
+    if (symbol >= TYPE_ARRAY) {
+        return "Array";
+    }
     uint64_t cnt = 0;
     linkedlist_foreach(lnode, globals->symbol_table->head) {
         if (cnt == symbol) {
@@ -49,6 +59,6 @@ char *lookup_symbol(struct Globals *globals, uint64_t symbol)
 
 bool is_builtin(uint64_t symbol)
 {
-    return symbol >= BUILTIN_PRINT && symbol <= BUILTIN_CONCAT;
+    return symbol >= BUILTIN_FIRST && symbol <= BUILTIN_LAST;
 }
 

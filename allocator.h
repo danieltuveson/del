@@ -13,4 +13,6 @@ void *allocator_malloc(Allocator a, size_t size);
 void allocator_freeall(Allocator a);
 void print_memory_usage(Allocator a);
 
+#define DEL_MALLOC(size) allocator_malloc(globals->allocator, size)
+
 #endif

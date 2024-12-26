@@ -51,7 +51,7 @@ struct Globals {
     struct CompilerContext *cc;
 };
 
-/* Types that objects can have */
+/* Primitive that objects can have */
 typedef uint64_t Type;
 #define TYPE_UNDEFINED UINT64_C(0)
 #define TYPE_NULL UINT64_C(1)
@@ -59,13 +59,24 @@ typedef uint64_t Type;
 #define TYPE_INT UINT64_C(3)
 #define TYPE_FLOAT UINT64_C(4)
 #define TYPE_STRING UINT64_C(5)
+
+/* Array type modifies other types */
+#define TYPE_ARRAY UINT64_C(1) << 63
+
 /* Builtin functions */
 #define BUILTIN_PRINT UINT64_C(6)
 #define BUILTIN_PRINTLN UINT64_C(7)
 #define BUILTIN_READ UINT64_C(8)
 #define BUILTIN_CONCAT UINT64_C(9)
+#define BUILTIN_ARRAY UINT64_C(10)
 
-static inline bool is_object(Type val) { return val > BUILTIN_CONCAT; }
+/* Builtin methods */
+#define BUILTIN_CONSTRUCTOR UINT64_C(11)
+
+#define BUILTIN_FIRST BUILTIN_PRINT
+#define BUILTIN_LAST BUILTIN_CONSTRUCTOR
+
+static inline bool is_object(Type val) { return val > BUILTIN_LAST; }
 
 /* List functions */
 void init_symbol_table(struct Globals *globals);

@@ -73,19 +73,13 @@ static bool read_and_compile(struct Vector **instructions_ptr, Allocator allocat
 
     printf("````````````````` CODE `````````````````\n");
 #endif
-    struct Class *clst = allocator_malloc(globals.allocator, globals.class_count * sizeof(*clst));
-    struct FunDef *ft = allocator_malloc(globals.allocator, globals.function_count * sizeof(*ft));
-    struct ClassTable class_table = { globals.class_count, clst };
-    struct FunctionTable function_table = { globals.function_count, ft };
-    struct CompilerContext cc = { NULL, NULL, &class_table };
-    assert(globals.ast != NULL);
 #if DEBUG
     print_tlds(&globals, globals.ast);
     printf("\n");
 
     printf("`````````````` TYPECHECK ```````````````\n");
 #endif
-    if (typecheck(&globals, &class_table, &function_table)) {
+    if (typecheck(&globals)) {
 #if DEBUG
         printf("program has typechecked\n");
 #endif
@@ -98,7 +92,6 @@ static bool read_and_compile(struct Vector **instructions_ptr, Allocator allocat
 #if DEBUG
     printf("`````````````` COMPILE ```````````````\n");
 #endif
-    globals.cc = &cc;
     compile(&globals, globals.ast);
     *instructions_ptr = globals.cc->instructions;
 #if DEBUG
@@ -136,7 +129,6 @@ void del_instructions_free(DelInstructions del_instructions)
 void del_vm_init(DelVM *del_vm, DelInstructions del_instructions)
 {
     struct VirtualMachine *vm = malloc(sizeof(*vm));
-    printf("Size of vm: %lu\n", sizeof(*vm));
     memset(vm, 0, sizeof(*vm));
     struct Vector *instructions = (struct Vector *) del_instructions;
     vm_init(vm, instructions->values);

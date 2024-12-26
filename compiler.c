@@ -255,15 +255,31 @@ static void compile_print(struct Globals *globals, Values *args, bool has_newlin
 
 static void compile_builtin_funcall(struct Globals *globals, struct FunCall *funcall)
 {
-    if (funcall->funname == BUILTIN_PRINT) {
+    Symbol funname = funcall->access->definition->name;
+    if (funname == BUILTIN_PRINT) {
         compile_print(globals, funcall->args, false);
-    } else if (funcall->funname == BUILTIN_PRINTLN) {
+    } else if (funname == BUILTIN_PRINTLN) {
         compile_print(globals, funcall->args, true);
-    } else if (funcall->funname == BUILTIN_READ) {
+    } else if (funname == BUILTIN_READ) {
         load_opcode(globals, READ);
     } else {
         assert("Builtin not implemented" && false);
     }
+}
+
+// static void compile_array(struct Globals *globals, struct Constructor *constructor)
+// {
+//     // TODO
+//     return;
+// }
+
+static void compile_builtin_constructor(struct Globals *globals, struct Constructor *constructor)
+{
+    assert("Builtin not implemented" && false);
+    // if (constructor->funcall->funname != BUILTIN_ARRAY) {
+        // assert("Builtin not implemented" && false);
+    // }
+    // compile_array(globals, constructor);
 }
 
 static void compile_funcall(struct Globals *globals, struct FunCall *funcall)
@@ -277,7 +293,9 @@ static void compile_funcall(struct Globals *globals, struct FunCall *funcall)
     }
     load_opcode(globals, PUSH_SCOPE);
     push(globals);
-    add_callsite(globals, globals->cc->funcall_table, funcall->funname, next(globals));
+    Symbol funname = funcall->access->definition->name;
+    struct FunctionCallTable *fct = globals->cc->funcall_table;
+    add_callsite(globals, fct, funname, next(globals));
     load_opcode(globals, JMP);
     globals->cc->instructions->values[bookmark].offset = globals->cc->instructions->length;
     load_opcode(globals, POP_SCOPE);
@@ -315,6 +333,9 @@ static void compile_value(struct Globals *globals, struct Value *val)
             break;
         case VTYPE_GET:
             compile_get(globals, val->get);
+            break;
+        case VTYPE_BUILTIN_CONSTRUCTOR:
+            compile_builtin_constructor(globals, val->constructor);
             break;
         default: printf("compile not implemented yet\n"); assert(false);
     }

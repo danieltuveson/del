@@ -42,6 +42,7 @@ function main() {
 ## TODO
 - Make typechecker validate that functions return values for all paths
 - Remove "default" options from switch statements and search for missing cases.
+- The `push_heap` function in the VM is basically just a consturctor. `push_heap` should just allocate and return a pointer to the memory, any constructor logic should be determined before runtime.
 - Implement:
   - Basic FFI, or at least add some simple IO
   - Arrays
