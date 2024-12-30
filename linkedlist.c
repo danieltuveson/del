@@ -48,6 +48,24 @@ void linkedlist_prepend(struct LinkedList *ll, void *value)
     }
 }
 
+void *linkedlist_pop(struct LinkedList *ll)
+{
+    if (linkedlist_is_empty(ll)) {
+        return NULL;
+    }
+    void *value = ll->tail->value;
+    if (ll->head == ll->tail) {
+        ll->head = NULL;
+        ll->tail = NULL;
+    } else {
+        struct LinkedListNode *newtail = ll->tail->prev;
+        newtail->next = NULL;
+        ll->tail = newtail;
+    }
+    ll->length--;
+    return value;
+}
+
 void linkedlist_reverse(struct LinkedList **ll_ptr)
 {
     if ((*ll_ptr)->head == NULL) {
@@ -78,3 +96,4 @@ void linkedlist_print(struct LinkedList *ll, void (*printer)(void *))
     }
     printf(" ]\n");
 }
+
