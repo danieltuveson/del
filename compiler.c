@@ -204,6 +204,28 @@ static void compile_constructor(struct Globals *globals, struct Constructor *con
     compile_heap(globals, 0, 2 * constructor->funcall->args->length);
 }
 
+// struct GetProperty {
+//     enum LValueType type;
+//     struct Value *accessor;
+//     union {
+//         Symbol property;
+//         struct Value *index;
+//     };
+// };
+static void compile_get_property(struct Globals *globals, struct GetProperty *get)
+{
+    if (get->type == LV_INDEX) {
+        printf("Not implemented\n");
+        assert(false);
+    }
+    compile_value(globals, get->accessor);
+    struct Class *cls = lookup_class(globals->cc->class_table, get->accessor->type);
+    uint64_t index = lookup_property_index(cls, get->property);
+    push(globals);
+    load_offset(globals, index);
+    load_opcode(globals, GET_HEAP);
+}
+
     // load(globals, GET_LOCAL);
     // load(globals, offset);
 static void compile_get(struct Globals *globals, struct Accessor *get)
@@ -333,6 +355,12 @@ static void compile_value(struct Globals *globals, struct Value *val)
             break;
         case VTYPE_GET:
             compile_get(globals, val->get);
+            break;
+        case VTYPE_GET_LOCAL:
+            compile_get_local(globals, val->get_local->scope_offset);
+            break;
+        case VTYPE_GET_PROPERTY:
+            compile_get_property(globals, val->get_property);
             break;
         case VTYPE_BUILTIN_CONSTRUCTOR:
             compile_builtin_constructor(globals, val->constructor);
@@ -554,6 +582,11 @@ static void compile_for(struct Globals *globals, struct For *for_stmt)
 static void compile_statement(struct Globals *globals, struct Statement *stmt)
 {
     switch (stmt->type) {
+        case STMT_SET_LOCAL:
+            compile_value(globals, stmt->set_local->expr);
+            compile_set_local(globals, stmt->set_local->def->scope_offset);
+            if (stmt->set_local->is_define) load_opcode(globals, DEFINE);
+            break;
         case STMT_SET:
             compile_set(globals, stmt->set);
             break;

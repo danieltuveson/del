@@ -29,6 +29,7 @@ enum TokenType {
     ST_NULL,
     ST_CLASS,
     ST_RETURN,
+    ST_BREAK,
     ST_PLUS,
     ST_MINUS,
     ST_STAR,

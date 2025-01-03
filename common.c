@@ -33,12 +33,12 @@ void init_symbol_table(struct Globals *globals)
     add_symbol("read");
     add_symbol("concat");
     add_symbol("Array");
-    
+
     // Builtin methods 
     add_symbol("constructor");
-    
-    // Generics
-    add_symbol("Array");
+
+    // Reserved variable names
+    add_symbol("self");
 }
 #undef add_symbol
 

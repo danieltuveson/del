@@ -26,7 +26,10 @@ enum ValueType {
     VTYPE_BUILTIN_FUNCALL,
     VTYPE_CONSTRUCTOR,
     VTYPE_BUILTIN_CONSTRUCTOR,
-    VTYPE_GET
+    VTYPE_GET,
+    // Will replace VTYPE_GET with these
+    VTYPE_GET_LOCAL,
+    VTYPE_GET_PROPERTY
 };
 
 enum OperatorType {
@@ -79,6 +82,7 @@ struct TopLevelDecl {
 struct FunCall {
     // Symbol funname;
     struct Accessor *access;
+    // struct Value *access;
     Values *args;
 };
 
@@ -131,6 +135,9 @@ struct Value {
         struct Constructor *constructor;
         struct Accessor *get;
         struct MethodCall *method_call;
+        // New values to replace get
+        struct Definition *get_local;
+        struct GetProperty *get_property;
     };
 };
 
@@ -166,8 +173,9 @@ struct ForEach {
 
 enum StatementType {
     STMT_LET,
-    STMT_SET,
-    STMT_GET,
+    STMT_SET, // Old, will get rid of this slowly
+    STMT_SET_LOCAL,
+    STMT_SET_PROPERTY,
     STMT_IF,
     STMT_WHILE,
     STMT_FOR,
@@ -175,6 +183,26 @@ enum StatementType {
     STMT_FUNCALL,
     STMT_BUILTIN_FUNCALL,
     STMT_RETURN
+};
+
+struct GetProperty {
+    enum LValueType type;
+    struct Value *accessor;
+    union {
+        Symbol property;
+        struct Value *index;
+    };
+};
+
+struct SetLocal {
+    bool is_define;
+    struct Definition *def;
+    struct Value *expr;
+};
+
+struct SetProperty {
+    struct GetProperty *access;
+    struct Value *expr;
 };
 
 struct Statement {
@@ -188,11 +216,15 @@ struct Statement {
         struct ForEach *for_each;
         struct FunCall *funcall;
         struct Value *ret;
+        // Need to replace old sets with these
+        struct SetLocal *set_local;
+        struct SetProperty *set_property;
     };
 };
 
 /* Misc. helper functions */
 struct Definition *lookup_property(struct Class *cls, Symbol name);
+struct FunDef *lookup_method(struct Class *cls, Symbol name);
 uint64_t lookup_property_index(struct Class *cls, Symbol name);
 struct Accessor *new_accessor(struct Globals *globals, Symbol symbol, LValues *lvalues);
 
@@ -205,8 +237,11 @@ struct FunDef *new_fundef(struct Globals *globals, Symbol symbol, Type rettype,
         Definitions *args, Statements *stmts);
 
 /* Statement constructors */
+struct Statement *new_stmt(struct Globals *globals, enum StatementType st);
 struct Statement *new_set(struct Globals *globals, Symbol symbol, struct Value *val,
         LValues *lvalues, bool is_define);
+struct Statement *new_set_local(struct Globals *globals, Symbol variable, struct Value *val,
+        bool is_define);
 struct Statement *new_if(struct Globals *globals, struct Value *condition, Statements *if_stmts);
 struct Statement *add_elseif(struct Globals *globals, struct IfStatement *if_stmt,
         struct Statement *elseif_stmt);
@@ -219,6 +254,8 @@ struct Definition *new_define(struct Globals *globals, Symbol name, Type type);
 struct Statement *new_sfuncall(struct Globals *globals, struct Accessor *access, Values *args,
         bool is_builtin);
 struct Statement *new_return(struct Globals *globals, struct Value *val);
+struct Statement *new_set_property(struct Globals *globals, struct Value *accessor, Symbol property,
+        struct Value *val);
 
 /* Value constructors */
 struct Value *new_string(struct Globals *globals, char *string);
@@ -230,8 +267,11 @@ struct Value *new_vfuncall(struct Globals *globals, struct Accessor *access, Val
         bool is_builtin);
 struct Value *new_constructor(struct Globals *globals, struct Accessor *access,
         Types *types, Values *args, bool is_builtin);
-struct Value *new_get(struct Globals *globals, Symbol symbol, LValues *lvalues);
+// struct Value *new_get(struct Globals *globals, Symbol symbol, LValues *lvalues);
 struct Value *new_expr(struct Globals *globals, struct Expr *expr);
+struct Value *new_get_local(struct Globals *globals, Symbol variable);
+struct Value *new_get_property(struct Globals *globals, struct Value *accessor, Symbol property);
+
 struct LValue *new_property(struct Globals *globals, Symbol property);
 struct LValue *new_index(struct Globals *globals, struct Value *index);
 

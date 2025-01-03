@@ -35,6 +35,17 @@ struct Definition *lookup_property(struct Class *cls, Symbol name)
     return NULL;
 }
 
+struct FunDef *lookup_method(struct Class *cls, Symbol name)
+{
+    linkedlist_foreach(lnode, cls->methods->head) {
+        struct FunDef *method = ((struct TopLevelDecl *)lnode->value)->fundef;
+        if (method->name == name) {
+            return method;
+        }
+    }
+    return NULL;
+}
+
 // Code assumes that property name does exist
 uint64_t lookup_property_index(struct Class *cls, Symbol name)
 {
@@ -50,6 +61,16 @@ uint64_t lookup_property_index(struct Class *cls, Symbol name)
     return 0;
 }
 
+static struct GetProperty *new_get_property_access(struct Globals *globals, struct Value *accessor,
+        Symbol property)
+{
+    struct GetProperty *get = allocator_malloc(globals->allocator, sizeof(struct GetProperty));
+    get->type = LV_PROPERTY;
+    get->accessor = accessor;
+    get->property = property;
+    return get;
+}
+
 struct Accessor *new_accessor(struct Globals *globals, Symbol symbol, LValues *lvalues)
 {
     struct Accessor *accessor = allocator_malloc(globals->allocator, sizeof(struct Accessor));
@@ -58,7 +79,8 @@ struct Accessor *new_accessor(struct Globals *globals, Symbol symbol, LValues *l
     return accessor;
 }
 
-struct FunDef *new_fundef(struct Globals *globals, Symbol symbol, Type rettype, Definitions *args, Statements *stmts)
+struct FunDef *new_fundef(struct Globals *globals, Symbol symbol, Type rettype,
+        Definitions *args, Statements *stmts)
 {
     struct FunDef *fundef = allocator_malloc(globals->allocator, sizeof(struct FunDef));
     fundef->name = symbol;
@@ -79,14 +101,45 @@ struct TopLevelDecl *new_tld_fundef(struct Globals *globals, Symbol symbol, Type
 }
 
 /* Functions to create Statements */
-static struct Statement *new_stmt(struct Globals *globals, enum StatementType st)
+struct Statement *new_stmt(struct Globals *globals, enum StatementType st)
 {
     struct Statement *stmt = allocator_malloc(globals->allocator, sizeof(struct Statement));
     stmt->type = st;
     return stmt;
 }
 
-struct Statement *new_set(struct Globals *globals, Symbol symbol, struct Value *val, LValues *lvalues, bool is_define)
+struct Statement *new_set_local(struct Globals *globals, Symbol variable, struct Value *val,
+        bool is_define)
+{
+    struct Statement *stmt = new_stmt(globals, STMT_SET_LOCAL);
+    stmt->set_local = allocator_malloc(globals->allocator, sizeof(struct Set));
+    stmt->set_local->is_define = is_define;
+    stmt->set_local->def = new_define(globals, variable, TYPE_UNDEFINED);
+    stmt->set_local->expr = val;
+    return stmt;
+}
+
+// struct GetProperty {
+//     enum LValueType type;
+//     struct Value *accessor;
+//     union {
+//         Symbol property;
+//         struct Value *index;
+//     };
+// };
+
+struct Statement *new_set_property(struct Globals *globals, struct Value *accessor, Symbol property,
+        struct Value *val)
+{
+    struct Statement *stmt = new_stmt(globals, STMT_SET_PROPERTY);
+    stmt->set_property = allocator_malloc(globals->allocator, sizeof(struct SetProperty));
+    stmt->set_property->access = new_get_property_access(globals, accessor, property);
+    stmt->set_property->expr = val;
+    return stmt;
+}
+
+struct Statement *new_set(struct Globals *globals, Symbol symbol, struct Value *val,
+        LValues *lvalues, bool is_define)
 {
     struct Statement *stmt = new_stmt(globals, STMT_SET);
     stmt->set = allocator_malloc(globals->allocator, sizeof(struct Set));
@@ -243,6 +296,20 @@ struct Value *new_constructor(struct Globals *globals, struct Accessor *access,
     val->constructor = allocator_malloc(globals->allocator, sizeof(struct Constructor));
     val->constructor->types = types;
     val->constructor->funcall = new_funcall(globals, access, args);
+    return val;
+}
+
+struct Value *new_get_local(struct Globals *globals, Symbol variable)
+{
+    struct Value *val = new_value(globals, VTYPE_GET_LOCAL, TYPE_UNDEFINED);
+    val->get_local = new_define(globals, variable, TYPE_UNDEFINED);
+    return val;
+}
+
+struct Value *new_get_property(struct Globals *globals, struct Value *accessor, Symbol property)
+{
+    struct Value *val = new_value(globals, VTYPE_GET_PROPERTY, TYPE_UNDEFINED);
+    val->get_property = new_get_property_access(globals, accessor, property);
     return val;
 }
 

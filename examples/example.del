@@ -2,27 +2,11 @@ class Range {
     start: int;
     end: int;
     label: string;
-    function stuff(): int {
-        println("this is a method");
-        let x  = oirwjgowirjgwr;
-        return 4;
-    }
-    function morestuff(thing: int) {
-        println("this is also a method");
-        return;
-    }
-}
-
-class OnlyFuncs {
-    i : int;
-    function dostuff(stuff: int) {
-        return;
-    }
 }
 
 function sum(r : Range) : int {
     let sum = 0;
-    for (let i = r.start; i <= r.end; i++) {
+    for (let i = r.start; i <= r.end; i = i + 1) {
         print(sum, " + ", i, " = ");
         sum = sum + i;
         println(sum);
@@ -32,7 +16,6 @@ function sum(r : Range) : int {
 
 function main() {
     let range = new Range(1, 5, "1 to 5");
-    // range.stuff();
     let sum = sum(range);
     println("The sum of ", range.label, " is: ", sum);
 }

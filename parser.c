@@ -18,6 +18,7 @@ struct ExprPair {
 
 // Forward declarations
 static struct Value *parse_subexpr(struct Globals *globals);
+static struct Value *parse_unaryexpr(struct Globals *globals);
 static struct Statement *parse_statement(struct Globals *globals);
 static Type parse_type(struct Globals *globals);
 
@@ -141,6 +142,10 @@ static struct ExprPair multexpr_pairs[] = {
     { ST_STAR,  bin_star }, { ST_SLASH, bin_slash }, { ST_PERCENT, bin_percent },
 };
 
+// static struct ExprPair dotexpr_pairs[] = {
+//     { ST_DOT, bin_dot }, // { ST_OPEN_BRACKET, bin_bracket },
+// };
+
 // static struct ExprPair highest_expr_pairs[] = {
 //     { ST_DOT, bin_dot },
 //     // { ST_INDEX, bin_index },
@@ -148,9 +153,14 @@ static struct ExprPair multexpr_pairs[] = {
 //     // { ST_DEC, bin_dec },
 // };
 
+// static inline struct Value *parse_dotexpr(struct Globals *globals)
+// {
+//     return parse_binexp(globals, parse_subexpr, dotexpr_pairs);
+// }
+
 static inline struct Value *parse_multexpr(struct Globals *globals)
 {
-    return parse_binexp(globals, parse_subexpr, multexpr_pairs);
+    return parse_binexp(globals, parse_unaryexpr, multexpr_pairs);
 }
 
 static inline struct Value *parse_addexpr(struct Globals *globals)
@@ -269,35 +279,35 @@ static struct Value *parse_constructor(struct Globals *globals, Symbol symbol)
     return NULL;
 }
 
-static struct Value *parse_get(struct Globals *globals, Symbol symbol)
+static struct Value *parse_property_access(struct Globals *globals, struct Value *val)
 {
-    struct LinkedList *lvalues = linkedlist_new(globals->allocator);
+    struct LinkedListNode *old_head = globals->parser;
     while (true) {
-        if (match(globals, ST_DOT)) {
-            struct LinkedListNode *old_head = globals->parser;
+        if (match(globals, ST_OPEN_PAREN)) {
+            if (val->vtype != VTYPE_GET_LOCAL) {
+                printf("Error: accessor to function or classes not implemented\n");
+                assert(false);
+            }
+            Symbol funname = val->get_local->name;
+            struct Accessor *a = new_accessor(globals, funname, linkedlist_new(globals->allocator));
+            val = parse_vfuncall(globals, a, new_vfuncall);
+        } else if (match(globals, ST_DOT)) {
             if (!match(globals, T_SYMBOL)) {
                 error_parser(globals, "Expected property or method name");
                 return NULL;
             }
-            Symbol prop = nth_token(old_head, 1)->symbol;
-            linkedlist_append(lvalues, new_property(globals, prop));
+            Symbol property = nth_token(old_head, 2)->symbol;
+            val = new_get_property(globals, val, property);
         } else if (match(globals, ST_OPEN_BRACKET)) {
-            struct Value *expr = parse_expr(globals);
-            if (expr == NULL) {
-                return NULL;
-            } else if (!match(globals, ST_CLOSE_BRACKET)) {
-                error_parser(globals, "Expected closing bracket in accessor");
-                return NULL;
-            }
-            linkedlist_append(lvalues, new_index(globals, expr));
+            printf("Error: indexed property access not yet implemented\n");
+            assert(false);
         } else {
             break;
         }
     }
-    return new_get(globals, symbol, lvalues);
+    return val;
 }
 
-// TODO: Add options for method call
 static struct Value *parse_subexpr(struct Globals *globals)
 {
     if (globals->parser == NULL) {
@@ -318,26 +328,19 @@ static struct Value *parse_subexpr(struct Globals *globals)
         return new_boolean(globals, 0);
     } else if (match(globals, ST_NULL)) {
         return new_null(globals);
-    } else if (match(globals, ST_PLUS) && (val = parse_subexpr(globals))) {
-        return new_expr(globals, unary_plus(globals, val));
-    } else if (match(globals, ST_MINUS) && (val = parse_subexpr(globals))) {
-        return new_expr(globals, unary_minus(globals, val));
+    // } else if (match(globals, ST_INC)) {
+    //     Symbol symbol = nth_token(old_head, 1)->symbol;
+    //     return new_increment(globals, symbol, lvalues, 1);
+    // } else if (match(globals, ST_DEC)) {
+    //     Symbol symbol = nth_token(old_head, 1)->symbol;
+    //     return new_increment(globals, symbol, lvalues, -1);
     } else if (match(globals, ST_OPEN_PAREN) && (val = parse_expr(globals))
             && match(globals, ST_CLOSE_PAREN)) {
-        return val;
+        return parse_property_access(globals, val);
     } else if (match(globals, T_SYMBOL)) {
-        Symbol symbol = nth_token(old_head, 1)->symbol;
-        if (match(globals, ST_OPEN_PAREN)) {
-            struct Accessor *a =
-                new_accessor(globals, symbol, linkedlist_new(globals->allocator));
-            return parse_vfuncall(globals, a, new_vfuncall);
-        // } else if (parser_peek(parser, ST_DOT) || parser_peek(parser, ST_OPEN_BRACKET)) {
-        } else { // if (parser_peek(parser, ST_DOT) || parser_peek(parser, ST_OPEN_BRACKET)) {
-            return parse_get(globals, symbol);
-        }
-        // } else {
-        //     return new_symbol(symbol);
-        // }
+        Symbol variable = nth_token(old_head, 1)->symbol;
+        val = new_get_local(globals, variable);
+        return parse_property_access(globals, val);
     } else if (match(globals, ST_NEW) && match(globals, T_SYMBOL)) {
         return parse_constructor(globals, nth_token(old_head, 2)->symbol);
     }
@@ -345,24 +348,45 @@ static struct Value *parse_subexpr(struct Globals *globals)
     return NULL;
 }
 
-static struct Statement *parse_sfuncall(struct Globals *globals, struct Accessor *access,
-    struct Statement *func(struct Globals *, struct Accessor *, Values *, bool))
+static struct Value *parse_unaryexpr(struct Globals *globals)
 {
-    struct Statement *stmt;
-    bool builtin = is_builtin(access->definition->name);
-    parse_call(globals, stmt, access, func, builtin);
-    return stmt;
+    struct Value *val = NULL;
+    if (match(globals, ST_PLUS) && (val = parse_subexpr(globals))) {
+        return new_expr(globals, unary_plus(globals, val));
+    } else if (match(globals, ST_MINUS) && (val = parse_subexpr(globals))) {
+        return new_expr(globals, unary_minus(globals, val));
+    }
+    // else if (match(globals, ST_NOT) && (val = parse_subexpr) etc...
+    return parse_subexpr(globals);
 }
 
-static struct Statement *parse_set(struct Globals *globals, Symbol symbol, LValues *lvalues,
-    bool is_define)
-{
-    struct Value *expr;
-    if ((expr = parse_expr(globals))) {
-        return new_set(globals, symbol, expr, lvalues, is_define);
-    }
-    return NULL;
-}
+// static struct Statement *parse_sfuncall(struct Globals *globals, struct Accessor *access,
+//     struct Statement *func(struct Globals *, struct Accessor *, Values *, bool))
+// {
+//     struct Statement *stmt;
+//     bool builtin = is_builtin(access->definition->name);
+//     parse_call(globals, stmt, access, func, builtin);
+//     return stmt;
+// }
+// 
+// static struct Statement *parse_set_local(struct Globals *globals, Symbol symbol, bool is_define)
+// {
+//     struct Value *expr;
+//     if ((expr = parse_expr(globals))) {
+//         return new_set_local(globals, symbol, expr, is_define);
+//     }
+//     return NULL;
+// }
+// 
+// static struct Statement *parse_set(struct Globals *globals, Symbol symbol, LValues *lvalues,
+//     bool is_define)
+// {
+//     struct Value *expr;
+//     if ((expr = parse_expr(globals))) {
+//         return new_set(globals, symbol, expr, lvalues, is_define);
+//     }
+//     return NULL;
+// }
 
 static Definitions *parse_symbols(struct Globals *globals)
 {
@@ -380,62 +404,60 @@ static Definitions *parse_symbols(struct Globals *globals)
     return defs;
 }
 
-static struct Statement *new_increment(struct Globals *globals, Symbol symbol,
-        struct LinkedList *lvalues, int number)
-{
-    struct Value *get = new_get(globals, symbol, lvalues);
-    struct Value *one = new_integer(globals, number);
-    struct Value *expr = new_expr(globals, bin_plus(globals, get, one));
-    return new_set(globals, symbol, expr, lvalues, false);
-}
+// static struct Statement *new_increment(struct Globals *globals, struct Value *val, int number)
+// {
+//     struct Value *get = new_get(globals, symbol, lvalues);
+//     struct Value *one = new_integer(globals, number);
+//     struct Value *expr = new_expr(globals, bin_plus(globals, get, one));
+//     return new_set(globals, symbol, expr, lvalues, false);
+// }
 
 // accessors: accessor accessors { $$ = append($2, $1); }
 //          | accessor ST_EQ { $$ = new_list($1); }
 // 
 // accessor: ST_DOT T_SYMBOL { $$ = new_property($2); }
 //         | ST_OPEN_BRACKET T_INT ST_CLOSE_BRACKET { $$ = new_index(new_integer($2)); }
-// TODO: Add options for method call
-static struct Statement *parse_lhs(struct Globals *globals, Symbol symbol)
-{
-    struct LinkedList *lvalues = linkedlist_new(globals->allocator);
-    while (true) {
-        if (match(globals, ST_EQ)) {
-            return parse_set(globals, symbol, lvalues, false);
-        } else if (match(globals, ST_OPEN_PAREN)) {
-            // assert("TODO: update parse_sfuncall to accept accessors" && false);
-            // return NULL;
-            struct Accessor *a =
-                new_accessor(globals, symbol, linkedlist_new(globals->allocator));
-            return parse_sfuncall(globals, a, new_sfuncall);
-        } else if (match(globals, ST_INC)) {
-            return new_increment(globals, symbol, lvalues, 1);
-        } else if (match(globals, ST_DEC)) {
-            return new_increment(globals, symbol, lvalues, -1);
-        }
-        if (match(globals, ST_DOT)) {
-            struct LinkedListNode *old_head = globals->parser;
-            if (!match(globals, T_SYMBOL)) {
-                error_parser(globals, "Expected property or method name");
-                return NULL;
-            }
-            Symbol prop = nth_token(old_head, 1)->symbol;
-            linkedlist_append(lvalues, new_property(globals, prop));
-        } else if (match(globals, ST_OPEN_BRACKET)) {
-            struct Value *expr = parse_expr(globals);
-            if (expr == NULL) {
-                return NULL;
-            } else if (!match(globals, ST_CLOSE_BRACKET)) {
-                error_parser(globals, "Expected closing bracket in accessor");
-                return NULL;
-            }
-            linkedlist_append(lvalues, new_index(globals, expr));
-        } else {
-            break;
-        }
-    }
-    error_parser(globals, "Unexpected value in accessor");
-    return NULL;
-}
+// static struct Statement *parse_lhs(struct Globals *globals, Symbol symbol)
+// {
+//     struct LinkedList *lvalues = linkedlist_new(globals->allocator);
+//     while (true) {
+//         if (match(globals, ST_EQ)) {
+//             return parse_set(globals, symbol, lvalues, false);
+//         } else if (match(globals, ST_OPEN_PAREN)) {
+//             // assert("TODO: update parse_sfuncall to accept accessors" && false);
+//             // return NULL;
+//             struct Accessor *a =
+//                 new_accessor(globals, symbol, linkedlist_new(globals->allocator));
+//             return parse_sfuncall(globals, a, new_sfuncall);
+//         } else if (match(globals, ST_INC)) {
+//             return new_increment(globals, symbol, lvalues, 1);
+//         } else if (match(globals, ST_DEC)) {
+//             return new_increment(globals, symbol, lvalues, -1);
+//         }
+//         if (match(globals, ST_DOT)) {
+//             struct LinkedListNode *old_head = globals->parser;
+//             if (!match(globals, T_SYMBOL)) {
+//                 error_parser(globals, "Expected property or method name");
+//                 return NULL;
+//             }
+//             Symbol prop = nth_token(old_head, 1)->symbol;
+//             linkedlist_append(lvalues, new_property(globals, prop));
+//         } else if (match(globals, ST_OPEN_BRACKET)) {
+//             struct Value *expr = parse_expr(globals);
+//             if (expr == NULL) {
+//                 return NULL;
+//             } else if (!match(globals, ST_CLOSE_BRACKET)) {
+//                 error_parser(globals, "Expected closing bracket in accessor");
+//                 return NULL;
+//             }
+//             linkedlist_append(lvalues, new_index(globals, expr));
+//         } else {
+//             break;
+//         }
+//     }
+//     error_parser(globals, "Unexpected value in accessor");
+//     return NULL;
+// }
 
 static struct Statement *parse_line(struct Globals *globals)
 {
@@ -444,19 +466,28 @@ static struct Statement *parse_line(struct Globals *globals)
         return NULL;
     }
     struct LinkedListNode *old_head = globals->parser;
-    if (match(globals, T_SYMBOL)) {
-        Symbol symbol = nth_token(old_head, 1)->symbol;
-        return parse_lhs(globals, symbol);
-    } else if (match(globals, ST_LET)) {
+    // if (match(globals, T_SYMBOL)) {
+    //     Symbol symbol = nth_token(old_head, 1)->symbol;
+    //     return parse_lhs(globals, symbol);
+    //} else
+    if (match(globals, ST_LET)) {
         Definitions *defs = NULL;
         enum TokenType matches[] = { T_SYMBOL, ST_EQ };
         if (match_multiple(globals, matches)) {
             Symbol symbol = nth_token(old_head, 2)->symbol;
-            return parse_set(globals, symbol, linkedlist_new(globals->allocator), true);
+            // return parse_set_local(globals, symbol, true);
+            struct Value *expr;
+            if ((expr = parse_expr(globals))) {
+                return new_set_local(globals, symbol, expr, true);
+            }
+            return NULL;
         } else if ((defs = parse_symbols(globals))) {
             return new_let(globals, defs);
         }
         return NULL;
+    } else if (match(globals, ST_BREAK)) {
+        printf("Break statement not implemented\n");
+        assert(false);
     } else if (match(globals, ST_RETURN)) {
         struct Value *expr = NULL;
         if (parser_peek(globals, ST_SEMICOLON)) {
@@ -466,7 +497,47 @@ static struct Statement *parse_line(struct Globals *globals)
         }
         return NULL;
     }
-    error_parser(globals, "Unexpected token in statement");
+    struct Value *val = parse_expr(globals);
+    if (!val) {
+        return NULL;
+    }
+    struct Statement *stmt = NULL;
+    switch (val->vtype) {
+        case VTYPE_GET_LOCAL:
+            if (match(globals, ST_EQ)) {
+                struct Value *rhs = parse_expr(globals);
+                if (!rhs) {
+                    return NULL;
+                }
+                return new_set_local(globals, val->get_local->name, rhs, false);
+            }
+            break;
+        case VTYPE_GET_PROPERTY:
+            if (match(globals, ST_EQ)) {
+                struct Value *rhs = parse_expr(globals);
+                if (!rhs) {
+                    return NULL;
+                }
+                struct GetProperty *get = val->get_property;
+                if (get->type == LV_INDEX) {
+                    printf("Error: not implemented\n");
+                    assert(false);
+                }
+                return new_set_property(globals, get->accessor, get->property, rhs);
+            }
+            break;
+        case VTYPE_FUNCALL:
+            stmt = new_stmt(globals, STMT_FUNCALL);
+            stmt->funcall = val->funcall;
+            return stmt;
+        case VTYPE_BUILTIN_FUNCALL:
+            stmt = new_stmt(globals, STMT_BUILTIN_FUNCALL);
+            stmt->funcall = val->funcall;
+            return stmt;
+        default:
+            break;
+    }
+    error_parser(globals, "Expected a statement but got an expression");
     return NULL;
 }
 

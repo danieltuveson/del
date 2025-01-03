@@ -73,10 +73,13 @@ typedef uint64_t Type;
 /* Builtin methods */
 #define BUILTIN_CONSTRUCTOR UINT64_C(11)
 
-#define BUILTIN_FIRST BUILTIN_PRINT
-#define BUILTIN_LAST BUILTIN_CONSTRUCTOR
+/* Builtin variables */
+#define BUILTIN_SELF UINT64_C(12)
 
-static inline bool is_object(Type val) { return val > BUILTIN_LAST; }
+#define BUILTIN_FIRST BUILTIN_PRINT
+#define BUILTIN_LAST BUILTIN_SELF
+
+static inline bool is_object(Type val) { return val > BUILTIN_LAST || BUILTIN_ARRAY; }
 
 /* List functions */
 void init_symbol_table(struct Globals *globals);
