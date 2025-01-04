@@ -352,6 +352,32 @@ static void print_funcall(struct Globals *globals, Symbol funname, Values *vals)
     printf(")");
 }
 
+static void print_get_property(struct Globals *globals, struct GetProperty *get)
+{
+    print_value(globals, get->accessor);
+    switch (get->type) {
+    case LV_PROPERTY:
+        printf(".%s", lookup_symbol(globals, get->property));
+        break;
+    case LV_INDEX:
+        printf("[");
+        print_value(globals, get->index);
+        printf("]");
+        break;
+    }
+    /*
+struct GetProperty {
+    enum LValueType type;
+    struct Value *accessor;
+    union {
+        Symbol property;
+        struct Value *index;
+    };
+};
+*/
+    return;
+}
+
 static void print_get(struct Globals *globals, struct Accessor *get)
 {
     printf("%s", lookup_symbol(globals, get->definition->name));
@@ -402,6 +428,12 @@ void print_value(struct Globals *globals, struct Value *val)
     case VTYPE_GET:
         print_get(globals, val->get);
         break;
+    case VTYPE_GET_LOCAL:
+        printf("%s", lookup_symbol(globals, val->get_local->name));
+        break;
+    case VTYPE_GET_PROPERTY:
+        print_get_property(globals, val->get_property);
+        break;
     default:
         assert("Error, not implemented" && false);
         break;
@@ -439,6 +471,13 @@ static void print_definitions(struct Globals *globals, struct LinkedList *lst, c
     //     }
     //     lst = lst->next;
     // }
+}
+static void print_set_property(struct Globals *globals, struct SetProperty *set)
+{
+    print_get_property(globals, set->access);
+    printf(" = ");
+    print_value(globals, set->expr);
+    printf(";");
 }
 
 static void print_set(struct Globals *globals, struct Set *set)
@@ -552,6 +591,17 @@ static void print_statement_indent(struct Globals *globals, struct Statement *st
                 }
             }
             printf(");");
+            break;
+        case STMT_SET_LOCAL:
+            if (stmt->set_local->is_define) {
+                printf("let ");
+            }
+            printf("%s = ", lookup_symbol(globals, stmt->set_local->def->name));
+            print_value(globals, stmt->set_local->expr);
+            printf(";");
+            break;
+        case STMT_SET_PROPERTY:
+            print_set_property(globals, stmt->set_property);
             break;
         default:
             assert("Error, not implemented" && false);

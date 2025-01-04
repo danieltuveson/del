@@ -98,9 +98,9 @@ static bool read_and_compile(struct Vector **instructions_ptr, Allocator allocat
     printf("\n");
     printf("````````````` INSTRUCTIONS `````````````\n");
     printf("function table:\n");
-    print_ft(&globals, cc.funcall_table);
+    print_ft(&globals, globals.cc->funcall_table);
     printf("\n");
-    print_instructions(cc.instructions);
+    print_instructions(globals.cc->instructions);
     printf("\n");
 #endif
     // print_instructions(cc.instructions);

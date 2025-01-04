@@ -1,7 +1,18 @@
+class Bing {
+    ting: int;
+}
+
+class Thing {
+    whing : int;
+    ding : string;
+    bing : Bing;
+}
+
 class Range {
     start: int;
     end: int;
     label: string;
+    thing: Thing;
 }
 
 function sum(r : Range) : int {
@@ -15,7 +26,11 @@ function sum(r : Range) : int {
 }
 
 function main() {
-    let range = new Range(1, 5, "1 to 5");
+    let range = new Range(1, 5, "1 to 5", new Thing(99, "stringggg", new Bing(50)));
+    range.thing = new Thing(100, "ding!", new Bing(49));
+    println("range.thing.bing.ting: ", range.thing.bing.ting);
+    range.thing.bing.ting = 100000000;
+    println("range.thing.bing.ting: ", range.thing.bing.ting);
     let sum = sum(range);
     println("The sum of ", range.label, " is: ", sum);
 }

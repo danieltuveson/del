@@ -281,8 +281,8 @@ static struct Value *parse_constructor(struct Globals *globals, Symbol symbol)
 
 static struct Value *parse_property_access(struct Globals *globals, struct Value *val)
 {
-    struct LinkedListNode *old_head = globals->parser;
     while (true) {
+        struct LinkedListNode *old_head = globals->parser;
         if (match(globals, ST_OPEN_PAREN)) {
             if (val->vtype != VTYPE_GET_LOCAL) {
                 printf("Error: accessor to function or classes not implemented\n");

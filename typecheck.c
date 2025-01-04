@@ -552,6 +552,24 @@ static bool typecheck_set_local(struct Globals *globals, struct TypeCheckerConte
     return true;
 }
 
+static bool typecheck_set_property(struct Globals *globals, struct TypeCheckerContext *context,
+        struct SetProperty *set)
+{
+    if (set->access->property == LV_PROPERTY) {
+        printf("Not implemented");
+        assert(false);
+    }
+    Type type_get = typecheck_get_property(globals, context, set->access);
+    Type type_set = typecheck_value(globals, context, set->expr);
+    if (type_get != type_set) {
+        printf("Error: cannot set field of type %s to value of type %s\n",
+                lookup_symbol(globals, type_get),
+                lookup_symbol(globals, type_set));
+        return false;
+    }
+    return true;
+}
+
 static bool typecheck_set(struct Globals *globals, struct TypeCheckerContext *context,
         struct Set *set)
 {
@@ -637,7 +655,7 @@ static Type typecheck_get_property(struct Globals *globals, struct TypeCheckerCo
     }
     struct Definition *def = lookup_property(cls, get->property);
     if (def == NULL) {
-        printf("Error: %s instance has no property called '%s'\n",
+        printf("Error: object of type '%s' has no property called '%s'\n",
                 lookup_symbol(globals, type),
                 lookup_symbol(globals, get->property));
         return TYPE_UNDEFINED;
@@ -877,8 +895,8 @@ static bool typecheck_statement(struct Globals *globals, struct TypeCheckerConte
             ret = typecheck_set_local(globals, context, stmt->set_local);
             return ret;
         case STMT_SET_PROPERTY:
-            assert("Error, not implemented" && false);
-            break;
+            ret = typecheck_set_property(globals, context, stmt->set_property);
+            return ret;
         case STMT_SET:
             return typecheck_set(globals, context, stmt->set);
         case STMT_LET:

@@ -204,15 +204,8 @@ static void compile_constructor(struct Globals *globals, struct Constructor *con
     compile_heap(globals, 0, 2 * constructor->funcall->args->length);
 }
 
-// struct GetProperty {
-//     enum LValueType type;
-//     struct Value *accessor;
-//     union {
-//         Symbol property;
-//         struct Value *index;
-//     };
-// };
-static void compile_get_property(struct Globals *globals, struct GetProperty *get)
+// Being a little too cheeky with the name of this?
+static void compile_xet_property(struct Globals *globals, struct GetProperty *get)
 {
     if (get->type == LV_INDEX) {
         printf("Not implemented\n");
@@ -223,6 +216,11 @@ static void compile_get_property(struct Globals *globals, struct GetProperty *ge
     uint64_t index = lookup_property_index(cls, get->property);
     push(globals);
     load_offset(globals, index);
+}
+
+static void compile_get_property(struct Globals *globals, struct GetProperty *get)
+{
+    compile_xet_property(globals, get);
     load_opcode(globals, GET_HEAP);
 }
 
@@ -475,6 +473,27 @@ static void compile_expr(struct Globals *globals, struct Expr *expr)
     }
 }
 
+// struct GetProperty {
+//     enum LValueType type;
+//     struct Value *accessor;
+//     union {
+//         Symbol property;
+//         struct Value *index;
+//     };
+// };
+// 
+// struct SetProperty {
+//     struct GetProperty *access;
+//     struct Value *expr;
+// };
+
+static void compile_set_property(struct Globals *globals, struct SetProperty *set)
+{
+    compile_value(globals, set->expr);
+    compile_xet_property(globals, set->access);
+    load_opcode(globals, SET_HEAP);
+}
+
 static void compile_set(struct Globals *globals, struct Set *set)
 {
     compile_value(globals, set->val);
@@ -586,6 +605,9 @@ static void compile_statement(struct Globals *globals, struct Statement *stmt)
             compile_value(globals, stmt->set_local->expr);
             compile_set_local(globals, stmt->set_local->def->scope_offset);
             if (stmt->set_local->is_define) load_opcode(globals, DEFINE);
+            break;
+        case STMT_SET_PROPERTY:
+            compile_set_property(globals, stmt->set_property);
             break;
         case STMT_SET:
             compile_set(globals, stmt->set);
