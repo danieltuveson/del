@@ -103,7 +103,7 @@ struct TopLevelDecl *new_tld_fundef(struct Globals *globals, Symbol symbol, Type
 /* Functions to create Statements */
 struct Statement *new_stmt(struct Globals *globals, enum StatementType st)
 {
-    struct Statement *stmt = allocator_malloc(globals->allocator, sizeof(struct Statement));
+    struct Statement *stmt = allocator_malloc(globals->allocator, sizeof(*stmt));
     stmt->type = st;
     return stmt;
 }
@@ -112,40 +112,20 @@ struct Statement *new_set_local(struct Globals *globals, Symbol variable, struct
         bool is_define)
 {
     struct Statement *stmt = new_stmt(globals, STMT_SET_LOCAL);
-    stmt->set_local = allocator_malloc(globals->allocator, sizeof(struct Set));
+    stmt->set_local = allocator_malloc(globals->allocator, sizeof(*(stmt->set_local)));
     stmt->set_local->is_define = is_define;
     stmt->set_local->def = new_define(globals, variable, TYPE_UNDEFINED);
     stmt->set_local->expr = val;
     return stmt;
 }
 
-// struct GetProperty {
-//     enum LValueType type;
-//     struct Value *accessor;
-//     union {
-//         Symbol property;
-//         struct Value *index;
-//     };
-// };
-
 struct Statement *new_set_property(struct Globals *globals, struct Value *accessor, Symbol property,
         struct Value *val)
 {
     struct Statement *stmt = new_stmt(globals, STMT_SET_PROPERTY);
-    stmt->set_property = allocator_malloc(globals->allocator, sizeof(struct SetProperty));
+    stmt->set_property = allocator_malloc(globals->allocator, sizeof(*(stmt->set_property)));
     stmt->set_property->access = new_get_property_access(globals, accessor, property);
     stmt->set_property->expr = val;
-    return stmt;
-}
-
-struct Statement *new_set(struct Globals *globals, Symbol symbol, struct Value *val,
-        LValues *lvalues, bool is_define)
-{
-    struct Statement *stmt = new_stmt(globals, STMT_SET);
-    stmt->set = allocator_malloc(globals->allocator, sizeof(struct Set));
-    stmt->set->to_set = new_accessor(globals, symbol, lvalues);
-    stmt->set->is_define = is_define;
-    stmt->set->val = val;
     return stmt;
 }
 
@@ -310,13 +290,6 @@ struct Value *new_get_property(struct Globals *globals, struct Value *accessor, 
 {
     struct Value *val = new_value(globals, VTYPE_GET_PROPERTY, TYPE_UNDEFINED);
     val->get_property = new_get_property_access(globals, accessor, property);
-    return val;
-}
-
-struct Value *new_get(struct Globals *globals, Symbol symbol, LValues *lvalues)
-{
-    struct Value *val = new_value(globals, VTYPE_GET, TYPE_UNDEFINED);
-    val->get = new_accessor(globals, symbol, lvalues);
     return val;
 }
 

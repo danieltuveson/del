@@ -224,40 +224,6 @@ static void compile_get_property(struct Globals *globals, struct GetProperty *ge
     load_opcode(globals, GET_HEAP);
 }
 
-    // load(globals, GET_LOCAL);
-    // load(globals, offset);
-static void compile_get(struct Globals *globals, struct Accessor *get)
-{
-    if (linkedlist_is_empty(get->lvalues)) {
-        // load(globals, PUSH);
-        // load(globals, get->definition->name);
-        compile_get_local(globals, get->definition->scope_offset);
-        return;
-    } 
-    // compile_get_local(globals, get->definition->name);
-    compile_get_local(globals, get->definition->scope_offset);
-    Type parent_value_type = get->definition->type;
-    linkedlist_foreach(lnode, get->lvalues->head) {
-        struct Class *cls = lookup_class(globals->cc->class_table, parent_value_type);
-        struct LValue *lvalue = lnode->value;
-        switch (lvalue->lvtype) {
-            case LV_PROPERTY: {
-                uint64_t index = lookup_property_index(cls, lvalue->property);
-                push(globals);
-                load_offset(globals, index);
-                load_opcode(globals, GET_HEAP);
-                parent_value_type = lvalue->type;
-                break;
-            } default:
-                // handle this later
-                // struct Value *index;
-                printf("Error cannot compile array indexing\n");
-                assert(false);
-                return;
-        }
-    }
-}
-
 static void compile_print(struct Globals *globals, Values *args, bool has_newline)
 {
     linkedlist_foreach(lnode, args->head) {
@@ -350,9 +316,6 @@ static void compile_value(struct Globals *globals, struct Value *val)
             break;
         case VTYPE_CONSTRUCTOR:
             compile_constructor(globals, val->constructor);
-            break;
-        case VTYPE_GET:
-            compile_get(globals, val->get);
             break;
         case VTYPE_GET_LOCAL:
             compile_get_local(globals, val->get_local->scope_offset);
@@ -473,68 +436,11 @@ static void compile_expr(struct Globals *globals, struct Expr *expr)
     }
 }
 
-// struct GetProperty {
-//     enum LValueType type;
-//     struct Value *accessor;
-//     union {
-//         Symbol property;
-//         struct Value *index;
-//     };
-// };
-// 
-// struct SetProperty {
-//     struct GetProperty *access;
-//     struct Value *expr;
-// };
-
 static void compile_set_property(struct Globals *globals, struct SetProperty *set)
 {
     compile_value(globals, set->expr);
     compile_xet_property(globals, set->access);
     load_opcode(globals, SET_HEAP);
-}
-
-static void compile_set(struct Globals *globals, struct Set *set)
-{
-    compile_value(globals, set->val);
-    if (linkedlist_is_empty(set->to_set->lvalues)) {
-        compile_set_local(globals, set->to_set->definition->scope_offset);
-        if (set->is_define) load_opcode(globals, DEFINE);
-        return;
-    } 
-    // else {
-    //     printf("Error cannot compile property aglobalsess / index\n");
-    //     return;
-    // }
-    // compile_get_local(globals, set->to_set->definition->name);
-    compile_get_local(globals, set->to_set->definition->scope_offset);
-    Type parent_value_type = set->to_set->definition->type;
-    linkedlist_foreach(lnode, set->to_set->lvalues->head) {
-        struct Class *cls = lookup_class(globals->cc->class_table, parent_value_type);
-        struct LValue *lvalue = lnode->value;
-        switch (lvalue->lvtype) {
-            case LV_PROPERTY: {
-                uint64_t index = lookup_property_index(cls, lvalue->property);
-                // NOTE: refactor to not have lookup_property on class, write a generic list lookup function
-                if (lnode->next == NULL) {
-                    push(globals);
-                    load_offset(globals, index);
-                    load_opcode(globals, SET_HEAP);
-                } else {
-                    push(globals);
-                    load_offset(globals, index);
-                    load_opcode(globals, GET_HEAP);
-                }
-                parent_value_type = lvalue->type;
-                break;
-            } default:
-                // handle this later
-                // struct Value *index;
-                printf("Error cannot compile array indexing\n");
-                assert(false);
-                return;
-        }
-    }
 }
 
 static void compile_return(struct Globals *globals, struct Value *ret)
@@ -584,7 +490,8 @@ static void compile_loop(struct Globals *globals, struct Value *cond,
     push(globals);
     load_offset(globals, top_of_loop);
     load_opcode(globals, JMP);
-    globals->cc->instructions->values[old_offset].offset = globals->cc->instructions->length; // set JNE jump to go to end of loop
+    // set JNE jump to go to end of loop
+    globals->cc->instructions->values[old_offset].offset = globals->cc->instructions->length;
 }
 
 static void compile_while(struct Globals *globals, struct While *while_stmt)
@@ -608,9 +515,6 @@ static void compile_statement(struct Globals *globals, struct Statement *stmt)
             break;
         case STMT_SET_PROPERTY:
             compile_set_property(globals, stmt->set_property);
-            break;
-        case STMT_SET:
-            compile_set(globals, stmt->set);
             break;
         case STMT_RETURN:
             compile_return(globals, stmt->ret);
@@ -645,20 +549,6 @@ static void compile_statements(struct Globals *globals, Statements *stmts)
         compile_statement(globals, lnode->value);
     }
 }
-
-// static int compile_let(struct Globals *globals, Let *let, int offset)
-// {
-//     for (; let != NULL; let = let->next) {
-//         // TODO: check that value type is valid
-//         struct Definition *def = (struct Definition *) let->value;
-//         load(PUSH);
-//         load(0); // Initialize to 0
-//         load(PUSH);
-//         load(def->name);
-//         load(SET_LOCAL);
-//     }
-//     return offset;
-// }
 
 // static void compile_class(struct Globals *globals, struct Class *cls)
 // {

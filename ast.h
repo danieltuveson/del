@@ -26,8 +26,6 @@ enum ValueType {
     VTYPE_BUILTIN_FUNCALL,
     VTYPE_CONSTRUCTOR,
     VTYPE_BUILTIN_CONSTRUCTOR,
-    VTYPE_GET,
-    // Will replace VTYPE_GET with these
     VTYPE_GET_LOCAL,
     VTYPE_GET_PROPERTY
 };
@@ -80,9 +78,7 @@ struct TopLevelDecl {
 };
 
 struct FunCall {
-    // Symbol funname;
     struct Accessor *access;
-    // struct Value *access;
     Values *args;
 };
 
@@ -141,12 +137,6 @@ struct Value {
     };
 };
 
-struct Set {
-    bool is_define;
-    struct Accessor *to_set;
-    struct Value *val;
-};
-
 struct IfStatement {
     struct Value *condition;
     Statements *if_stmts;
@@ -173,7 +163,6 @@ struct ForEach {
 
 enum StatementType {
     STMT_LET,
-    STMT_SET, // Old, will get rid of this slowly
     STMT_SET_LOCAL,
     STMT_SET_PROPERTY,
     STMT_IF,
@@ -238,10 +227,10 @@ struct FunDef *new_fundef(struct Globals *globals, Symbol symbol, Type rettype,
 
 /* Statement constructors */
 struct Statement *new_stmt(struct Globals *globals, enum StatementType st);
-struct Statement *new_set(struct Globals *globals, Symbol symbol, struct Value *val,
-        LValues *lvalues, bool is_define);
 struct Statement *new_set_local(struct Globals *globals, Symbol variable, struct Value *val,
         bool is_define);
+struct Statement *new_set_property(struct Globals *globals, struct Value *accessor, Symbol property,
+        struct Value *val);
 struct Statement *new_if(struct Globals *globals, struct Value *condition, Statements *if_stmts);
 struct Statement *add_elseif(struct Globals *globals, struct IfStatement *if_stmt,
         struct Statement *elseif_stmt);
@@ -254,8 +243,6 @@ struct Definition *new_define(struct Globals *globals, Symbol name, Type type);
 struct Statement *new_sfuncall(struct Globals *globals, struct Accessor *access, Values *args,
         bool is_builtin);
 struct Statement *new_return(struct Globals *globals, struct Value *val);
-struct Statement *new_set_property(struct Globals *globals, struct Value *accessor, Symbol property,
-        struct Value *val);
 
 /* Value constructors */
 struct Value *new_string(struct Globals *globals, char *string);

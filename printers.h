@@ -16,6 +16,9 @@ void print_tlds(struct Globals *globals, TopLevelDecls *tlds);
 void print_fundef(struct Globals *globals, struct FunDef *fundef, int indent, int ismethod);
 // void print_class(struct Globals *globals, struct Class *cls, int indent);
 
+/* Typechecking printers */
+void print_scope(struct Globals *globals, struct Scope *scope);
+
 /* Compiler printers */
 void print_ft_node(struct Globals *globals, struct FunctionCallTableNode *fn);
 void print_ft(struct Globals *globals, struct FunctionCallTable *ft);

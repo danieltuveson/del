@@ -14,8 +14,14 @@ struct FunctionTable {
     struct FunDef *table;
 };
 
+struct Scope {
+    bool isfunction;
+    size_t varcount;
+    Definitions *definitions;
+    struct Scope *parent;
+};
+
 struct Class *lookup_class(struct ClassTable *ct, Symbol symbol);
-// void print_lhs(struct Globals *globals, Symbol symbol, LValues *lvalues, int n);
 bool typecheck(struct Globals *globals);
 
 #endif

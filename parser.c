@@ -142,22 +142,6 @@ static struct ExprPair multexpr_pairs[] = {
     { ST_STAR,  bin_star }, { ST_SLASH, bin_slash }, { ST_PERCENT, bin_percent },
 };
 
-// static struct ExprPair dotexpr_pairs[] = {
-//     { ST_DOT, bin_dot }, // { ST_OPEN_BRACKET, bin_bracket },
-// };
-
-// static struct ExprPair highest_expr_pairs[] = {
-//     { ST_DOT, bin_dot },
-//     // { ST_INDEX, bin_index },
-//     // { ST_INC, bin_inc },
-//     // { ST_DEC, bin_dec },
-// };
-
-// static inline struct Value *parse_dotexpr(struct Globals *globals)
-// {
-//     return parse_binexp(globals, parse_subexpr, dotexpr_pairs);
-// }
-
 static inline struct Value *parse_multexpr(struct Globals *globals)
 {
     return parse_binexp(globals, parse_unaryexpr, multexpr_pairs);
@@ -368,25 +352,6 @@ static struct Value *parse_unaryexpr(struct Globals *globals)
 //     parse_call(globals, stmt, access, func, builtin);
 //     return stmt;
 // }
-// 
-// static struct Statement *parse_set_local(struct Globals *globals, Symbol symbol, bool is_define)
-// {
-//     struct Value *expr;
-//     if ((expr = parse_expr(globals))) {
-//         return new_set_local(globals, symbol, expr, is_define);
-//     }
-//     return NULL;
-// }
-// 
-// static struct Statement *parse_set(struct Globals *globals, Symbol symbol, LValues *lvalues,
-//     bool is_define)
-// {
-//     struct Value *expr;
-//     if ((expr = parse_expr(globals))) {
-//         return new_set(globals, symbol, expr, lvalues, is_define);
-//     }
-//     return NULL;
-// }
 
 static Definitions *parse_symbols(struct Globals *globals)
 {
@@ -412,53 +377,6 @@ static Definitions *parse_symbols(struct Globals *globals)
 //     return new_set(globals, symbol, expr, lvalues, false);
 // }
 
-// accessors: accessor accessors { $$ = append($2, $1); }
-//          | accessor ST_EQ { $$ = new_list($1); }
-// 
-// accessor: ST_DOT T_SYMBOL { $$ = new_property($2); }
-//         | ST_OPEN_BRACKET T_INT ST_CLOSE_BRACKET { $$ = new_index(new_integer($2)); }
-// static struct Statement *parse_lhs(struct Globals *globals, Symbol symbol)
-// {
-//     struct LinkedList *lvalues = linkedlist_new(globals->allocator);
-//     while (true) {
-//         if (match(globals, ST_EQ)) {
-//             return parse_set(globals, symbol, lvalues, false);
-//         } else if (match(globals, ST_OPEN_PAREN)) {
-//             // assert("TODO: update parse_sfuncall to accept accessors" && false);
-//             // return NULL;
-//             struct Accessor *a =
-//                 new_accessor(globals, symbol, linkedlist_new(globals->allocator));
-//             return parse_sfuncall(globals, a, new_sfuncall);
-//         } else if (match(globals, ST_INC)) {
-//             return new_increment(globals, symbol, lvalues, 1);
-//         } else if (match(globals, ST_DEC)) {
-//             return new_increment(globals, symbol, lvalues, -1);
-//         }
-//         if (match(globals, ST_DOT)) {
-//             struct LinkedListNode *old_head = globals->parser;
-//             if (!match(globals, T_SYMBOL)) {
-//                 error_parser(globals, "Expected property or method name");
-//                 return NULL;
-//             }
-//             Symbol prop = nth_token(old_head, 1)->symbol;
-//             linkedlist_append(lvalues, new_property(globals, prop));
-//         } else if (match(globals, ST_OPEN_BRACKET)) {
-//             struct Value *expr = parse_expr(globals);
-//             if (expr == NULL) {
-//                 return NULL;
-//             } else if (!match(globals, ST_CLOSE_BRACKET)) {
-//                 error_parser(globals, "Expected closing bracket in accessor");
-//                 return NULL;
-//             }
-//             linkedlist_append(lvalues, new_index(globals, expr));
-//         } else {
-//             break;
-//         }
-//     }
-//     error_parser(globals, "Unexpected value in accessor");
-//     return NULL;
-// }
-
 static struct Statement *parse_line(struct Globals *globals)
 {
     if (globals->parser == NULL) {
@@ -466,16 +384,11 @@ static struct Statement *parse_line(struct Globals *globals)
         return NULL;
     }
     struct LinkedListNode *old_head = globals->parser;
-    // if (match(globals, T_SYMBOL)) {
-    //     Symbol symbol = nth_token(old_head, 1)->symbol;
-    //     return parse_lhs(globals, symbol);
-    //} else
     if (match(globals, ST_LET)) {
         Definitions *defs = NULL;
         enum TokenType matches[] = { T_SYMBOL, ST_EQ };
         if (match_multiple(globals, matches)) {
             Symbol symbol = nth_token(old_head, 2)->symbol;
-            // return parse_set_local(globals, symbol, true);
             struct Value *expr;
             if ((expr = parse_expr(globals))) {
                 return new_set_local(globals, symbol, expr, true);
@@ -638,12 +551,6 @@ static struct Statement *parse_statement(struct Globals *globals)
     return NULL;
 }
 
-// type: ST_INT { $$ = TYPE_INT; }
-//     | ST_FLOAT { $$ = TYPE_FLOAT; }
-//     | ST_BOOL { $$ = TYPE_BOOL; }
-//     | ST_STRING { $$ = TYPE_STRING; }
-//     | T_SYMBOL { $$ = $1; }
-// ;
 static Type parse_type(struct Globals *globals)
 {
     struct LinkedListNode *old_head = globals->parser;
@@ -662,11 +569,6 @@ static Type parse_type(struct Globals *globals)
     return TYPE_UNDEFINED;
 }
 
-// definitions: definition { $$ = new_list($1); }
-//            | definition ST_COMMA definitions { $$ = append($3, $1); }
-// ;
-// 
-// definition: T_SYMBOL ST_COLON type { $$ = new_define($1, $3); };
 static struct Definition *parse_definition(struct Globals *globals)
 {
     struct LinkedListNode *old_head = globals->parser;
@@ -687,9 +589,6 @@ static struct Definition *parse_definition(struct Globals *globals)
     return new_define(globals, nth_token(old_head, 1)->symbol, type);
 }
 
-// fundef_args: ST_OPEN_PAREN definitions ST_CLOSE_PAREN { $$ = $2; }
-//            | ST_OPEN_PAREN ST_CLOSE_PAREN { $$ = NULL; }
-// ;
 static Definitions *parse_fundef_args(struct Globals *globals)
 {
     if (!match(globals, ST_OPEN_PAREN)) {
@@ -714,11 +613,6 @@ static Definitions *parse_fundef_args(struct Globals *globals)
     return definitions;
 }
 
-// fundef: ST_FUNCTION T_SYMBOL fundef_args ST_COLON type ST_OPEN_BRACE statements ST_CLOSE_BRACE
-//       { $$ = new_tld_fundef($2, $5, $3, $7); }
-//       | ST_FUNCTION T_SYMBOL fundef_args ST_OPEN_BRACE statements ST_CLOSE_BRACE
-// { $$ = new_tld_fundef($2, TYPE_UNDEFINED, $3, $5); }
-// ;
 static struct TopLevelDecl *parse_fundef(struct Globals *globals)
 {
     struct LinkedListNode *old_head = globals->parser;
@@ -785,9 +679,6 @@ static bool parse_class_definition(struct Globals *globals, Definitions *definit
     return false;
 }
 
-// class_definitions: definition ST_SEMICOLON { $$ = new_list($1); }
-//                  | definition ST_SEMICOLON class_definitions { $$ = append($3, $1); }
-// ;
 static struct TopLevelDecl *parse_class(struct Globals *globals)
 {
     struct LinkedListNode *old_head = globals->parser;
