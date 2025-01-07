@@ -74,6 +74,13 @@ static inline DelValue pop(struct Stack *stack)
     return stack->values[--stack->offset];
 }
 
+static inline void dup(struct Stack *stack)
+{
+    DelValue v = pop(stack);
+    push(stack, v);
+    push(stack, v);
+}
+
 static inline void swap(struct Stack *stack)
 {
     DelValue val1, val2;
@@ -404,6 +411,9 @@ uint64_t vm_execute(struct VirtualMachine *vm)
                 vm_break;
             vm_case(SET_HEAP):
                 set_heap(&heap, &stack);
+                vm_break;
+            vm_case(DUP):
+                dup(&stack);
                 vm_break;
             /* Grotesque lump of binary operators. Boring! */
             vm_case(AND): eval_binary_op(&stack, val1, val2, &&); vm_break;

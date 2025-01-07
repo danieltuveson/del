@@ -3,6 +3,7 @@
 &&PUSH,
 &&PUSH_0,
 &&PUSH_1,
+&&DUP,
 &&PUSH_2,
 &&PUSH_3,
 &&PUSH_HEAP,

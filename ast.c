@@ -210,7 +210,21 @@ struct Statement *new_sfuncall(struct Globals *globals, struct Accessor *access,
 struct Statement *new_return(struct Globals *globals, struct Value *val)
 {
     struct Statement *stmt = new_stmt(globals, STMT_RETURN);
-    stmt->ret = val;
+    stmt->val = val;
+    return stmt;
+}
+
+struct Statement *new_increment(struct Globals *globals, struct Value *val)
+{
+    struct Statement *stmt = new_stmt(globals, STMT_INC);
+    stmt->val = val;
+    return stmt;
+}
+
+struct Statement *new_decrement(struct Globals *globals, struct Value *val)
+{
+    struct Statement *stmt = new_stmt(globals, STMT_DEC);
+    stmt->val = val;
     return stmt;
 }
 

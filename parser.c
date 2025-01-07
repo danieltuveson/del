@@ -312,12 +312,6 @@ static struct Value *parse_subexpr(struct Globals *globals)
         return new_boolean(globals, 0);
     } else if (match(globals, ST_NULL)) {
         return new_null(globals);
-    // } else if (match(globals, ST_INC)) {
-    //     Symbol symbol = nth_token(old_head, 1)->symbol;
-    //     return new_increment(globals, symbol, lvalues, 1);
-    // } else if (match(globals, ST_DEC)) {
-    //     Symbol symbol = nth_token(old_head, 1)->symbol;
-    //     return new_increment(globals, symbol, lvalues, -1);
     } else if (match(globals, ST_OPEN_PAREN) && (val = parse_expr(globals))
             && match(globals, ST_CLOSE_PAREN)) {
         return parse_property_access(globals, val);
@@ -369,14 +363,6 @@ static Definitions *parse_symbols(struct Globals *globals)
     return defs;
 }
 
-// static struct Statement *new_increment(struct Globals *globals, struct Value *val, int number)
-// {
-//     struct Value *get = new_get(globals, symbol, lvalues);
-//     struct Value *one = new_integer(globals, number);
-//     struct Value *expr = new_expr(globals, bin_plus(globals, get, one));
-//     return new_set(globals, symbol, expr, lvalues, false);
-// }
-
 static struct Statement *parse_line(struct Globals *globals)
 {
     if (globals->parser == NULL) {
@@ -413,6 +399,26 @@ static struct Statement *parse_line(struct Globals *globals)
     struct Value *val = parse_expr(globals);
     if (!val) {
         return NULL;
+    }
+    // if (val->vtype != VTYPE_GET_LOCAL && val->vtype !=
+    if (match(globals, ST_INC)) {
+        if (val->vtype == VTYPE_EXPR) {
+            error_parser(globals, "Increment cannot be used as an expression");
+            return NULL;
+        } else if (val->vtype != VTYPE_GET_LOCAL && val->vtype != VTYPE_GET_PROPERTY) {
+            error_parser(globals, "Invalid use of increment");
+            return NULL;
+        }
+        return new_increment(globals, val);
+    } else if (match(globals, ST_DEC)) {
+        if (val->vtype == VTYPE_EXPR) {
+            error_parser(globals, "Decrement cannot be used as an expression");
+            return NULL;
+        } else if (val->vtype != VTYPE_GET_LOCAL && val->vtype != VTYPE_GET_PROPERTY) {
+            error_parser(globals, "Invalid use of decrement");
+            return NULL;
+        }
+        return new_decrement(globals, val);
     }
     struct Statement *stmt = NULL;
     switch (val->vtype) {

@@ -154,9 +154,11 @@ static bool add_types(TopLevelDecls *tlds, struct ClassTable *clst, struct Funct
     return true;
 }
 
-static Type typecheck_value(struct Globals *globals, struct TypeCheckerContext *context, struct Value *val);
+static Type typecheck_value(struct Globals *globals, struct TypeCheckerContext *context,
+        struct Value *val);
 
-static Type typecheck_expression(struct Globals *globals, struct TypeCheckerContext *context, struct Expr *expr)
+static Type typecheck_expression(struct Globals *globals, struct TypeCheckerContext *context,
+        struct Expr *expr)
 {
     const Type type_left = typecheck_value(globals, context, expr->val1);
     expr->val1->type = type_left;
@@ -559,6 +561,13 @@ static bool typecheck_return(struct Globals *globals, struct TypeCheckerContext 
     return true;
 }
 
+static bool typecheck_increment(struct Globals *globals, struct TypeCheckerContext *context,
+        struct Value *val)
+{
+    Type type = typecheck_value(globals, context, val);
+    return type == TYPE_INT || type == TYPE_FLOAT;
+}
+
 static bool typecheck_funcall(struct Globals *globals, struct TypeCheckerContext *context,
         struct FunCall *funcall, struct FunDef *fundef)
 {
@@ -729,13 +738,16 @@ static bool typecheck_statement(struct Globals *globals, struct TypeCheckerConte
             return ret;
         }
         case STMT_RETURN:
-            return typecheck_return(globals, context, stmt->ret);
+            return typecheck_return(globals, context, stmt->val);
         case STMT_FOREACH:
             assert("Error: not implemented\n" && false);
             enter_scope(globals, &(context->scope), false);
             // ret = typecheck_foreach(globals, context, stmt->foreach_stmt);
             exit_scope(&(context->scope));
             return ret;
+        case STMT_INC:
+        case STMT_DEC:
+            return typecheck_increment(globals, context, stmt->val);
         default:
             assert("Error, not implemented" && false);
             break;

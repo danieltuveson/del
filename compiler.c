@@ -13,7 +13,8 @@ static void compile_statements(struct Globals *globals, Statements *stmts);
 
 /* Move offset pointer to the empty element. Return the offset of the last element added */
 static inline size_t next(struct Globals *globals) {
-    assert("offset is out of bounds\n" && globals->cc->instructions->length < INSTRUCTIONS_MAX - 1);
+    assert("offset is out of bounds\n" &&
+            globals->cc->instructions->length < INSTRUCTIONS_MAX - 1);
     vector_grow(&(globals->cc->instructions), 1);
     return globals->cc->instructions->length - 1;
 }
@@ -36,14 +37,19 @@ static inline void load_offset(struct Globals *globals, size_t offset)
     vector_append(&(globals->cc->instructions), value);
 }
 
+static inline void compile_offset(struct Globals *globals, size_t offset)
+{
+    push(globals);
+    DelValue value = { .offset = offset };
+    vector_append(&(globals->cc->instructions), value);
+}
+
 static void compile_heap(struct Globals *globals, size_t metadata, size_t count)
 {
     // Load metadata
-    push(globals);
-    load_offset(globals, metadata);
+    compile_offset(globals, metadata);
     // Load count
-    push(globals);
-    load_offset(globals, count);
+    compile_offset(globals, count);
     load_opcode(globals, PUSH_HEAP);
 }
 
@@ -189,7 +195,8 @@ static void compile_funargs(struct Globals *globals, Definitions *defs)
  */
 static void compile_fundef(struct Globals *globals, struct FunDef *fundef)
 {
-    add_ft_node(globals, globals->cc->funcall_table, fundef->name, globals->cc->instructions->length);
+    add_ft_node(globals, globals->cc->funcall_table, fundef->name,
+            globals->cc->instructions->length);
     compile_funargs(globals, fundef->args);
     compile_statements(globals, fundef->stmts);
 }
@@ -205,23 +212,29 @@ static void compile_constructor(struct Globals *globals, struct Constructor *con
 }
 
 // Being a little too cheeky with the name of this?
-static void compile_xet_property(struct Globals *globals, struct GetProperty *get)
+static uint64_t compile_xet_property(struct Globals *globals, struct GetProperty *get,
+        bool is_increment)
 {
     if (get->type == LV_INDEX) {
         printf("Not implemented\n");
         assert(false);
     }
     compile_value(globals, get->accessor);
+    if (is_increment) {
+        load_opcode(globals, DUP);
+    }
     struct Class *cls = lookup_class(globals->cc->class_table, get->accessor->type);
     uint64_t index = lookup_property_index(cls, get->property);
-    push(globals);
-    load_offset(globals, index);
+    compile_offset(globals, index);
+    return index;
 }
 
-static void compile_get_property(struct Globals *globals, struct GetProperty *get)
+static uint64_t compile_get_property(struct Globals *globals, struct GetProperty *get,
+        bool is_increment)
 {
-    compile_xet_property(globals, get);
+    uint64_t index = compile_xet_property(globals, get, is_increment);
     load_opcode(globals, GET_HEAP);
+    return index;
 }
 
 static void compile_print(struct Globals *globals, Values *args, bool has_newline)
@@ -321,7 +334,7 @@ static void compile_value(struct Globals *globals, struct Value *val)
             compile_get_local(globals, val->get_local->scope_offset);
             break;
         case VTYPE_GET_PROPERTY:
-            compile_get_property(globals, val->get_property);
+            compile_get_property(globals, val->get_property, false);
             break;
         case VTYPE_BUILTIN_CONSTRUCTOR:
             compile_builtin_constructor(globals, val->constructor);
@@ -439,7 +452,7 @@ static void compile_expr(struct Globals *globals, struct Expr *expr)
 static void compile_set_property(struct Globals *globals, struct SetProperty *set)
 {
     compile_value(globals, set->expr);
-    compile_xet_property(globals, set->access);
+    compile_xet_property(globals, set->access, false);
     load_opcode(globals, SET_HEAP);
 }
 
@@ -487,8 +500,7 @@ static void compile_loop(struct Globals *globals, struct Value *cond,
     load_opcode(globals, JNE);
     compile_statements(globals, stmts);
     if (increment != NULL) compile_statement(globals, increment);
-    push(globals);
-    load_offset(globals, top_of_loop);
+    compile_offset(globals, top_of_loop);
     load_opcode(globals, JMP);
     // set JNE jump to go to end of loop
     globals->cc->instructions->values[old_offset].offset = globals->cc->instructions->length;
@@ -505,8 +517,37 @@ static void compile_for(struct Globals *globals, struct For *for_stmt)
     compile_loop(globals, for_stmt->condition, for_stmt->stmts, for_stmt->increment);
 }
 
+static void compile_increment(struct Globals *globals, struct Value *val, int64_t num)
+{
+    uint64_t index = 0;
+    if (val->vtype == VTYPE_GET_PROPERTY) {
+        index = compile_get_property(globals, val->get_property, true);
+    } else if (val->vtype == VTYPE_GET_LOCAL) {
+        compile_get_local(globals, val->get_local->scope_offset);
+    } else {
+        assert(false);
+    }
+    if (val->type == TYPE_INT) {
+        compile_int(globals, num);
+        load_opcode(globals, ADD);
+    } else if (val->type == TYPE_FLOAT) {
+        compile_float(globals, (double)num);
+        load_opcode(globals, FLOAT_ADD);
+    } else {
+        assert(false);
+    }
+    if (val->vtype == VTYPE_GET_PROPERTY) {
+        load_opcode(globals, SWAP);
+        compile_offset(globals, index);
+        load_opcode(globals, SET_HEAP);
+    } else if (val->vtype == VTYPE_GET_LOCAL) {
+        compile_set_local(globals, val->get_local->scope_offset);
+    }
+}
+
 static void compile_statement(struct Globals *globals, struct Statement *stmt)
 {
+    int sign = 1;
     switch (stmt->type) {
         case STMT_SET_LOCAL:
             compile_value(globals, stmt->set_local->expr);
@@ -517,7 +558,7 @@ static void compile_statement(struct Globals *globals, struct Statement *stmt)
             compile_set_property(globals, stmt->set_property);
             break;
         case STMT_RETURN:
-            compile_return(globals, stmt->ret);
+            compile_return(globals, stmt->val);
             break;
         case STMT_IF:
             compile_if(globals, stmt->if_stmt);
@@ -536,6 +577,12 @@ static void compile_statement(struct Globals *globals, struct Statement *stmt)
             break;
         case STMT_LET:
             load_opcode(globals, DEFINE);
+            break;
+        case STMT_DEC:
+            sign = -1;
+            /* fallthrough */
+        case STMT_INC:
+            compile_increment(globals, stmt->val, sign * 1);
             break;
         default:
             assert("Error cannot compile statement type: not implemented\n" && false);

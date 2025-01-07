@@ -31,6 +31,9 @@ void print_instructions(struct Vector *instructions)
             case PUSH_3:
                 printf("PUSH_3\n");
                 break;
+            case DUP:
+                printf("DUP\n");
+                break;
             case PUSH_HEAP:
                 printf("PUSH_HEAP\n");
                 break;
@@ -496,9 +499,9 @@ static void print_statement_indent(struct Globals *globals, struct Statement *st
             break;
         case STMT_RETURN:
             printf("return");
-            if (stmt->ret != NULL) {
+            if (stmt->val != NULL) {
                 printf(" ");
-                print_value(globals, stmt->ret);
+                print_value(globals, stmt->val);
             }
             printf(";");
             break;

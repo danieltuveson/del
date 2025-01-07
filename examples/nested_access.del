@@ -1,0 +1,56 @@
+class Bing {
+    fing: float;
+    ing: int;
+}
+
+class Thing {
+    whing : int;
+    ding : string;
+    bing : Bing;
+}
+
+class Ring {
+    thing: Thing;
+}
+
+function main() {
+    // Test set / get / increment / decrement for local variables
+
+    // Int:
+    let i = 99;
+    println("i: ", i);
+    i++;
+    println("i: ", i);
+    i--;
+    println("i: ", i);
+
+    // Float:
+    let f = 99.99;
+    println("i: ", i);
+    i++;
+    println("i: ", i);
+    i--;
+
+    // Test set / get / increment / decrement for heap allocated variables
+    let ring = new Ring(new Thing(99, "stringggg", new Bing(50.4, 77)));
+    ring.thing = new Thing(100, "ding!", new Bing(49.1, 67));
+
+    // Int:
+    println("ring.thing.bing.ing: ", ring.thing.bing.ing);
+    ring.thing.bing.ing = 101;
+    println("ring.thing.bing.ing: ", ring.thing.bing.ing);
+    ring.thing.bing.ing++;
+    println("ring.thing.bing.ing: ", ring.thing.bing.ing);
+    ring.thing.bing.ing--;
+    println("ring.thing.bing.ing: ", ring.thing.bing.ing);
+
+    // Float:
+    println("ring.thing.bing.fing: ", ring.thing.bing.fing);
+    ring.thing.bing.fing = 100000000.33;
+    println("ring.thing.bing.fing: ", ring.thing.bing.fing);
+    ring.thing.bing.fing++;
+    println("ring.thing.bing.fing: ", ring.thing.bing.fing);
+    ring.thing.bing.fing--;
+    println("ring.thing.bing.fing: ", ring.thing.bing.fing);
+}
+

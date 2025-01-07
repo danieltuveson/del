@@ -171,7 +171,9 @@ enum StatementType {
     STMT_FOREACH,
     STMT_FUNCALL,
     STMT_BUILTIN_FUNCALL,
-    STMT_RETURN
+    STMT_RETURN,
+    STMT_INC,
+    STMT_DEC
 };
 
 struct GetProperty {
@@ -204,7 +206,7 @@ struct Statement {
         struct For *for_stmt;
         struct ForEach *for_each;
         struct FunCall *funcall;
-        struct Value *ret;
+        struct Value *val;
         // Need to replace old sets with these
         struct SetLocal *set_local;
         struct SetProperty *set_property;
@@ -243,6 +245,8 @@ struct Definition *new_define(struct Globals *globals, Symbol name, Type type);
 struct Statement *new_sfuncall(struct Globals *globals, struct Accessor *access, Values *args,
         bool is_builtin);
 struct Statement *new_return(struct Globals *globals, struct Value *val);
+struct Statement *new_increment(struct Globals *globals, struct Value *val);
+struct Statement *new_decrement(struct Globals *globals, struct Value *val);
 
 /* Value constructors */
 struct Value *new_string(struct Globals *globals, char *string);
