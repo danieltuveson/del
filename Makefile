@@ -15,7 +15,7 @@ main = main.o
 tests = tests.o
 
 del: $(objects) $(main) 
-	ar rc del.a $(objects)
+	ar rc libdel.a $(objects)
 	cc $(CFLAGS) -o del $(main) $(objects)
 
 # test: $(objects) $(tests)
