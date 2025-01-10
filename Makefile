@@ -1,5 +1,5 @@
 # CFLAGS = -O2 -g -Wall -Wextra -fsanitize=address
-CC=clang
+# CC=clang
 # CC=gcc
 # CC=tcc
 

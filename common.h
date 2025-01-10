@@ -27,11 +27,22 @@
 #if EXPECT_ENABLED && __has_builtin(__builtin_expect)
 #define expected(x)   (__builtin_expect(((x) != 0), 1))
 #define unexpected(x) (__builtin_expect(((x) != 0), 0))
-#define DO_WE_HAVE_EXPECT() printf("Uhh yeah, I'm thinkin we have __builtin_expect!\n")
+#define DO_WE_HAVE_EXPECT() printf("__builtin_expect enabled\n")
 #else
 #define expected(x)   (x)
 #define unexpected(x) (x)
-#define DO_WE_HAVE_EXPECT() printf("I'm sorry... we do not have __builtin_expect!\n")
+#define DO_WE_HAVE_EXPECT() printf("__builtin_expect disabled\n")
+#endif
+
+#ifndef THREADED_CODE_ENABLED
+#define THREADED_CODE_ENABLED 1
+#endif
+
+#if THREADED_CODE_ENABLED
+#define DO_WE_HAVE_THREADING() printf("threading enabled\n")
+#else
+#define THREADED_CODE_ENABLED 0
+#define DO_WE_HAVE_THREADING() printf("threading disabled\n")
 #endif
 
 #if DEBUG
