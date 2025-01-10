@@ -37,6 +37,12 @@ void print_instructions(struct Vector *instructions)
             case PUSH_HEAP:
                 printf("PUSH_HEAP\n");
                 break;
+            case PUSH_ARRAY:
+                printf("PUSH_ARRAY\n");
+                break;
+            case LEN_ARRAY:
+                printf("LEN_ARRAY\n");
+                break;
             case ADD:
                 printf("ADD\n");
                 break;
@@ -134,6 +140,12 @@ void print_instructions(struct Vector *instructions)
             case SET_HEAP:
                 printf("SET_HEAP\n");
                 break;
+            case GET_ARRAY:
+                printf("GET_ARRAY\n");
+                break;
+            case SET_ARRAY:
+                printf("SET_ARRAY\n");
+                break;
             case EXIT:
                 printf("EXIT\n");
                 break;
@@ -207,7 +219,7 @@ void print_frames(struct StackFrames *sfs)
 
 void print_heap(struct Heap *heap)
 {
-    printf("heap:   [ memory usage: %lu, objcount: %ld, offset: %ld, values: { ", 
+    printf("heap:   [ memory usage: %lu bytes, objcount: %ld, offset: %ld, values: { ", 
             IN_BYTES(heap->vector->length), heap->objcount, heap->vector->length);
     for (size_t i = 0; i < heap->vector->length; i++) {
         printf("%" PRIu64 "", heap->vector->values[i].integer);
@@ -355,18 +367,15 @@ static void print_funcall(struct Globals *globals, Symbol funname, Values *vals)
     printf(")");
 }
 
-static void print_get_property(struct Globals *globals, struct GetProperty *get)
+static void print_get_property(struct Globals *globals, bool is_prop, struct GetProperty *get)
 {
     print_value(globals, get->accessor);
-    switch (get->type) {
-    case LV_PROPERTY:
+    if (is_prop) {
         printf(".%s", lookup_symbol(globals, get->property));
-        break;
-    case LV_INDEX:
+    } else {
         printf("[");
         print_value(globals, get->index);
         printf("]");
-        break;
     }
     return;
 }
@@ -406,8 +415,9 @@ void print_value(struct Globals *globals, struct Value *val)
         printf("%s", lookup_symbol(globals, val->get_local->name));
         break;
     case VTYPE_GET_PROPERTY:
-        print_get_property(globals, val->get_property);
+        print_get_property(globals, true, val->get_property);
         break;
+    case VTYPE_INDEX:
     default:
         assert("Error, not implemented" && false);
         break;
@@ -434,9 +444,9 @@ static void print_definitions(struct Globals *globals, struct LinkedList *lst, c
         }
     }
 }
-static void print_set_property(struct Globals *globals, struct SetProperty *set)
+static void print_set_property(struct Globals *globals, bool is_prop, struct SetProperty *set)
 {
-    print_get_property(globals, set->access);
+    print_get_property(globals, is_prop, set->access);
     printf(" = ");
     print_value(globals, set->expr);
     printf(";");
@@ -532,8 +542,9 @@ static void print_statement_indent(struct Globals *globals, struct Statement *st
             printf(";");
             break;
         case STMT_SET_PROPERTY:
-            print_set_property(globals, stmt->set_property);
+            print_set_property(globals, true, stmt->set_property);
             break;
+        case STMT_SET_INDEX:
         default:
             assert("Error, not implemented" && false);
             break;

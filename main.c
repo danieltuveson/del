@@ -29,6 +29,7 @@ int main(int argc, char *argv[])
     }
     del_vm_free(vm);
     del_instructions_free(instructions);
+    DO_WE_HAVE_EXPECT();
     return EXIT_SUCCESS;
 
     // struct Vector *instructions;

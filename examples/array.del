@@ -1,0 +1,37 @@
+class Thing {
+    ting : int;
+    wing: float;
+}
+
+class ThingSlice {
+    start : int;
+    end : int;
+    arr : Array;
+}
+
+// class List<T> {
+//     count: int;
+//     arr : Array<T>;
+//     function List() {
+//         this.arr = new Array<T>(8);
+//     }
+// }
+
+
+function main() {
+    let x = new Array<Thing>(10);
+    let j = 0.0;
+    for (let i = 0; i < 10; i++) {
+        if i != 7 {
+            x[i] = new Thing(i + 13, j + 7.5);
+        }
+        j++;
+    }
+    x[7] = new Thing(1000000000, 99.99999);
+    let i = 3;
+    println("array value at ", i, ": Thing(", x[i].ting, ", ", x[i].wing, ")");
+    println("array value at ", 7, ": Thing(", x[7].ting, ", ", x[7].wing, ")");
+
+    // let things = new ThingSlice(0, 10, x);
+}
+

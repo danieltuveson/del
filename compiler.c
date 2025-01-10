@@ -215,10 +215,6 @@ static void compile_constructor(struct Globals *globals, struct Constructor *con
 static uint64_t compile_xet_property(struct Globals *globals, struct GetProperty *get,
         bool is_increment)
 {
-    if (get->type == LV_INDEX) {
-        printf("Not implemented\n");
-        assert(false);
-    }
     compile_value(globals, get->accessor);
     if (is_increment) {
         load_opcode(globals, DUP);
@@ -235,6 +231,27 @@ static uint64_t compile_get_property(struct Globals *globals, struct GetProperty
     uint64_t index = compile_xet_property(globals, get, is_increment);
     load_opcode(globals, GET_HEAP);
     return index;
+}
+
+static void compile_xet_index(struct Globals *globals, struct GetProperty *get, bool is_increment)
+{
+    compile_value(globals, get->accessor);
+    if (is_increment) {
+        load_opcode(globals, DUP);
+    }
+    compile_value(globals, get->index);
+    if (is_increment) {
+        // This won't work, need to swap at specific index
+        assert(false);
+        load_opcode(globals, SWAP);
+        load_opcode(globals, DUP);
+    }
+}
+
+static void compile_get_index(struct Globals *globals, struct GetProperty *get, bool is_increment)
+{
+    compile_xet_index(globals, get, is_increment);
+    load_opcode(globals, GET_ARRAY);
 }
 
 static void compile_print(struct Globals *globals, Values *args, bool has_newline)
@@ -266,19 +283,26 @@ static void compile_builtin_funcall(struct Globals *globals, struct FunCall *fun
     }
 }
 
-// static void compile_array(struct Globals *globals, struct Constructor *constructor)
-// {
-//     // TODO
-//     return;
-// }
+static void compile_array(struct Globals *globals, struct Constructor *constructor)
+{
+    Type type = *((Type *)constructor->types->head->value);
+    size_t size_of_type = 1;
+    struct Class *cls = lookup_class(globals->cc->class_table, type);
+    if (cls != NULL) {
+        size_of_type = cls->definitions->length;
+    }
+    compile_offset(globals, size_of_type);
+    compile_value(globals, constructor->funcall->args->head->value);
+    load_opcode(globals, PUSH_ARRAY);
+    return;
+}
 
 static void compile_builtin_constructor(struct Globals *globals, struct Constructor *constructor)
 {
-    assert("Builtin not implemented" && false);
-    // if (constructor->funcall->funname != BUILTIN_ARRAY) {
-        // assert("Builtin not implemented" && false);
-    // }
-    // compile_array(globals, constructor);
+    if (constructor->funcall->access->definition->name != BUILTIN_ARRAY) {
+        assert("Builtin not implemented" && false);
+    }
+    compile_array(globals, constructor);
 }
 
 static void compile_funcall(struct Globals *globals, struct FunCall *funcall)
@@ -335,6 +359,9 @@ static void compile_value(struct Globals *globals, struct Value *val)
             break;
         case VTYPE_GET_PROPERTY:
             compile_get_property(globals, val->get_property, false);
+            break;
+        case VTYPE_INDEX:
+            compile_get_index(globals, val->get_property, false);
             break;
         case VTYPE_BUILTIN_CONSTRUCTOR:
             compile_builtin_constructor(globals, val->constructor);
@@ -456,6 +483,13 @@ static void compile_set_property(struct Globals *globals, struct SetProperty *se
     load_opcode(globals, SET_HEAP);
 }
 
+static void compile_set_index(struct Globals *globals, struct SetProperty *set)
+{
+    compile_value(globals, set->expr);
+    compile_xet_index(globals, set->access, false);
+    load_opcode(globals, SET_ARRAY);
+}
+
 static void compile_return(struct Globals *globals, struct Value *ret)
 {
     if (ret != NULL) {
@@ -556,6 +590,9 @@ static void compile_statement(struct Globals *globals, struct Statement *stmt)
             break;
         case STMT_SET_PROPERTY:
             compile_set_property(globals, stmt->set_property);
+            break;
+        case STMT_SET_INDEX:
+            compile_set_index(globals, stmt->set_property);
             break;
         case STMT_RETURN:
             compile_return(globals, stmt->val);

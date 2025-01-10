@@ -28,6 +28,8 @@ static Type typecheck_get_local(struct Globals *globals, struct TypeCheckerConte
         struct Definition *get_local);
 static Type typecheck_get_property(struct Globals *globals, struct TypeCheckerContext *context,
         struct GetProperty *get);
+static Type typecheck_get_index(struct Globals *globals, struct TypeCheckerContext *context,
+        struct GetProperty *get);
 
 #define table_lookup(table, length, symbol)\
     uint64_t i = symbol % length;\
@@ -362,6 +364,9 @@ static Type typecheck_value(struct Globals *globals, struct TypeCheckerContext *
         case VTYPE_GET_PROPERTY:
             val->type = typecheck_get_property(globals, context, val->get_property);
             return val->type;
+        case VTYPE_INDEX:
+            val->type = typecheck_get_index(globals, context, val->get_property);
+            return val->type;
         case VTYPE_BUILTIN_FUNCALL:
             name = val->funcall->access->definition->name;
             assert(linkedlist_is_empty(val->funcall->access->lvalues));
@@ -379,11 +384,26 @@ static Type typecheck_value(struct Globals *globals, struct TypeCheckerContext *
             name = val->constructor->funcall->access->definition->name;
             assert(linkedlist_is_empty(val->constructor->funcall->access->lvalues));
             if (name == BUILTIN_ARRAY) {
-                return typecheck_new_array(globals, context, val->constructor);
+                val->type = typecheck_new_array(globals, context, val->constructor);
+                return val->type;
             } 
     }
     assert("Error: unhandled typecheck_value\n" && false);
     return TYPE_UNDEFINED; // Doing this to silence compiler warning, should never happen
+}
+
+static Type typecheck_get_local(struct Globals *globals, struct TypeCheckerContext *context,
+        struct Definition *get_local)
+{
+    struct Definition *def = lookup_var(context->scope, get_local->name);
+    if (def == NULL) {
+        printf("Error: Symbol '%s' is used before it is declared\n",
+                lookup_symbol(globals, get_local->name));
+        return TYPE_UNDEFINED;
+    }
+    get_local->type = def->type;
+    get_local->scope_offset = def->scope_offset;
+    return def->type;
 }
 
 static bool typecheck_set_local(struct Globals *globals, struct TypeCheckerContext *context,
@@ -418,45 +438,9 @@ static bool typecheck_set_local(struct Globals *globals, struct TypeCheckerConte
     return true;
 }
 
-static bool typecheck_set_property(struct Globals *globals, struct TypeCheckerContext *context,
-        struct SetProperty *set)
-{
-    if (set->access->property == LV_PROPERTY) {
-        printf("Not implemented");
-        assert(false);
-    }
-    Type type_get = typecheck_get_property(globals, context, set->access);
-    Type type_set = typecheck_value(globals, context, set->expr);
-    if (type_get != type_set) {
-        printf("Error: cannot set field of type %s to value of type %s\n",
-                lookup_symbol(globals, type_get),
-                lookup_symbol(globals, type_set));
-        return false;
-    }
-    return true;
-}
-
-static Type typecheck_get_local(struct Globals *globals, struct TypeCheckerContext *context,
-        struct Definition *get_local)
-{
-    struct Definition *def = lookup_var(context->scope, get_local->name);
-    if (def == NULL) {
-        printf("Error: Symbol '%s' is used before it is declared\n",
-                lookup_symbol(globals, get_local->name));
-        return TYPE_UNDEFINED;
-    }
-    get_local->type = def->type;
-    get_local->scope_offset = def->scope_offset;
-    return def->type;
-}
-
 static Type typecheck_get_property(struct Globals *globals, struct TypeCheckerContext *context,
         struct GetProperty *get)
 {
-    if (get->type == LV_INDEX) {
-        printf("Not implemented\n");
-        assert(false);
-    }
     Type type = typecheck_value(globals, context, get->accessor);
     if (type == TYPE_UNDEFINED) {
         return TYPE_UNDEFINED;
@@ -477,6 +461,55 @@ static Type typecheck_get_property(struct Globals *globals, struct TypeCheckerCo
     return def->type;
 }
 
+// Will make this allow broader range of types in the future
+static Type typecheck_get_index(struct Globals *globals, struct TypeCheckerContext *context,
+        struct GetProperty *get)
+{
+    Type array_type = typecheck_value(globals, context, get->accessor);
+    Type index_type = typecheck_value(globals, context, get->index);
+    if (array_type == TYPE_UNDEFINED) {
+        return TYPE_UNDEFINED;
+    } else if (!is_array(array_type)) {
+        printf("Error: '%s' is not an array\n", lookup_symbol(globals, array_type));
+        return TYPE_UNDEFINED;
+    } else if (index_type == TYPE_UNDEFINED) {
+        return TYPE_UNDEFINED;
+    } else if (index_type != TYPE_INT) {
+        printf("Error: array access must use int, but got value of type '%s'\n",
+                lookup_symbol(globals, index_type));
+        return TYPE_UNDEFINED;
+    }
+    return type_of_array(array_type);
+}
+
+static bool typecheck_setter(struct Globals *globals, struct TypeCheckerContext *context,
+        struct SetProperty *set, Type type_get)
+{
+    Type type_set = typecheck_value(globals, context, set->expr);
+    if (type_get == TYPE_UNDEFINED || type_set == TYPE_UNDEFINED) {
+        return false;
+    } else if (type_get != type_set) {
+        printf("Error: cannot set field of type %s to value of type %s\n",
+                lookup_symbol(globals, type_get),
+                lookup_symbol(globals, type_set));
+        return false;
+    }
+    return true;
+}
+
+static bool typecheck_set_property(struct Globals *globals, struct TypeCheckerContext *context,
+        struct SetProperty *set)
+{
+    Type type_get = typecheck_get_property(globals, context, set->access);
+    return typecheck_setter(globals, context, set, type_get);
+}
+
+static bool typecheck_set_index(struct Globals *globals, struct TypeCheckerContext *context,
+        struct SetProperty *set)
+{
+    Type type_get = typecheck_get_index(globals, context, set->access);
+    return typecheck_setter(globals, context, set, type_get);
+}
 static bool scope_vars(struct Globals *globals, struct TypeCheckerContext *context,
         Definitions *defs)
 {
@@ -702,6 +735,9 @@ static bool typecheck_statement(struct Globals *globals, struct TypeCheckerConte
             return ret;
         case STMT_SET_PROPERTY:
             ret = typecheck_set_property(globals, context, stmt->set_property);
+            return ret;
+        case STMT_SET_INDEX:
+            ret = typecheck_set_index(globals, context, stmt->set_property);
             return ret;
         case STMT_LET:
             ret = scope_vars(globals, context, stmt->let);

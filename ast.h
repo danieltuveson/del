@@ -27,7 +27,8 @@ enum ValueType {
     VTYPE_CONSTRUCTOR,
     VTYPE_BUILTIN_CONSTRUCTOR,
     VTYPE_GET_LOCAL,
-    VTYPE_GET_PROPERTY
+    VTYPE_GET_PROPERTY,
+    VTYPE_INDEX
 };
 
 enum OperatorType {
@@ -165,6 +166,7 @@ enum StatementType {
     STMT_LET,
     STMT_SET_LOCAL,
     STMT_SET_PROPERTY,
+    STMT_SET_INDEX,
     STMT_IF,
     STMT_WHILE,
     STMT_FOR,
@@ -177,7 +179,6 @@ enum StatementType {
 };
 
 struct GetProperty {
-    enum LValueType type;
     struct Value *accessor;
     union {
         Symbol property;
@@ -233,6 +234,8 @@ struct Statement *new_set_local(struct Globals *globals, Symbol variable, struct
         bool is_define);
 struct Statement *new_set_property(struct Globals *globals, struct Value *accessor, Symbol property,
         struct Value *val);
+struct Statement *new_set_indexed(struct Globals *globals, struct Value *accessor,
+        struct Value *index, struct Value *val);
 struct Statement *new_if(struct Globals *globals, struct Value *condition, Statements *if_stmts);
 struct Statement *add_elseif(struct Globals *globals, struct IfStatement *if_stmt,
         struct Statement *elseif_stmt);
@@ -262,6 +265,8 @@ struct Value *new_constructor(struct Globals *globals, struct Accessor *access,
 struct Value *new_expr(struct Globals *globals, struct Expr *expr);
 struct Value *new_get_local(struct Globals *globals, Symbol variable);
 struct Value *new_get_property(struct Globals *globals, struct Value *accessor, Symbol property);
+struct Value *new_get_indexed(struct Globals *globals, struct Value *accessor,
+        struct Value *index);
 
 struct LValue *new_property(struct Globals *globals, Symbol property);
 struct LValue *new_index(struct Globals *globals, struct Value *index);

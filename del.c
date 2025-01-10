@@ -103,8 +103,6 @@ static bool read_and_compile(struct Vector **instructions_ptr, Allocator allocat
     print_instructions(globals.cc->instructions);
     printf("\n");
 #endif
-    print_instructions(globals.cc->instructions);
-    printf("\n");
     return true;
 }
 

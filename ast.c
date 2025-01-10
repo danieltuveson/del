@@ -65,9 +65,17 @@ static struct GetProperty *new_get_property_access(struct Globals *globals, stru
         Symbol property)
 {
     struct GetProperty *get = allocator_malloc(globals->allocator, sizeof(struct GetProperty));
-    get->type = LV_PROPERTY;
     get->accessor = accessor;
     get->property = property;
+    return get;
+}
+
+static struct GetProperty *new_get_indexed_access(struct Globals *globals, struct Value *accessor,
+        struct Value *index)
+{
+    struct GetProperty *get = allocator_malloc(globals->allocator, sizeof(struct GetProperty));
+    get->accessor = accessor;
+    get->index = index;
     return get;
 }
 
@@ -125,6 +133,16 @@ struct Statement *new_set_property(struct Globals *globals, struct Value *access
     struct Statement *stmt = new_stmt(globals, STMT_SET_PROPERTY);
     stmt->set_property = allocator_malloc(globals->allocator, sizeof(*(stmt->set_property)));
     stmt->set_property->access = new_get_property_access(globals, accessor, property);
+    stmt->set_property->expr = val;
+    return stmt;
+}
+
+struct Statement *new_set_indexed(struct Globals *globals, struct Value *accessor,
+        struct Value *index, struct Value *val)
+{
+    struct Statement *stmt = new_stmt(globals, STMT_SET_INDEX);
+    stmt->set_property = allocator_malloc(globals->allocator, sizeof(*(stmt->set_property)));
+    stmt->set_property->access = new_get_indexed_access(globals, accessor, index);
     stmt->set_property->expr = val;
     return stmt;
 }
@@ -307,6 +325,14 @@ struct Value *new_get_property(struct Globals *globals, struct Value *accessor, 
     return val;
 }
 
+struct Value *new_get_indexed(struct Globals *globals, struct Value *accessor,
+        struct Value *index)
+{
+    struct Value *val = new_value(globals, VTYPE_INDEX, TYPE_UNDEFINED);
+    val->get_property = new_get_indexed_access(globals, accessor, index);
+    return val;
+}
+
 struct Value *new_expr(struct Globals *globals, struct Expr *expr)
 {
     struct Value *val = new_value(globals, VTYPE_EXPR, TYPE_UNDEFINED);
@@ -323,6 +349,7 @@ struct LValue *new_property(struct Globals *globals, Symbol property)
     return lvalue;
 }
 
+/*
 struct LValue *new_index(struct Globals *globals, struct Value *index)
 {
     struct LValue *lvalue = allocator_malloc(globals->allocator, sizeof(struct LValue));
@@ -331,6 +358,7 @@ struct LValue *new_index(struct Globals *globals, struct Value *index)
     lvalue->index = index;
     return lvalue;
 }
+*/
 
 /* Macros used to generate functions for creating Expressions.
  * Unary and binary operators have the same structure, so this 

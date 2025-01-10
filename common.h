@@ -14,6 +14,35 @@
 #include <errno.h>
 #include "allocator.h"
 
+#ifndef __has_builtin
+#define __has_builtin(x) 0
+#endif
+
+#ifndef EXPECT_ENABLED
+#define EXPECT_ENABLED 1
+#endif
+
+// https://gcc.gnu.org/onlinedocs/gcc/Other-Builtins.html
+// https://clang.llvm.org/docs/LanguageExtensions.html
+#if EXPECT_ENABLED && __has_builtin(__builtin_expect)
+#define expected(x)   (__builtin_expect(((x) != 0), 1))
+#define unexpected(x) (__builtin_expect(((x) != 0), 0))
+#define DO_WE_HAVE_EXPECT() printf("Uhh yeah, I'm thinkin we have __builtin_expect!\n")
+#else
+#define expected(x)   (x)
+#define unexpected(x) (x)
+#define DO_WE_HAVE_EXPECT() printf("I'm sorry... we do not have __builtin_expect!\n")
+#endif
+
+#if DEBUG
+#define DEBUG_GENERAL
+#define DEBUG_LEXER 1
+#define DEBUG_PARSER 1
+#define DEBUG_TYPECHECKER 1
+#define DEBUG_COMPILER 1
+#define DEBUG_RUNTIME 1
+#endif
+
 // #define VM_INSTANCES_MAX        10000
 // #define INSTRUCTIONS_MAX        100000
 #define INSTRUCTIONS_MAX        UINT64_MAX
@@ -26,6 +55,25 @@
 #define INSTRUCTIONS_MAX_BYTES        IN_BYTES(INSTRUCTIONS_MAX)
 #define STACK_MAX_BYTES               IN_BYTES(STACK_MAX)
 #define HEAP_MAX_BYTES                IN_BYTES(HEAP_MAX)
+
+/*
+ * A pointer to the heap consists of 3 parts:
+ * - The first byte represents metadata about the heap value. TBD what goes here - I'm going to
+ *   include the "mark" portion of mark and sweep gc as one of these bits. I also think I should
+ *   include metadata for strings, like how many bytes are in the last uint64.
+ * - The next 3 bytes stores the size of the data. For most objects this will be small, but
+ *   arrays could possibly use up the full range.
+ * - The last 32 bits store the location in the heap: that means our heap can store up to about 
+ *   4 gigabytes of data before hitting this limit.
+ */
+#define COUNT_OFFSET    UINT64_C(32)
+#define METADATA_OFFSET UINT64_C(56)
+#define METADATA_MASK   (UINT64_MAX - ((UINT64_C(1) << METADATA_OFFSET) - 1))
+#define LOCATION_MASK   ((UINT64_C(1) << COUNT_OFFSET) - 1)
+#define COUNT_MASK      (UINT64_MAX - (LOCATION_MASK + METADATA_MASK))
+#define GC_MARK_MASK    (UINT64_C(1) << 63)
+
+#define TODO() do { printf("Error: Not implemented\n"); assert(false); } while (false)
 
 /* Symbol is used to represent any variable, function, or type name */
 typedef uint64_t Symbol;
@@ -79,7 +127,20 @@ typedef uint64_t Type;
 #define BUILTIN_FIRST BUILTIN_PRINT
 #define BUILTIN_LAST BUILTIN_SELF
 
-static inline bool is_object(Type val) { return val > BUILTIN_LAST || BUILTIN_ARRAY; }
+static inline bool is_object(Type type)
+{
+    return type > BUILTIN_LAST || type == BUILTIN_ARRAY;
+}
+
+static inline bool is_array(Type type)
+{
+    return (TYPE_ARRAY & type) > 0;
+}
+
+static inline Type type_of_array(Type type)
+{
+    return ~(TYPE_ARRAY) & type;
+}
 
 /* List functions */
 void init_symbol_table(struct Globals *globals);

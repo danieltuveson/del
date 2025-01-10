@@ -17,10 +17,6 @@ function fib(n : int) : int {
 
 function main() {
     // Can only go up to 90, until we create a BigInt class
-    let num_iters = 1000000;
-    let x = 2;
-    for let i = 0; i < num_iters; i++ {
-        x = fib(90) - x / 2;
-    }
-    println("done:", x, "!");
+    let f = fib(100);
+    println(f);
 }

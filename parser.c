@@ -219,7 +219,7 @@ static struct Value *parse_vfuncall(struct Globals *globals, struct Accessor *ac
 static Types *parse_type_args(struct Globals *globals)
 {
     if (match(globals, ST_GREATER)) {
-        error_parser(globals, "Constructor for generic class cannot have empty type list");
+        error_parser(globals, "Cannot have empty type list");
         return NULL;
     }
     Types *types = linkedlist_new(globals->allocator);
@@ -283,8 +283,14 @@ static struct Value *parse_property_access(struct Globals *globals, struct Value
             Symbol property = nth_token(old_head, 2)->symbol;
             val = new_get_property(globals, val, property);
         } else if (match(globals, ST_OPEN_BRACKET)) {
-            printf("Error: indexed property access not yet implemented\n");
-            assert(false);
+            struct Value *index = parse_expr(globals);
+            if (index == NULL) {
+                return NULL;
+            } else if (!match(globals, ST_CLOSE_BRACKET)) {
+                error_parser(globals, "Expected closing bracked");
+                return NULL;
+            }
+            val = new_get_indexed(globals, val, index);
         } else {
             break;
         }
@@ -421,30 +427,27 @@ static struct Statement *parse_line(struct Globals *globals)
         return new_decrement(globals, val);
     }
     struct Statement *stmt = NULL;
+    struct Value *rhs = NULL;
+    if (val->vtype == VTYPE_GET_LOCAL || val->vtype == VTYPE_GET_PROPERTY
+            || val->vtype == VTYPE_INDEX) {
+        if (!match(globals, ST_EQ)) {
+            goto generic_error;
+        }
+        rhs = parse_expr(globals);
+        if (!rhs) {
+            return NULL;
+        }
+    }
+    struct GetProperty *get = NULL;
     switch (val->vtype) {
         case VTYPE_GET_LOCAL:
-            if (match(globals, ST_EQ)) {
-                struct Value *rhs = parse_expr(globals);
-                if (!rhs) {
-                    return NULL;
-                }
-                return new_set_local(globals, val->get_local->name, rhs, false);
-            }
-            break;
+            return new_set_local(globals, val->get_local->name, rhs, false);
         case VTYPE_GET_PROPERTY:
-            if (match(globals, ST_EQ)) {
-                struct Value *rhs = parse_expr(globals);
-                if (!rhs) {
-                    return NULL;
-                }
-                struct GetProperty *get = val->get_property;
-                if (get->type == LV_INDEX) {
-                    printf("Error: not implemented\n");
-                    assert(false);
-                }
-                return new_set_property(globals, get->accessor, get->property, rhs);
-            }
-            break;
+            get = val->get_property;
+            return new_set_property(globals, get->accessor, get->property, rhs);
+        case VTYPE_INDEX:
+            get = val->get_property;
+            return new_set_indexed(globals, get->accessor, get->index, rhs);
         case VTYPE_FUNCALL:
             stmt = new_stmt(globals, STMT_FUNCALL);
             stmt->funcall = val->funcall;
@@ -456,6 +459,7 @@ static struct Statement *parse_line(struct Globals *globals)
         default:
             break;
     }
+generic_error:
     error_parser(globals, "Expected a statement but got an expression");
     return NULL;
 }
@@ -570,6 +574,13 @@ static Type parse_type(struct Globals *globals)
         return TYPE_STRING;
     } else if (match(globals, T_SYMBOL)) {
         return nth_token(old_head, 1)->symbol;
+    }
+    if (match(globals, ST_LESS)) {
+        assert(false);
+        Types *types = parse_type_args(globals);
+        if (types == NULL) {
+            return TYPE_UNDEFINED;
+        }
     }
     error_parser(globals, "Invalid type");
     return TYPE_UNDEFINED;

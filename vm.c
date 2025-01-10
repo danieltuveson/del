@@ -8,7 +8,7 @@ typedef uint64_t HeapPointer;
 
 static inline void set_count(HeapPointer *ptr, size_t count)
 {
-    assert(count <= UINT16_MAX);
+    assert(count <= UINT16_MAX * 3 / 2);
     *ptr = *ptr | (count << COUNT_OFFSET);
 }
 
@@ -19,7 +19,7 @@ static inline size_t get_count(HeapPointer ptr)
 
 static inline void set_metadata(HeapPointer *ptr, size_t metadata)
 {
-    assert(metadata <= UINT16_MAX);
+    assert(metadata <= UINT8_MAX);
     *ptr = *ptr | (metadata << METADATA_OFFSET);
 }
 
@@ -145,6 +145,36 @@ static inline bool push_heap(struct Heap *heap, struct Stack *stack)
     return true;
 }
 
+static inline bool push_array(struct Heap *heap, struct Stack *stack)
+{
+    int64_t dirty_length = pop(stack).integer;
+    size_t obj_size = pop(stack).offset;
+    if (dirty_length < 1) {
+        printf("Fatal runtime error: index of array less than 1\n");
+        return false;
+    }
+    size_t ptr = heap->vector->length;
+    size_t length = (size_t) dirty_length;
+    size_t count = obj_size * length;
+    set_count(&ptr, count);
+    size_t new_usage = heap->vector->length + count;
+    if (new_usage > heap->vector->max_capacity) {
+        printf("Fatal runtime error: out of memory\n");
+        printf("Requested %lu bytes but VM only has a capacity of %lu bytes\n",
+                IN_BYTES(new_usage), 
+                IN_BYTES(heap->vector->max_capacity));
+        return false;
+    }
+    vector_grow(&(heap->vector), count);
+    // Store count in bits before location
+    push_offset(stack, ptr);
+    heap->objcount++;
+#if DEBUG
+    print_heap(heap);
+#endif
+    return true;
+}
+
 /* Get value from the heap and push it onto the stack */
 static inline bool get_heap(struct Heap *heap, struct Stack *stack)
 {
@@ -165,6 +195,35 @@ static inline void set_heap(struct Heap *heap, struct Stack *stack)
     DelValue value = pop(stack);
     size_t location = get_location(ptr);
     heap->vector->values[location + index] = value;
+}
+
+static inline bool get_array(struct Heap *heap, struct Stack *stack)
+{
+    int64_t index = pop(stack).integer;
+    size_t ptr = pop(stack).offset;
+    size_t location = get_location(ptr);
+    size_t count = get_count(ptr);
+    if (index < 0 || index >= (int64_t)count) {
+        printf("Error: array index out of bounds exception\n");
+        return false;
+    }
+    push(stack, heap->vector->values[location + index]);
+    return true;
+}
+
+static inline bool set_array(struct Heap *heap, struct Stack *stack)
+{
+    int64_t index = pop(stack).integer;
+    size_t ptr = pop(stack).offset;
+    size_t location = get_location(ptr);
+    size_t count = get_count(ptr);
+    if (index < 0 || index >= (int64_t)count) {
+        printf("Error: array index out of bounds exception\n");
+        return false;
+    }
+    DelValue value = pop(stack);
+    heap->vector->values[location + index] = value;
+    return true;
 }
 
 static inline void stack_frame_enter(struct StackFrames *sfs)
@@ -344,7 +403,7 @@ void vm_free(struct VirtualMachine *vm)
 #endif
 
 #define pause_after(n) do {\
-    if (iterations % n == 0) {\
+    if (unexpected(iterations % n == 0)) {\
         status = VM_STATUS_PAUSE;\
         goto exit_loop;\
     }\
@@ -354,13 +413,13 @@ void vm_free(struct VirtualMachine *vm)
     ip++;\
     iterations++;\
     /* For fun, lets exit whenever we reach 100 iterations */ \
-    /* pause_after(100); */\
+    /* pause_after(UINT64_MAX);*/\
     emergency_break();\
 } while(0)
 
 // Bounds check on pushes to stack
 #define check_push() do {\
-    if (stack.offset >= STACK_MAX - 1) { \
+    if (unexpected(stack.offset >= STACK_MAX - 1)) { \
         printf("Error: stack overflow (calculation too large)\n");\
         status = VM_STATUS_ERROR;\
         goto exit_loop;\
@@ -409,8 +468,36 @@ uint64_t vm_execute(struct VirtualMachine *vm)
                     goto exit_loop;
                 }
                 vm_break;
+            vm_case(PUSH_ARRAY):
+                if (!push_array(&heap, &stack)) {
+                    status = VM_STATUS_ERROR;
+                    goto exit_loop;
+                }
+                vm_break;
+            vm_case(LEN_ARRAY):
+                TODO();
+                vm_break;
+            vm_case(GET_HEAP):
+                if (!get_heap(&heap, &stack)) {
+                    printf("Error: null pointer exception\n");
+                    status = VM_STATUS_ERROR;
+                    goto exit_loop;
+                }
+                vm_break;
             vm_case(SET_HEAP):
                 set_heap(&heap, &stack);
+                vm_break;
+            vm_case(GET_ARRAY):
+                if (!get_array(&heap, &stack)) {
+                    status = VM_STATUS_ERROR;
+                    goto exit_loop;
+                }
+                vm_break;
+            vm_case(SET_ARRAY):
+                if (!set_array(&heap, &stack)) {
+                    status = VM_STATUS_ERROR;
+                    goto exit_loop;
+                }
                 vm_break;
             vm_case(DUP):
                 dup(&stack);
@@ -510,13 +597,6 @@ uint64_t vm_execute(struct VirtualMachine *vm)
             vm_case(POP):
                 ret = pop(&stack).integer;
                 vm_break;
-            vm_case(GET_HEAP):
-                if (!get_heap(&heap, &stack)) {
-                    printf("Error: null pointer exception\n");
-                    status = VM_STATUS_ERROR;
-                    goto exit_loop;
-                }
-                vm_break;
             vm_case(EXIT):
                 status = VM_STATUS_COMPLETED;
                 goto exit_loop;
@@ -577,7 +657,8 @@ uint64_t vm_execute(struct VirtualMachine *vm)
             vm_case(GET_CHAR):
             vm_case(SET_CHAR):
             default:
-                printf("unknown instruction encountered: '%" PRIu64 "'", instructions[ip].offset);
+                printf("unknown instruction encountered: '%" PRIu64 "'",
+                        instructions[ip].offset);
                 status = VM_STATUS_ERROR;
                 goto exit_loop;
         }
