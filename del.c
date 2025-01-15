@@ -106,6 +106,23 @@ static bool read_and_compile(struct Vector **instructions_ptr, Allocator allocat
     return true;
 }
 
+/*
+typedef DelValue del_function(DelValue *values, size_t length) DelFunction;
+
+void del_register_functions(void)
+{
+}
+*/
+
+/*
+
+list (length + array) of type-value pairs (del_type, del_value)
+
+del_type is a string for the name of the type. del_value
+
+
+ */
+
 DelAllocator del_allocator_new(void)
 {
     DelAllocator da = (DelAllocator) allocator_new();

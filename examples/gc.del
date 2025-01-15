@@ -1,0 +1,46 @@
+class Thing {
+    _1 : int;
+    _2 : int;
+    _3 : int;
+    _4 : int;
+    _5 : int;
+    // _6 : int;
+    // _7 : int;
+    // _8 : int;
+    // _1 : int;
+    // _1 : int;
+    // _1 : int;
+    // _1 : int;
+    // _1 : int;
+    // _1 : int;
+}
+
+function main() {
+    let t = new Thing
+        ( 111
+        , 222
+        , 333
+        , 444
+        , 555
+        // , 666
+        // , 777
+        // , 888
+        // , 999
+        // , 123
+        // , 456
+        // , 789
+        // , 100
+        // , 200
+    );
+    let i = t._1;
+    let j = t._2;
+    let k = t._3;
+    let l = t._4;
+    let m = t._5;
+    // let n = t.n;
+    // let o = t.o;
+    // let p = t.p;
+    // let q = t.q;
+    // let r = t.r;
+    // println("i: ", t.i, ", j: ", t.j, ", k: ", t.k);
+}

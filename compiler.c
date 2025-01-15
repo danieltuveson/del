@@ -123,9 +123,9 @@ static void compile_get_local(struct Globals *globals, size_t offset)
     }
 }
 
-static void compile_set_local(struct Globals *globals, size_t offset)
+static void compile_set_local(struct Globals *globals, struct Definition *def) //size_t offset)
 {
-    switch (offset) {
+    switch (def->scope_offset) {
         case 0: 
             load_opcode(globals, SET_LOCAL_0);
             break;
@@ -140,8 +140,9 @@ static void compile_set_local(struct Globals *globals, size_t offset)
             break;
         default:
             load_opcode(globals, SET_LOCAL);
-            load_offset(globals, offset);
+            load_offset(globals, def->scope_offset);
     }
+    // compile_offset(globals, def->type);
 }
 
 // Pack 8 byte chunks of chars to push onto stack
@@ -182,7 +183,8 @@ static void compile_funargs(struct Globals *globals, Definitions *defs)
 {
     linkedlist_foreach(lnode, defs->head) {
         struct Definition *def = lnode->value;
-        compile_set_local(globals, def->scope_offset);
+        // compile_set_local(globals, def->scope_offset);
+        compile_set_local(globals, def);
     }
 }
 
@@ -201,14 +203,37 @@ static void compile_fundef(struct Globals *globals, struct FunDef *fundef)
     compile_statements(globals, fundef->stmts);
 }
 
+// v | v | t
+// Every i % 4 == 0 element stores types of the next 4 values
+// types | value | value | value | value | types | value ...
+// (But reverse order, since the heap pops them off in the opposite order)
 static void compile_constructor(struct Globals *globals, struct Constructor *constructor)
 {
+    uint16_t types[4] = {0};
+    size_t rem = constructor->funcall->args->length % 4;
+    size_t count = 0;
+    size_t i = 0;
+    // Push after rem, then push every 4th from the head
     linkedlist_foreach_reverse(lnode, constructor->funcall->args->tail) {
         struct Value *value = lnode->value;
-        compile_type(globals, value->type);
         compile_value(globals, value);
+        size_t index = count < rem ? rem - i - 1: 3 - i;
+        // size_t index = 3 - i;
+        types[index] = (uint16_t)value->type;
+        if (index == 0) {
+            DelValue dvalue;
+            memcpy(dvalue.types, types, 8);
+            push(globals);
+            vector_append(&(globals->cc->instructions), dvalue);
+            memset(types, 0, 8);
+            i = 0;
+            count++;
+        } else {
+            i++;
+        }
+        count++;
     }
-    compile_heap(globals, 0, 2 * constructor->funcall->args->length);
+    compile_heap(globals, 0, count);
 }
 
 // Being a little too cheeky with the name of this?
@@ -575,17 +600,18 @@ static void compile_increment(struct Globals *globals, struct Value *val, int64_
         compile_offset(globals, index);
         load_opcode(globals, SET_HEAP);
     } else if (val->vtype == VTYPE_GET_LOCAL) {
-        compile_set_local(globals, val->get_local->scope_offset);
+        // compile_set_local(globals, val->get_local->scope_offset);
+        compile_set_local(globals, val->get_local);
     }
 }
 
 static void compile_statement(struct Globals *globals, struct Statement *stmt)
 {
-    int sign = 1;
     switch (stmt->type) {
         case STMT_SET_LOCAL:
             compile_value(globals, stmt->set_local->expr);
-            compile_set_local(globals, stmt->set_local->def->scope_offset);
+            // compile_set_local(globals, stmt->set_local->def->scope_offset);
+            compile_set_local(globals, stmt->set_local->def);
             if (stmt->set_local->is_define) load_opcode(globals, DEFINE);
             break;
         case STMT_SET_PROPERTY:
@@ -616,10 +642,10 @@ static void compile_statement(struct Globals *globals, struct Statement *stmt)
             load_opcode(globals, DEFINE);
             break;
         case STMT_DEC:
-            sign = -1;
-            /* fallthrough */
+            compile_increment(globals, stmt->val, -1);
+            break;
         case STMT_INC:
-            compile_increment(globals, stmt->val, sign * 1);
+            compile_increment(globals, stmt->val, 1);
             break;
         default:
             assert("Error cannot compile statement type: not implemented\n" && false);

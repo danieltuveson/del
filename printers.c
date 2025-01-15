@@ -219,11 +219,14 @@ void print_frames(struct StackFrames *sfs)
 
 void print_heap(struct Heap *heap)
 {
-    printf("heap:   [ memory usage: %lu bytes, objcount: %ld, offset: %ld, values: { ", 
-            IN_BYTES(heap->vector->length), heap->objcount, heap->vector->length);
-    for (size_t i = 0; i < heap->vector->length; i++) {
-        printf("%" PRIu64 "", heap->vector->values[i].integer);
-        if (i != heap->vector->length - 1) printf(", ");
+    struct Vector *vector = heap->vector;
+    printf("heap: [ gc threshold: %lu bytes, memory usage: %lu bytes, ",
+            IN_BYTES(heap->gc_threshold),
+            IN_BYTES(vector->length));
+    printf("values: { "); 
+    for (size_t i = 0; i < vector->length; i++) {
+        printf("%" PRIu64 "", vector->values[i].integer);
+        if (i != vector->length - 1) printf(", ");
     }
     printf(" } ]\n");
 }
@@ -418,6 +421,8 @@ void print_value(struct Globals *globals, struct Value *val)
         print_get_property(globals, true, val->get_property);
         break;
     case VTYPE_INDEX:
+        print_get_property(globals, false, val->get_property);
+        break;
     default:
         assert("Error, not implemented" && false);
         break;
@@ -444,6 +449,7 @@ static void print_definitions(struct Globals *globals, struct LinkedList *lst, c
         }
     }
 }
+
 static void print_set_property(struct Globals *globals, bool is_prop, struct SetProperty *set)
 {
     print_get_property(globals, is_prop, set->access);
@@ -545,6 +551,16 @@ static void print_statement_indent(struct Globals *globals, struct Statement *st
             print_set_property(globals, true, stmt->set_property);
             break;
         case STMT_SET_INDEX:
+            print_set_property(globals, false, stmt->set_property);
+            break;
+        case STMT_INC:
+            print_value(globals, stmt->val);
+            printf("++;");
+            break;
+        case STMT_DEC:
+            print_value(globals, stmt->val);
+            printf("--;");
+            break;
         default:
             assert("Error, not implemented" && false);
             break;

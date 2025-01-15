@@ -124,9 +124,9 @@ struct Value {
     Type type;
     union {
         char *string;
-        long integer;
+        int64_t integer;
         double floating;
-        long boolean;
+        int64_t boolean;
         struct Expr *expr;
         struct FunCall *funcall;
         struct Constructor *constructor;
@@ -253,9 +253,9 @@ struct Statement *new_decrement(struct Globals *globals, struct Value *val);
 
 /* Value constructors */
 struct Value *new_string(struct Globals *globals, char *string);
-struct Value *new_integer(struct Globals *globals, long integer);
+struct Value *new_integer(struct Globals *globals, int64_t integer);
 struct Value *new_floating(struct Globals *globals, double floating);
-struct Value *new_boolean(struct Globals *globals, int boolean);
+struct Value *new_boolean(struct Globals *globals, int64_t boolean);
 struct Value *new_null(struct Globals *globals);
 struct Value *new_vfuncall(struct Globals *globals, struct Accessor *access, Values *args,
         bool is_builtin);

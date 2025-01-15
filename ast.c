@@ -262,7 +262,7 @@ struct Value *new_string(struct Globals *globals, char *string)
     return val;
 }
 
-struct Value *new_integer(struct Globals *globals, long integer)
+struct Value *new_integer(struct Globals *globals, int64_t integer)
 {
     struct Value *val = new_value(globals, VTYPE_INT, TYPE_INT);
     val->integer = integer;
@@ -276,7 +276,7 @@ struct Value *new_floating(struct Globals *globals, double floating)
     return val;
 }
 
-struct Value *new_boolean(struct Globals *globals, int boolean)
+struct Value *new_boolean(struct Globals *globals, int64_t boolean)
 {
     struct Value *val = new_value(globals, VTYPE_BOOL, TYPE_BOOL);
     val->boolean = boolean;

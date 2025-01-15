@@ -1,5 +1,6 @@
 #include "common.h"
 #include "del.h"
+#include "printers.h"
 
 // Example del program
 int main(int argc, char *argv[])

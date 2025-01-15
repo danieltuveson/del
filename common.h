@@ -59,8 +59,10 @@
 #define INSTRUCTIONS_MAX        UINT64_MAX
 #define STACK_MAX               1000
 // #define HEAP_MAX                1024
+#define HEAP_INIT               128
 #define HEAP_MAX                UINT64_MAX
 #define ERROR_MESSAGE_MAX       250
+#define GC_GROWTH_FACTOR 2
 
 #define IN_BYTES(val) 8 * val
 #define INSTRUCTIONS_MAX_BYTES        IN_BYTES(INSTRUCTIONS_MAX)
@@ -79,10 +81,12 @@
  */
 #define COUNT_OFFSET    UINT64_C(32)
 #define METADATA_OFFSET UINT64_C(56)
+#define GC_MARK_OFFSET  UINT64_C(63)
 #define METADATA_MASK   (UINT64_MAX - ((UINT64_C(1) << METADATA_OFFSET) - 1))
 #define LOCATION_MASK   ((UINT64_C(1) << COUNT_OFFSET) - 1)
 #define COUNT_MASK      (UINT64_MAX - (LOCATION_MASK + METADATA_MASK))
-#define GC_MARK_MASK    (UINT64_C(1) << 63)
+#define GC_MARK_MASK    (UINT64_C(1) << GC_MARK_OFFSET)
+
 
 #define TODO() do { printf("Error: Not implemented\n"); assert(false); } while (false)
 
@@ -120,7 +124,7 @@ typedef uint64_t Type;
 #define TYPE_STRING UINT64_C(5)
 
 /* Array type modifies other types */
-#define TYPE_ARRAY UINT64_C(1) << 63
+#define TYPE_ARRAY (UINT64_C(1) << 63)
 
 /* Builtin functions */
 #define BUILTIN_PRINT UINT64_C(6)
@@ -150,7 +154,7 @@ static inline bool is_array(Type type)
 
 static inline Type type_of_array(Type type)
 {
-    return ~(TYPE_ARRAY) & type;
+    return ~TYPE_ARRAY & type;
 }
 
 /* List functions */

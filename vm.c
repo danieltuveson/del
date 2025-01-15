@@ -28,6 +28,11 @@ static inline size_t get_metadata(HeapPointer ptr)
     return (ptr & METADATA_MASK) >> METADATA_OFFSET;
 }
 
+static inline size_t get_location(HeapPointer ptr)
+{
+    return ptr & LOCATION_MASK;
+}
+
 static inline void gc_mark(HeapPointer *ptr)
 {
     *ptr = *ptr | GC_MARK_MASK;
@@ -38,10 +43,96 @@ static inline void gc_unmark(HeapPointer *ptr)
     *ptr = *ptr & ~GC_MARK_MASK;
 }
 
-static inline size_t get_location(HeapPointer ptr)
+static inline bool gc_is_marked(HeapPointer ptr)
 {
-    return ptr & LOCATION_MASK;
+    return ((ptr & GC_MARK_MASK) >> GC_MARK_OFFSET);
 }
+
+// Our conservative GC looks for potential pointers in the stack / stack frames.
+// If we make pointers be numbers less likely to appear in a normal program,
+// we lessen the likelyhood of leaving memory around that should have beeen freed
+
+// In binary this is 010101...
+// const uint64_t zero_one_zero_etc = UINT64_C(6148914691236517205);
+// 
+// static inline HeapPointer encode_pointer(HeapPointer ptr)
+// {
+//     return ~(ptr ^ zero_one_zero_etc);
+// }
+// 
+// static inline HeapPointer decode_pointer(HeapPointer ptr)
+// {
+//     return (~ptr) ^ zero_one_zero_etc;
+// }
+
+/*
+struct StackFrames {
+    size_t index;
+    DelValue *values;
+    size_t frame_offsets_index;
+    size_t *frame_offsets;
+};
+
+// The stack stores almost all data used by the VM 
+struct Stack {
+    size_t offset;
+    DelValue *values;
+};
+
+// A value on the heap is just a slice of bytes
+struct Heap {
+    struct Vector *vector;
+};
+*/
+
+// // Checks if pointer follows correct struct of heap pointer.
+// // It still *might* not be a valid heap pointer.
+// static HeapPointer is_valid_pointer(HeapPointer maybe_ptr, struct Heap *heap, bool is_internal)
+// {
+//     HeapPointer ptr = decode_pointer(maybe_ptr);
+//     size_t loc = get_location(ptr);
+//     size_t count = get_count(ptr);
+//     if (count + loc >= heap->vector->length) {
+//         printf("invalid - out of bounds\n");
+//         return 0;
+//     }
+//     if (!is_internal) {
+//         printf("invalid - already flagged\n");
+//         // Shouldn't be marked yet
+//         if (gc_is_marked(ptr)) {
+//             return 0;
+//         }
+//     }
+//     return 0;
+// }
+
+// static bool gc_mark_children(HeapPointer ptr, struct Heap *heap)
+// {
+//     (void)ptr;(void)heap;
+//     return false;
+// }
+// 
+// static void gc_collect(struct Heap *heap, struct Stack *stack, struct StackFrames *sfs)
+// {
+//     (void)sfs;
+//     struct Vector *new_heap = vector_new(HEAP_INIT, HEAP_MAX);
+//     struct Vector *ptrs = vector_new(8, UINT64_MAX);
+//     for (size_t i = 0; i < stack->offset; i++) {
+//         HeapPointer ptr = is_valid_pointer(stack->values[i].offset, heap, false);
+//         if (ptr) {
+//             gc_mark_children(ptr, heap);
+//         }
+//     }
+//     heap->gc_threshold = GC_GROWTH_FACTOR * new_heap->capacity;
+//     heap->vector = new_heap;
+//     vector_free(ptrs);
+//     return;
+// }
+
+// 
+// static void gc_sweep()
+// {
+// }
 
 // NOTE: push does not check for overflow
 // Any call of push that is not preceded by an equal or greater number of pops
@@ -116,7 +207,7 @@ static inline void switch_op(struct Stack *stack)
 
 /* Pops values from the stack and pushes them onto the heap */
 // TODO: Rewrite this + compiler so that push_heap allocates but doesn't set anything
-static inline bool push_heap(struct Heap *heap, struct Stack *stack)
+static inline bool push_heap(struct Heap *heap, struct Stack *stack, struct StackFrames *sfs)
 {
     size_t count = pop(stack).offset;
     size_t metadata = pop(stack).offset;
@@ -130,6 +221,10 @@ static inline bool push_heap(struct Heap *heap, struct Stack *stack)
                 IN_BYTES(new_usage), 
                 IN_BYTES(heap->vector->max_capacity));
         return false;
+    } else if (heap->vector->length == heap->vector->capacity && heap->vector->length > 0) {
+        // Pulled from vector.c logic
+        // Only want to GC when we are on the verge of needing to grow array
+        // gc_collect(heap, stack, sfs);
     }
     // vector_grow(&(heap->vector), count);
     for (size_t i = 0; i < count; i++) {
@@ -138,14 +233,13 @@ static inline bool push_heap(struct Heap *heap, struct Stack *stack)
     }
     // Store count in bits before location
     push_offset(stack, ptr);
-    heap->objcount++;
 #if DEBUG
     print_heap(heap);
 #endif
     return true;
 }
 
-static inline bool push_array(struct Heap *heap, struct Stack *stack)
+static inline bool push_array(struct Heap *heap, struct Stack *stack, struct StackFrames *sfs)
 {
     int64_t dirty_length = pop(stack).integer;
     size_t obj_size = pop(stack).offset;
@@ -164,11 +258,14 @@ static inline bool push_array(struct Heap *heap, struct Stack *stack)
                 IN_BYTES(new_usage), 
                 IN_BYTES(heap->vector->max_capacity));
         return false;
+    } else if (heap->vector->length == heap->vector->capacity && heap->vector->length > 0) {
+        // Pulled from vector.c logic
+        // Only want to GC when we are on the verge of needing to grow array
+        // gc_collect(heap, stack, sfs);
     }
     vector_grow(&(heap->vector), count);
     // Store count in bits before location
     push_offset(stack, ptr);
-    heap->objcount++;
 #if DEBUG
     print_heap(heap);
 #endif
@@ -178,19 +275,19 @@ static inline bool push_array(struct Heap *heap, struct Stack *stack)
 /* Get value from the heap and push it onto the stack */
 static inline bool get_heap(struct Heap *heap, struct Stack *stack)
 {
-    size_t index = 2 * pop(stack).offset;
+    size_t index = 1 + 5 * pop(stack).offset / 4;
     size_t ptr = pop(stack).offset;
     size_t location = get_location(ptr);
     if (ptr == 0) {
         return false;
     }
-    push_offset(stack, heap->vector->values[location + index].offset);
+    push(stack, heap->vector->values[location + index]);
     return true;
 }
 
 static inline void set_heap(struct Heap *heap, struct Stack *stack)
 {
-    size_t index = 2 * pop(stack).offset;
+    size_t index = 1 + 5 * pop(stack).offset / 4;
     size_t ptr = pop(stack).offset;
     DelValue value = pop(stack);
     size_t location = get_location(ptr);
@@ -250,8 +347,10 @@ static inline DelValue get_local(struct StackFrames *sfs, size_t scope_offset)
 
 static inline void set_local(struct Stack *stack, struct StackFrames *sfs, size_t scope_offset)
 {
+    // size_t type = pop(stack).offset;
     DelValue val = pop(stack);
     size_t sf_offset = stack_frame_offset(sfs);
+    // sfs->values[sf_offset + scope_offset].offset = type;
     sfs->values[sf_offset + scope_offset] = val;
 #if DEBUG
     print_frames(sfs);
@@ -311,7 +410,7 @@ static void print(struct Stack *stack, struct Heap *heap)
 }
 
 // TODO: Check that stack does not overflow when pushing
-static inline bool read(struct Stack *stack, struct Heap *heap)
+static inline bool read(struct Stack *stack, struct Heap *heap, struct StackFrames *sfs)
 {
     char packed[8] = {0};
     uint64_t i = 0;
@@ -337,7 +436,7 @@ static inline bool read(struct Stack *stack, struct Heap *heap)
     size_t metadata = i / 8 + (offset == 0 ? 0 : 1);
     push_offset(stack, offset);
     push_offset(stack, metadata);
-    return push_heap(heap, stack);
+    return push_heap(heap, stack, sfs);
 }
 
 // static inline void concat(struct Stack *stack, struct Heap *heap)
@@ -376,7 +475,8 @@ void vm_init(struct VirtualMachine *vm, DelValue *instructions)
     vm->stack.values = calloc(STACK_MAX, sizeof(*(vm->stack.values)));
     vm->sfs.values = calloc(STACK_MAX, sizeof(*(vm->sfs.values)));
     vm->sfs.frame_offsets = calloc(STACK_MAX, sizeof(*(vm->sfs.frame_offsets)));
-    vm->heap.vector = vector_new(128, HEAP_MAX);
+    vm->heap.vector = vector_new(HEAP_INIT, HEAP_MAX);
+    vm->heap.gc_threshold = GC_GROWTH_FACTOR * vm->heap.vector->capacity;
     vm->instructions = instructions;
 }
 
@@ -392,7 +492,8 @@ void vm_free(struct VirtualMachine *vm)
 #define emergency_break() do {\
     print_stack(&stack);\
     print_heap(&heap);\
-    if (iterations > 200000) {\
+    /* if (iterations > 200000) {*/\
+    if (iterations > 200) {\
         printf("infinite loop detected, ending execution\n");\
         status = VM_STATUS_ERROR;\
         goto exit_loop;\
@@ -434,7 +535,6 @@ uint64_t vm_execute(struct VirtualMachine *vm)
     struct Stack stack = vm->stack;
     struct Heap heap = vm->heap;
     size_t ip = vm->ip;
-    size_t scope_offset = vm->scope_offset;
     uint64_t ret = vm->ret;
     DelValue val1 = vm->val1;
     DelValue val2 = vm->val2;
@@ -463,13 +563,13 @@ uint64_t vm_execute(struct VirtualMachine *vm)
             PUSH_N(3);
             #undef PUSH_N
             vm_case(PUSH_HEAP):
-                if (!push_heap(&heap, &stack)) {
+                if (!push_heap(&heap, &stack, &sfs)) {
                     status = VM_STATUS_ERROR;
                     goto exit_loop;
                 }
                 vm_break;
             vm_case(PUSH_ARRAY):
-                if (!push_array(&heap, &stack)) {
+                if (!push_array(&heap, &stack, &sfs)) {
                     status = VM_STATUS_ERROR;
                     goto exit_loop;
                 }
@@ -544,8 +644,7 @@ uint64_t vm_execute(struct VirtualMachine *vm)
                 vm_break;
             vm_case(SET_LOCAL):
                 ip++;
-                scope_offset = instructions[ip].offset;
-                set_local(&stack, &sfs, scope_offset);
+                set_local(&stack, &sfs, instructions[ip].offset);
                 vm_break;
             #define SET_LOCAL_N(n)\
             vm_case(SET_LOCAL_ ## n):\
@@ -562,8 +661,7 @@ uint64_t vm_execute(struct VirtualMachine *vm)
                 vm_break;
             vm_case(GET_LOCAL):
                 ip++;
-                scope_offset = instructions[ip].offset;
-                val1 = get_local(&sfs, scope_offset);
+                val1 = get_local(&sfs, instructions[ip].offset);
                 check_push();
                 push(&stack, val1);
                 vm_break;
@@ -626,7 +724,7 @@ uint64_t vm_execute(struct VirtualMachine *vm)
                 stack_frame_exit(&sfs);
                 vm_break;
             vm_case(READ):
-                if (!read(&stack, &heap)) {
+                if (!read(&stack, &heap, &sfs)) {
                     status = VM_STATUS_ERROR;
                     goto exit_loop;
                 }
@@ -678,7 +776,6 @@ exit_loop:
     vm->stack = stack;
     vm->heap = heap;
     vm->ip = ip;
-    vm->scope_offset = scope_offset;
     vm->ret = ret;
     vm->val1 = val1;
     vm->val2 = val2;
