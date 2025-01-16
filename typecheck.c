@@ -57,6 +57,7 @@ static void enter_scope(struct Globals *globals, struct Scope **current, bool is
 {
     struct Scope *scope = allocator_malloc(globals->allocator, sizeof(*scope));
     scope->isfunction = isfunction;
+    scope->rettype = TYPE_UNDEFINED;
     if (*current != NULL && !isfunction) {
         scope->varcount = (*current)->varcount;
     } else {
@@ -533,9 +534,18 @@ static bool typecheck_if(struct Globals *globals, struct TypeCheckerContext *con
         printf("Error: expected boolean in if condition\n");
         return false;
     }
+    enter_scope(globals, &(context->scope), false);
     bool ret = typecheck_statements(globals, context, if_stmt->if_stmts);
+    Type rettype_if = context->scope->rettype;
+    exit_scope(&(context->scope));
     if (if_stmt->else_stmts != NULL) {
+        enter_scope(globals, &(context->scope), false);
         ret = ret && typecheck_statements(globals, context, if_stmt->else_stmts);
+        Type rettype_else = context->scope->rettype;
+        exit_scope(&(context->scope));
+        if (rettype_if != TYPE_UNDEFINED && rettype_else != TYPE_UNDEFINED) {
+            context->scope->rettype = rettype_else;
+        }
     }
     return ret;
 }
@@ -578,19 +588,28 @@ static bool typecheck_return(struct Globals *globals, struct TypeCheckerContext 
         if (rettype == TYPE_UNDEFINED) {
             return true;
         } else {
-            printf("Error: function should return %s but is returning nothing\n",
-                   lookup_symbol(globals, rettype));
+            printf("Error: function '%s' should return value of type '%s' but is returning nothing\n",
+                    lookup_symbol(globals, context->enclosing_func->name),
+                    lookup_symbol(globals, rettype));
             return false;
         }
     }
     Type val_type = typecheck_value(globals, context, val);
     if (val_type == TYPE_UNDEFINED) {
         return false;
+    } else if (rettype == TYPE_UNDEFINED) {
+        printf("Error: function '%s' should return nothing but is returning value of type '%s'\n",
+                lookup_symbol(globals, context->enclosing_func->name),
+                lookup_symbol(globals, val_type));
+        return false;
     } else if (rettype != val_type) {
-        printf("Error: function return type is %s but returning value of type %s\n",
-               lookup_symbol(globals, rettype), lookup_symbol(globals, val_type));
+        printf("Error: function '%s' return type is '%s' but returning value of type '%s'\n",
+                lookup_symbol(globals, context->enclosing_func->name),
+                lookup_symbol(globals, rettype),
+                lookup_symbol(globals, val_type));
         return false;
     }
+    context->scope->rettype = val_type;
     return true;
 }
 
@@ -728,6 +747,10 @@ static Type typecheck_constructor(struct Globals *globals, struct TypeCheckerCon
 static bool typecheck_statement(struct Globals *globals, struct TypeCheckerContext *context,
         struct Statement *stmt)
 {
+    if (context->scope->rettype != TYPE_UNDEFINED) {
+        printf("Error: statements below 'return' statement will not be executed\n");
+        return false;
+    }
     bool ret = false;
     switch (stmt->type) {
         case STMT_SET_LOCAL:
@@ -743,9 +766,7 @@ static bool typecheck_statement(struct Globals *globals, struct TypeCheckerConte
             ret = scope_vars(globals, context, stmt->let);
             return ret;
         case STMT_IF: {
-            enter_scope(globals, &(context->scope), false);
             ret = typecheck_if(globals, context, stmt->if_stmt);
-            exit_scope(&(context->scope));
             return ret;
         }
         case STMT_WHILE:
@@ -815,6 +836,26 @@ static bool typecheck_fundef(struct Globals *globals, struct TypeCheckerContext 
         return false;
     }
     ret = typecheck_statements(globals, context, fundef->stmts);
+    if (!ret) {
+        return false;
+    }
+    if (fundef->rettype == TYPE_UNDEFINED) {
+        if (fundef->stmts->tail == NULL) {
+            printf("Error: empty function body\n");
+            return false;
+        }
+        struct Statement *stmt = fundef->stmts->tail->value;
+        // Implicit return for functions that return nothing
+        if (stmt->type != STMT_RETURN) {
+            linkedlist_append(fundef->stmts, new_return(globals, NULL));
+        }
+        exit_scope(&scope);
+        return ret;
+    } else if (scope->rettype == TYPE_UNDEFINED) {
+        printf("Error: function '%s' does not return a value on all paths\n",
+                lookup_symbol(globals, fundef->name));
+        return false;
+    }
     exit_scope(&scope);
     return ret;
 }

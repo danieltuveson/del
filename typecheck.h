@@ -16,6 +16,7 @@ struct FunctionTable {
 
 struct Scope {
     bool isfunction;
+    Type rettype; // Stores return type of if/else/return statements
     size_t varcount;
     Definitions *definitions;
     struct Scope *parent;

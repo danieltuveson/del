@@ -30,6 +30,7 @@ enum TokenType {
     ST_CLASS,
     ST_RETURN,
     ST_BREAK,
+    ST_CONTINUE,
     ST_PLUS,
     ST_MINUS,
     ST_STAR,

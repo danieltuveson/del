@@ -667,16 +667,11 @@ static void compile_statements(struct Globals *globals, Statements *stmts)
 
 static void compile_entrypoint(struct Globals *globals, TopLevelDecls *tlds)
 {
-    linkedlist_foreach(lnode, tlds->head) {
-        struct TopLevelDecl *tld = lnode->value;
-        if (tld->type == TLD_TYPE_FUNDEF && tld->fundef->name == globals->entrypoint) {
-            load_opcode(globals, PUSH_SCOPE);
-            compile_statements(globals, tld->fundef->stmts);
-            load_opcode(globals, POP_SCOPE);
-            load_opcode(globals, EXIT);
-            break;
-        }
-    }
+    Symbol funname = globals->entrypoint;
+    struct Accessor *a = new_accessor(globals, funname, linkedlist_new(globals->allocator));
+    struct Statement *stmt = new_sfuncall(globals, a, NULL, false);
+    compile_funcall(globals, stmt->funcall);
+    load_opcode(globals, EXIT);
 }
 
 static void compile_tld(struct Globals *globals, struct TopLevelDecl *tld)
@@ -686,9 +681,7 @@ static void compile_tld(struct Globals *globals, struct TopLevelDecl *tld)
             // compile_class(globals, tld->cls);
             break;
         case TLD_TYPE_FUNDEF:
-            if (tld->fundef->name != globals->entrypoint) {
-                compile_fundef(globals, tld->fundef);
-            }
+            compile_fundef(globals, tld->fundef);
             break;
     }
 }

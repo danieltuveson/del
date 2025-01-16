@@ -29,6 +29,7 @@ struct TokenMapping keywords[] = {
     { "class",       ST_CLASS },
     { "return",      ST_RETURN },
     { "break",       ST_BREAK },
+    { "continue",    ST_CONTINUE },
     { "true",        ST_TRUE },
     { "false",       ST_FALSE }
 };
