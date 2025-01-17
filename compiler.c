@@ -665,7 +665,7 @@ static void compile_statements(struct Globals *globals, Statements *stmts)
 //     compile_constructor(globals, cls);
 // }
 
-static void compile_entrypoint(struct Globals *globals, TopLevelDecls *tlds)
+static void compile_entrypoint(struct Globals *globals)
 {
     Symbol funname = globals->entrypoint;
     struct Accessor *a = new_accessor(globals, funname, linkedlist_new(globals->allocator));
@@ -689,7 +689,7 @@ static void compile_tld(struct Globals *globals, struct TopLevelDecl *tld)
 static void compile_tlds(struct Globals *globals, TopLevelDecls *tlds)
 {
     globals->cc->funcall_table = new_ft(globals, 0);
-    compile_entrypoint(globals, tlds);
+    compile_entrypoint(globals);
     linkedlist_foreach(lnode, tlds->head) {
         compile_tld(globals, (struct TopLevelDecl *) lnode->value);
     }

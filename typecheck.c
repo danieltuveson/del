@@ -148,10 +148,10 @@ static bool add_types(TopLevelDecls *tlds, struct ClassTable *clst, struct Funct
 {
     linkedlist_foreach(lnode, tlds->head) {
         struct TopLevelDecl *tld = lnode->value;
-        if (tld->type == TLD_TYPE_FUNDEF) {
-            add_function(ft, tld->fundef);
-        } else {
+        if (tld->type == TLD_TYPE_CLASS) {
             add_class(clst, tld->cls);
+        } else { //if (tld->type == TLD_TYPE_FUNDEF) {
+            add_function(ft, tld->fundef);
         }
     }
     return true;
@@ -823,20 +823,65 @@ static bool typecheck_statements(struct Globals *globals, struct TypeCheckerCont
     return true;
 }
 
+static bool typecheck_entrypoint(struct Globals *globals, struct FunDef *fundef)
+{
+    if (fundef->name == globals->entrypoint) {
+        if (fundef->rettype != TYPE_UNDEFINED) {
+            printf("Error: main function should not return any values\n");
+            return false;
+        } else if (!linkedlist_is_empty(fundef->args)) {
+            printf("Error: main function should not take any arguments\n");
+            return false;
+        }
+    }
+    return true;
+}
+
+// Woah meta
+static bool typecheck_type(struct Globals *globals, struct TypeCheckerContext *context, Type type)
+{
+    if (is_array(type)) {
+        type = type_of_array(type);
+    }
+    if (is_object(type)) {
+        struct Class *cls = lookup_class(context->cls_table, type);
+        if (cls == NULL) {
+            printf("Error: unknown type '%s'\n",
+                    lookup_symbol(globals, type));
+            return false;
+        }
+    }
+    return true;
+}
+
+static bool typecheck_fundef_args(struct Globals *globals, struct TypeCheckerContext *context,
+        struct FunDef *fundef)
+{
+    linkedlist_foreach(lnode, fundef->args->head) {
+        struct Definition *def = lnode->value;
+        if (!typecheck_type(globals, context, def->type)) {
+            return false;
+        }
+    }
+    return true;
+}
+
 static bool typecheck_fundef(struct Globals *globals, struct TypeCheckerContext *context,
         struct FunDef *fundef)
 {
+    if (!typecheck_entrypoint(globals, fundef)) {
+        return false;
+    }
     struct Scope *scope = NULL;
     enter_scope(globals, &scope, true);
     context->enclosing_func = fundef;
     context->scope = scope;
-    bool ret = scope_vars(globals, context, fundef->args);
+    bool ret = scope_vars(globals, context, fundef->args) 
+        && typecheck_fundef_args(globals, context, fundef)
+        && typecheck_type(globals, context, fundef->rettype)
+        && typecheck_statements(globals, context, fundef->stmts);
     if (!ret) {
         exit_scope(&scope);
-        return false;
-    }
-    ret = typecheck_statements(globals, context, fundef->stmts);
-    if (!ret) {
         return false;
     }
     if (fundef->rettype == TYPE_UNDEFINED) {

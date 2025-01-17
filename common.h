@@ -124,7 +124,7 @@ typedef uint64_t Type;
 #define TYPE_STRING UINT64_C(5)
 
 /* Array type modifies other types */
-#define TYPE_ARRAY (UINT64_C(1) << 63)
+#define TYPE_ARRAY (UINT64_C(1) << 15)
 
 /* Builtin functions */
 #define BUILTIN_PRINT UINT64_C(6)
