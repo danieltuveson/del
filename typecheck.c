@@ -905,21 +905,68 @@ static bool typecheck_fundef(struct Globals *globals, struct TypeCheckerContext 
     return ret;
 }
 
+// Probably exists a less awful way to write this
+static bool typecheck_class(struct Globals *globals, struct TypeCheckerContext *context,
+        struct Class *cls)
+{
+    size_t i = 0;
+    linkedlist_foreach(lnode, cls->definitions->head) {
+        struct Definition *def = lnode->value;
+        if (!typecheck_type(globals, context, def->type)) {
+            return false;
+        }
+        size_t j = 0;
+        linkedlist_foreach(inner_lnode, cls->definitions->head) {
+            struct Definition *inner_def = inner_lnode->value;
+            if (i != j && def->name == inner_def->name) {
+                printf("Error: duplicate field name '%s' in class\n",
+                        lookup_symbol(globals, def->name));
+                return false;
+            }
+            j++;
+        }
+        j = 0;
+        linkedlist_foreach(inner_lnode, cls->methods->head) {
+            struct FunDef *method = ((struct TopLevelDecl *)inner_lnode->value)->fundef;
+            if (def->name == method->name) {
+                printf("Error: method and field cannot both have the same name '%s'\n",
+                        lookup_symbol(globals, def->name));
+                return false;
+            }
+            j++;
+        }
+        i++;
+    }
+    i = 0;
+    linkedlist_foreach(lnode, cls->methods->head) {
+        struct FunDef *method = ((struct TopLevelDecl *)lnode->value)->fundef;
+        size_t j = 0;
+        linkedlist_foreach(inner_lnode, cls->methods->head) {
+            struct FunDef *inner_method = ((struct TopLevelDecl *)inner_lnode->value)->fundef;
+            if (i != j && method->name == inner_method->name) {
+                printf("Error: duplicate method name '%s' in class\n",
+                        lookup_symbol(globals, method->name));
+                return false;
+            }
+            j++;
+        }
+        i++;
+    }
+    return true;
+}
+
+
 static bool typecheck_tld(struct Globals *globals, struct TypeCheckerContext *context,
         struct TopLevelDecl *tld)
 {
     switch (tld->type) {
         case TLD_TYPE_CLASS:
-            // typecheck_class(globals, context, tld->cls);
-            assert("Error: not implemented\n" && 1);
-            return true;
+            return typecheck_class(globals, context, tld->cls);
         case TLD_TYPE_FUNDEF:
-            if (!typecheck_fundef(globals, context, tld->fundef)) {
-                return false;
-            }
-            break;
+            return typecheck_fundef(globals, context, tld->fundef);
     }
-    return true;
+    assert(false);
+    return false;
 }
 
 static bool typecheck_tlds(struct Globals *globals, struct TypeCheckerContext *context,
