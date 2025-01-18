@@ -14,13 +14,17 @@ objects = common.o allocator.o linkedlist.o vector.o readfile.o lexer.o error.o 
 main = main.o
 tests = tests.o
 
-del: $(objects) $(main) 
+del: thread.h $(objects) $(main) 
 	ar rc libdel.a $(objects)
 	cc $(CFLAGS) -o del $(main) $(objects)
+
+thread.h: bytecode.h vm.c
+	bash threading.sh
 
 # test: $(objects) $(tests)
 # 	cc $(CFLAGS) -o test $(objects) $(tests)
 
 clean:
+	rm -f generated_labels.h
 	rm -f del *.o *.a
 	rm -rf *.dSYM

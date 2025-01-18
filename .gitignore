@@ -15,3 +15,4 @@ parser.tab.c
 *.output
 del
 np
+generated_labels.h

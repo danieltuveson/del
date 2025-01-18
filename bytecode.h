@@ -2,9 +2,9 @@
 // separate line and there should be no additional linebreaks after "enum Code {"
 enum Code {
     PUSH,
+    DUP,
     PUSH_0,
     PUSH_1,
-    DUP,
     PUSH_2,
     PUSH_3,
     PUSH_HEAP,
