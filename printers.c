@@ -19,18 +19,6 @@ void print_instructions(struct Vector *instructions)
                 i++;
                 printf("PUSH %" PRIu64 "\n", instructions->values[i].integer);
                 break;
-            case PUSH_0:
-                printf("PUSH_0\n");
-                break;
-            case PUSH_1:
-                printf("PUSH_1\n");
-                break;
-            case PUSH_2:
-                printf("PUSH_2\n");
-                break;
-            case PUSH_3:
-                printf("PUSH_3\n");
-                break;
             case DUP:
                 printf("DUP\n");
                 break;
@@ -107,32 +95,8 @@ void print_instructions(struct Vector *instructions)
                 i++;
                 printf("GET_LOCAL %" PRIu64 "\n", instructions->values[i].offset);
                 break;
-            case GET_LOCAL_0:
-                printf("GET_LOCAL_0\n");
-                break;
-            case GET_LOCAL_1:
-                printf("GET_LOCAL_1\n");
-                break;
-            case GET_LOCAL_2:
-                printf("GET_LOCAL_2\n");
-                break;
-            case GET_LOCAL_3:
-                printf("GET_LOCAL_3\n");
-                break;
             case SET_LOCAL:
                 printf("SET_LOCAL\n");
-                break;
-            case SET_LOCAL_0:
-                printf("SET_LOCAL_0\n");
-                break;
-            case SET_LOCAL_1:
-                printf("SET_LOCAL_1\n");
-                break;
-            case SET_LOCAL_2:
-                printf("SET_LOCAL_2\n");
-                break;
-            case SET_LOCAL_3:
-                printf("SET_LOCAL_3\n");
                 break;
             case GET_HEAP:
                 printf("GET_HEAP\n");

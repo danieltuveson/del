@@ -552,16 +552,6 @@ uint64_t vm_execute(struct VirtualMachine *vm)
                 print_heap(&heap);
 #endif
                 vm_break;
-            #define PUSH_N(n)\
-            vm_case(PUSH_ ## n):\
-                check_push();\
-                push_integer(&stack, n);\
-                vm_break
-            PUSH_N(0);
-            PUSH_N(1);
-            PUSH_N(2);
-            PUSH_N(3);
-            #undef PUSH_N
             vm_case(PUSH_HEAP):
                 if (!push_heap(&heap, &stack)) {//, &sfs)) {
                     status = VM_STATUS_ERROR;
@@ -646,15 +636,6 @@ uint64_t vm_execute(struct VirtualMachine *vm)
                 ip++;
                 set_local(&stack, &sfs, instructions[ip].offset);
                 vm_break;
-            #define SET_LOCAL_N(n)\
-            vm_case(SET_LOCAL_ ## n):\
-                set_local(&stack, &sfs, n);\
-                vm_break
-            SET_LOCAL_N(0);
-            SET_LOCAL_N(1);
-            SET_LOCAL_N(2);
-            SET_LOCAL_N(3);
-            #undef SET_LOCAL_N
             vm_case(DEFINE):
                 // TODO: Figure out how to make this compile-time only
                 sfs.index++;
@@ -665,17 +646,6 @@ uint64_t vm_execute(struct VirtualMachine *vm)
                 check_push();
                 push(&stack, val1);
                 vm_break;
-            #define GET_LOCAL_N(n)\
-            vm_case(GET_LOCAL_ ## n):\
-                val1 = get_local(&sfs, n);\
-                check_push();\
-                push(&stack, val1);\
-                vm_break
-            GET_LOCAL_N(0);
-            GET_LOCAL_N(1);
-            GET_LOCAL_N(2);
-            GET_LOCAL_N(3);
-            #undef GET_LOCAL_N
             vm_case(JE):
                 assert("JE not implemented\n" && false);
                 vm_break;

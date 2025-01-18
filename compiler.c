@@ -55,24 +55,9 @@ static void compile_heap(struct Globals *globals, size_t metadata, size_t count)
 
 static inline void compile_int(struct Globals *globals, int64_t integer)
 {
-    switch (integer) {
-        case 0: 
-            load_opcode(globals, PUSH_0);
-            break;
-        case 1:
-            load_opcode(globals, PUSH_1);
-            break;
-        case 2:
-            load_opcode(globals, PUSH_2);
-            break;
-        case 3:
-            load_opcode(globals, PUSH_3);
-            break;
-        default:
-            push(globals);
-            DelValue value = { .integer = integer };
-            vector_append(&(globals->cc->instructions), value);
-    }
+    push(globals);
+    DelValue value = { .integer = integer };
+    vector_append(&(globals->cc->instructions), value);
 }
 
 static inline void compile_chars(struct Globals *globals, char chars[8])
@@ -104,45 +89,14 @@ static inline void compile_type(struct Globals *globals, Type type)
 
 static void compile_get_local(struct Globals *globals, size_t offset)
 {
-    switch (offset) {
-        case 0: 
-            load_opcode(globals, GET_LOCAL_0);
-            break;
-        case 1:
-            load_opcode(globals, GET_LOCAL_1);
-            break;
-        case 2:
-            load_opcode(globals, GET_LOCAL_2);
-            break;
-        case 3:
-            load_opcode(globals, GET_LOCAL_3);
-            break;
-        default:
-            load_opcode(globals, GET_LOCAL);
-            load_offset(globals, offset);
-    }
+    load_opcode(globals, GET_LOCAL);
+    load_offset(globals, offset);
 }
 
 static void compile_set_local(struct Globals *globals, struct Definition *def) //size_t offset)
 {
-    switch (def->scope_offset) {
-        case 0: 
-            load_opcode(globals, SET_LOCAL_0);
-            break;
-        case 1:
-            load_opcode(globals, SET_LOCAL_1);
-            break;
-        case 2:
-            load_opcode(globals, SET_LOCAL_2);
-            break;
-        case 3:
-            load_opcode(globals, SET_LOCAL_3);
-            break;
-        default:
-            load_opcode(globals, SET_LOCAL);
-            load_offset(globals, def->scope_offset);
-    }
-    // compile_offset(globals, def->type);
+    load_opcode(globals, SET_LOCAL);
+    load_offset(globals, def->scope_offset);
 }
 
 // Pack 8 byte chunks of chars to push onto stack
