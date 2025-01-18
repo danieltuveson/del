@@ -2,6 +2,9 @@
 #include "del.h"
 #include "printers.h"
 
+// TODO: As an alternative to a REPL, add a "watch" flag (maybe '-w') that recompiles + reruns the
+// code if any files have changed similar to ghcid.
+
 // Example del program
 int main(int argc, char *argv[])
 {

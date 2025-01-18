@@ -167,6 +167,12 @@ static void compile_string(struct Globals *globals, char *string)
     compile_heap(globals, offset, i / 8 + (offset == 0 ? 0 : 1));
 }
 
+static void compile_str_eq(struct Globals *globals, struct Value *val1, struct Value *val2)
+{
+    compile_value(globals, val1);
+    compile_value(globals, val2);
+}
+
 static void compile_binary_op(struct Globals *globals, struct Value *val1, struct Value *val2,
        enum Code op) {
     compile_value(globals, val1);
@@ -410,71 +416,98 @@ static void compile_expr(struct Globals *globals, struct Expr *expr)
         case OP_EQEQ:
            if (val1->type == TYPE_FLOAT) {
                compile_binary_op(globals, val1, val2, FLOAT_EQ);
-           } else {
+           } else if (val1->type == TYPE_INT || val1->type == TYPE_BOOL) {
                compile_binary_op(globals, val1, val2, EQ);
+           } else if (val1->type == TYPE_STRING) {
+               // compile_str_eq(globals, val1, val2)
+               assert(false);
+           } else {
+               assert(false);
            }
            break;
         case OP_NOT_EQ:
            if (val1->type == TYPE_FLOAT) {
                compile_binary_op(globals, val1, val2, FLOAT_NEQ);
-           } else {
+           } else if (val1->type == TYPE_INT || val1->type == TYPE_BOOL) {
                compile_binary_op(globals, val1, val2, NEQ);
+           } else if (val1->type == TYPE_STRING) {
+               assert(false);
+           } else {
+               assert(false);
            }
            break;
         case OP_GREATER_EQ:
            if (val1->type == TYPE_FLOAT) {
                compile_binary_op(globals, val1, val2, FLOAT_GTE);
-           } else {
+           } else if (val1->type == TYPE_INT) {
                compile_binary_op(globals, val1, val2, GTE);
+           } else {
+               assert(false);
            }
            break;
         case OP_GREATER:
            if (val1->type == TYPE_FLOAT) {
                compile_binary_op(globals, val1, val2, FLOAT_GT);
-           } else {
+           } else if (val1->type == TYPE_INT) {
                compile_binary_op(globals, val1, val2, GT);
+           } else {
+               assert(false);
            }
            break;
         case OP_LESS_EQ:
            if (val1->type == TYPE_FLOAT) {
                compile_binary_op(globals, val1, val2, FLOAT_LTE);
-           } else {
+           } else if (val1->type == TYPE_INT) {
                compile_binary_op(globals, val1, val2, LTE);
+           } else {
+               assert(false);
            }
            break;
         case OP_LESS:
            if (val1->type == TYPE_FLOAT) {
                compile_binary_op(globals, val1, val2, FLOAT_LT);
-           } else {
+           } else if (val1->type == TYPE_INT) {
                compile_binary_op(globals, val1, val2, LT);
+           } else {
+               assert(false);
            }
            break;
         case OP_PLUS:
            if (val1->type == TYPE_FLOAT) {
                compile_binary_op(globals, val1, val2, FLOAT_ADD);
-           } else {
+           } else if (val1->type == TYPE_INT) {
                compile_binary_op(globals, val1, val2, ADD);
+           } else if (val1->type == TYPE_STRING) {
+               assert(false);
+           } else {
+               assert(false);
            }
            break;
         case OP_MINUS:
            if (val1->type == TYPE_FLOAT) {
                compile_binary_op(globals, val1, val2, FLOAT_SUB);
-           } else {
+           } else if (val1->type == TYPE_INT) {
                compile_binary_op(globals, val1, val2, SUB);
+           } else {
+               assert(false);
            }
            break;
         case OP_STAR:
            if (val1->type == TYPE_FLOAT) {
                compile_binary_op(globals, val1, val2, FLOAT_MUL);
-           } else {
+           } else if (val1->type == TYPE_INT) {
                compile_binary_op(globals, val1, val2, MUL);
+           } else {
+               assert(false);
            }
            break;
         case OP_SLASH:
            if (val1->type == TYPE_FLOAT) {
                compile_binary_op(globals, val1, val2, FLOAT_DIV);
-           } else {
+           } else if (val1->type == TYPE_INT) {
                compile_binary_op(globals, val1, val2, DIV);
+           } else {
+               assert(false);
            }
            break;
         case OP_PERCENT:
@@ -483,15 +516,19 @@ static void compile_expr(struct Globals *globals, struct Expr *expr)
         case OP_UNARY_PLUS:
            if (val1->type == TYPE_FLOAT) {
                compile_unary_op(globals, val1, FLOAT_UNARY_PLUS);
-           } else {
+           } else if (val1->type == TYPE_INT) {
                compile_unary_op(globals, val1, UNARY_PLUS);
+           } else {
+               assert(false);
            }
            break;
         case OP_UNARY_MINUS:
            if (val1->type == TYPE_FLOAT) {
                compile_unary_op(globals, val1, FLOAT_UNARY_MINUS);
-           } else {
+           } else if (val1->type == TYPE_INT) {
                compile_unary_op(globals, val1, UNARY_PLUS);
+           } else {
+               assert(false);
            }
            break;
         default:
@@ -524,6 +561,25 @@ static void compile_return(struct Globals *globals, struct Value *ret)
     load_opcode(globals, JMP);
 }
 
+static size_t *compile_loop_exit(struct Globals *globals)
+{
+    size_t *bookmark = allocator_malloc(globals->allocator, sizeof(size_t));
+    push(globals);
+    *bookmark = next(globals);
+    load_opcode(globals, JMP);
+    return bookmark;
+}
+
+static void compile_break(struct Globals *globals)
+{
+    linkedlist_append(globals->cc->breaks, compile_loop_exit(globals));
+}
+
+static void compile_continue(struct Globals *globals)
+{
+    linkedlist_append(globals->cc->continues, compile_loop_exit(globals));
+}
+
 static void compile_if(struct Globals *globals, struct IfStatement *stmt)
 {
     push(globals);
@@ -552,17 +608,38 @@ static void compile_if(struct Globals *globals, struct IfStatement *stmt)
 static void compile_loop(struct Globals *globals, struct Value *cond,
         Statements *stmts, struct Statement *increment)
 {
+    // Save existing break/continues for outer loop
+    BreakLocations *breaks = globals->cc->breaks;
+    BreakLocations *continues = globals->cc->continues;
+    globals->cc->breaks = linkedlist_new(globals->allocator);
+    globals->cc->continues = linkedlist_new(globals->allocator);
+    // Loop
     size_t top_of_loop = globals->cc->instructions->length;
     push(globals);
     size_t old_offset = next(globals);
     compile_value(globals, cond);
     load_opcode(globals, JNE);
     compile_statements(globals, stmts);
+    size_t continue_loc = globals->cc->instructions->length;
     if (increment != NULL) compile_statement(globals, increment);
     compile_offset(globals, top_of_loop);
     load_opcode(globals, JMP);
-    // set JNE jump to go to end of loop
-    globals->cc->instructions->values[old_offset].offset = globals->cc->instructions->length;
+    // Set JNE to the loop exit
+    size_t end_of_loop = globals->cc->instructions->length;
+    globals->cc->instructions->values[old_offset].offset = end_of_loop;
+    // Set any break statements to exit the loop
+    linkedlist_foreach(lnode, globals->cc->breaks->head) {
+        size_t *loc = lnode->value;
+        globals->cc->instructions->values[*loc].offset = end_of_loop;
+    }
+    // Set any continue statements to jump to increment/jump back to top
+    linkedlist_foreach(lnode, globals->cc->continues->head) {
+        size_t *loc = lnode->value;
+        globals->cc->instructions->values[*loc].offset = continue_loc;
+    }
+    // Restore outer loop break/continues
+    globals->cc->breaks = breaks;
+    globals->cc->continues = continues;
 }
 
 static void compile_while(struct Globals *globals, struct While *while_stmt)
@@ -622,6 +699,12 @@ static void compile_statement(struct Globals *globals, struct Statement *stmt)
             break;
         case STMT_RETURN:
             compile_return(globals, stmt->val);
+            break;
+        case STMT_BREAK:
+            compile_break(globals);
+            break;
+        case STMT_CONTINUE:
+            compile_continue(globals);
             break;
         case STMT_IF:
             compile_if(globals, stmt->if_stmt);
@@ -722,6 +805,8 @@ static void resolve_function_declarations(struct Vector *instructions,
 size_t compile(struct Globals *globals, TopLevelDecls *tlds)
 {
     globals->cc->instructions = vector_new(128, INSTRUCTIONS_MAX);
+    globals->cc->breaks = linkedlist_new(globals->allocator);
+    globals->cc->continues = linkedlist_new(globals->allocator);
     compile_tlds(globals, tlds);
     resolve_function_declarations(globals->cc->instructions, globals->cc->funcall_table);
     return globals->cc->instructions->length;

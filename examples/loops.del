@@ -1,0 +1,38 @@
+function main() {
+    println("====== Nested Loops ======");
+    for let i = 0; i < 4; i++ {
+        for let j = 0; j < 3; j++ {
+            println("i: ", i, ", j: ", j);
+        }
+    }
+    println("====== Breaks ======");
+    for let i = 0; i < 4; i++ {
+        if i == 2 {
+            println("break outer");
+            break;
+        }
+        for let j = 0; j < 3; j++ {
+            println("i: ", i, ", j: ", j);
+            if j == 1 {
+                println("break inner");
+                break;
+            }
+        }
+    }
+    println("====== Continues ======");
+    for let i = 0; i < 4; i++ {
+        if i == 2 {
+            println("continue outer");
+            continue;
+        }
+        for let j = 0; j < 3; j++ {
+            println("i: ", i, ", j: ", j);
+            if j == 1 {
+                println("continue inner");
+                continue;
+            }
+            println("didn't continue inner");
+        }
+        println("didn't continue outer");
+    }
+}

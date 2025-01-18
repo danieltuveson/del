@@ -207,7 +207,7 @@ static inline void switch_op(struct Stack *stack)
 
 /* Pops values from the stack and pushes them onto the heap */
 // TODO: Rewrite this + compiler so that push_heap allocates but doesn't set anything
-static inline bool push_heap(struct Heap *heap, struct Stack *stack, struct StackFrames *sfs)
+static inline bool push_heap(struct Heap *heap, struct Stack *stack)//, struct StackFrames *sfs)
 {
     size_t count = pop(stack).offset;
     size_t metadata = pop(stack).offset;
@@ -239,7 +239,7 @@ static inline bool push_heap(struct Heap *heap, struct Stack *stack, struct Stac
     return true;
 }
 
-static inline bool push_array(struct Heap *heap, struct Stack *stack, struct StackFrames *sfs)
+static inline bool push_array(struct Heap *heap, struct Stack *stack)//, struct StackFrames *sfs)
 {
     int64_t dirty_length = pop(stack).integer;
     size_t obj_size = pop(stack).offset;
@@ -410,7 +410,7 @@ static void print(struct Stack *stack, struct Heap *heap)
 }
 
 // TODO: Check that stack does not overflow when pushing
-static inline bool read(struct Stack *stack, struct Heap *heap, struct StackFrames *sfs)
+static inline bool read(struct Stack *stack, struct Heap *heap)//, struct StackFrames *sfs)
 {
     char packed[8] = {0};
     uint64_t i = 0;
@@ -436,7 +436,7 @@ static inline bool read(struct Stack *stack, struct Heap *heap, struct StackFram
     size_t metadata = i / 8 + (offset == 0 ? 0 : 1);
     push_offset(stack, offset);
     push_offset(stack, metadata);
-    return push_heap(heap, stack, sfs);
+    return push_heap(heap, stack);//, sfs);
 }
 
 // static inline void concat(struct Stack *stack, struct Heap *heap)
@@ -563,13 +563,13 @@ uint64_t vm_execute(struct VirtualMachine *vm)
             PUSH_N(3);
             #undef PUSH_N
             vm_case(PUSH_HEAP):
-                if (!push_heap(&heap, &stack, &sfs)) {
+                if (!push_heap(&heap, &stack)) {//, &sfs)) {
                     status = VM_STATUS_ERROR;
                     goto exit_loop;
                 }
                 vm_break;
             vm_case(PUSH_ARRAY):
-                if (!push_array(&heap, &stack, &sfs)) {
+                if (!push_array(&heap, &stack)) {//, &sfs)) {
                     status = VM_STATUS_ERROR;
                     goto exit_loop;
                 }
@@ -724,7 +724,7 @@ uint64_t vm_execute(struct VirtualMachine *vm)
                 stack_frame_exit(&sfs);
                 vm_break;
             vm_case(READ):
-                if (!read(&stack, &heap, &sfs)) {
+                if (!read(&stack, &heap)) {//, &sfs)) {
                     status = VM_STATUS_ERROR;
                     goto exit_loop;
                 }

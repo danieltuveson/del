@@ -53,10 +53,12 @@ struct FunDef *lookup_fun(struct FunctionTable *ft, Symbol symbol)
 
 #undef table_lookup
 
-static void enter_scope(struct Globals *globals, struct Scope **current, bool isfunction)
+static void enter_scope(struct Globals *globals, struct Scope **current, bool isfunction,
+        bool isloop)
 {
     struct Scope *scope = allocator_malloc(globals->allocator, sizeof(*scope));
     scope->isfunction = isfunction;
+    scope->isloop = isloop;
     scope->rettype = TYPE_UNDEFINED;
     if (*current != NULL && !isfunction) {
         scope->varcount = (*current)->varcount;
@@ -85,6 +87,16 @@ static struct Definition *lookup_var(struct Scope *scope, Symbol name)
         return lookup_var(scope->parent, name);
     }
     return NULL;
+}
+
+static bool is_in_loop(struct Scope *scope)
+{
+    if (scope->isloop) {
+        return true;
+    } else if (scope->parent != NULL) {
+        return is_in_loop(scope->parent);
+    }
+    return false;
 }
 
 static bool add_var(struct Globals *globals, struct Scope *current, struct Definition *def)
@@ -534,12 +546,12 @@ static bool typecheck_if(struct Globals *globals, struct TypeCheckerContext *con
         printf("Error: expected boolean in if condition\n");
         return false;
     }
-    enter_scope(globals, &(context->scope), false);
+    enter_scope(globals, &(context->scope), false, false);
     bool ret = typecheck_statements(globals, context, if_stmt->if_stmts);
     Type rettype_if = context->scope->rettype;
     exit_scope(&(context->scope));
     if (if_stmt->else_stmts != NULL) {
-        enter_scope(globals, &(context->scope), false);
+        enter_scope(globals, &(context->scope), false, false);
         ret = ret && typecheck_statements(globals, context, if_stmt->else_stmts);
         Type rettype_else = context->scope->rettype;
         exit_scope(&(context->scope));
@@ -588,7 +600,8 @@ static bool typecheck_return(struct Globals *globals, struct TypeCheckerContext 
         if (rettype == TYPE_UNDEFINED) {
             return true;
         } else {
-            printf("Error: function '%s' should return value of type '%s' but is returning nothing\n",
+            printf("Error: function '%s' should return value of type '%s' "
+                    "but is returning nothing\n",
                     lookup_symbol(globals, context->enclosing_func->name),
                     lookup_symbol(globals, rettype));
             return false;
@@ -610,6 +623,24 @@ static bool typecheck_return(struct Globals *globals, struct TypeCheckerContext 
         return false;
     }
     context->scope->rettype = val_type;
+    return true;
+}
+
+static bool typecheck_break(struct TypeCheckerContext *context)
+{
+    if (!is_in_loop(context->scope)) {
+        printf("Error: break statement is not inside of a loop\n");
+        return false;
+    }
+    return true;
+}
+
+static bool typecheck_continue(struct TypeCheckerContext *context)
+{
+    if (!is_in_loop(context->scope)) {
+        printf("Error: continue statement is not inside of a loop\n");
+        return false;
+    }
     return true;
 }
 
@@ -770,12 +801,12 @@ static bool typecheck_statement(struct Globals *globals, struct TypeCheckerConte
             return ret;
         }
         case STMT_WHILE:
-            enter_scope(globals, &(context->scope), false);
+            enter_scope(globals, &(context->scope), false, true);
             ret = typecheck_while(globals, context, stmt->while_stmt);
             exit_scope(&(context->scope));
             return ret;
         case STMT_FOR:
-            enter_scope(globals, &(context->scope), false);
+            enter_scope(globals, &(context->scope), false, true);
             ret = typecheck_for(globals, context, stmt->for_stmt);
             exit_scope(&(context->scope));
             return ret;
@@ -796,9 +827,13 @@ static bool typecheck_statement(struct Globals *globals, struct TypeCheckerConte
         }
         case STMT_RETURN:
             return typecheck_return(globals, context, stmt->val);
+        case STMT_BREAK:
+            return typecheck_break(context);
+        case STMT_CONTINUE:
+            return typecheck_continue(context);
         case STMT_FOREACH:
             assert("Error: not implemented\n" && false);
-            enter_scope(globals, &(context->scope), false);
+            enter_scope(globals, &(context->scope), false, true);
             // ret = typecheck_foreach(globals, context, stmt->foreach_stmt);
             exit_scope(&(context->scope));
             return ret;
@@ -873,7 +908,7 @@ static bool typecheck_fundef(struct Globals *globals, struct TypeCheckerContext 
         return false;
     }
     struct Scope *scope = NULL;
-    enter_scope(globals, &scope, true);
+    enter_scope(globals, &scope, true, false);
     context->enclosing_func = fundef;
     context->scope = scope;
     bool ret = scope_vars(globals, context, fundef->args) 

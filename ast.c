@@ -231,6 +231,19 @@ struct Statement *new_return(struct Globals *globals, struct Value *val)
     stmt->val = val;
     return stmt;
 }
+struct Statement *new_break(struct Globals *globals)
+{
+    struct Statement *stmt = new_stmt(globals, STMT_BREAK);
+    stmt->val = NULL;
+    return stmt;
+}
+
+struct Statement *new_continue(struct Globals *globals)
+{
+    struct Statement *stmt = new_stmt(globals, STMT_CONTINUE);
+    stmt->val = NULL;
+    return stmt;
+}
 
 struct Statement *new_increment(struct Globals *globals, struct Value *val)
 {

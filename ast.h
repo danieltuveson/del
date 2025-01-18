@@ -174,6 +174,8 @@ enum StatementType {
     STMT_FUNCALL,
     STMT_BUILTIN_FUNCALL,
     STMT_RETURN,
+    STMT_BREAK,
+    STMT_CONTINUE,
     STMT_INC,
     STMT_DEC
 };
@@ -248,6 +250,8 @@ struct Definition *new_define(struct Globals *globals, Symbol name, Type type);
 struct Statement *new_sfuncall(struct Globals *globals, struct Accessor *access, Values *args,
         bool is_builtin);
 struct Statement *new_return(struct Globals *globals, struct Value *val);
+struct Statement *new_break(struct Globals *globals);
+struct Statement *new_continue(struct Globals *globals);
 struct Statement *new_increment(struct Globals *globals, struct Value *val);
 struct Statement *new_decrement(struct Globals *globals, struct Value *val);
 

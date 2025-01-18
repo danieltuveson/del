@@ -82,6 +82,7 @@ function main() {
         ask(scene);
         print("> ");
         let input = read();
+        println("'", input, "'");
 
         if input == "1" {
             println("You are in the cave");

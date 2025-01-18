@@ -391,8 +391,9 @@ static struct Statement *parse_line(struct Globals *globals)
         }
         return NULL;
     } else if (match(globals, ST_BREAK)) {
-        printf("Break statement not implemented\n");
-        assert(false);
+        return new_break(globals);
+    } else if (match(globals, ST_CONTINUE)) {
+        return new_continue(globals);
     } else if (match(globals, ST_RETURN)) {
         struct Value *expr = NULL;
         if (parser_peek(globals, ST_SEMICOLON)) {

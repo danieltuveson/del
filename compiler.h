@@ -17,8 +17,12 @@ typedef union {
     Type type;
 } DelValue;
 
+typedef struct LinkedList BreakLocations;
+
 struct CompilerContext {
     struct Vector *instructions;
+    BreakLocations *breaks;
+    BreakLocations *continues;
     struct FunctionCallTable *funcall_table;
     struct ClassTable *class_table;
 };
