@@ -207,7 +207,7 @@ static inline void switch_op(struct Stack *stack)
 
 /* Pops values from the stack and pushes them onto the heap */
 // TODO: Rewrite this + compiler so that push_heap allocates but doesn't set anything
-static inline bool push_heap(struct Heap *heap, struct Stack *stack)//, struct StackFrames *sfs)
+static inline bool push_heap(struct Heap *heap, struct Stack *stack, struct Stack *stack_obj)
 {
     size_t count = pop(stack).offset;
     size_t metadata = pop(stack).offset;
@@ -233,6 +233,7 @@ static inline bool push_heap(struct Heap *heap, struct Stack *stack)//, struct S
     }
     // Store count in bits before location
     push_offset(stack, ptr);
+    // push_offset(stack_obj, ptr);
 #if DEBUG
     print_heap(heap);
 #endif
@@ -410,34 +411,34 @@ static void print(struct Stack *stack, struct Heap *heap)
 }
 
 // TODO: Check that stack does not overflow when pushing
-static inline bool read(struct Stack *stack, struct Heap *heap)//, struct StackFrames *sfs)
-{
-    char packed[8] = {0};
-    uint64_t i = 0;
-    size_t offset = 0;
-    while (true) {
-        int c = getchar();
-        if (c == EOF || c == '\n') {
-            if (c == EOF) clearerr(stdin);
-            break;
-        }
-        packed[offset] = (char) c;
-        if (offset == 7) {
-            push_chars(stack, packed);
-            memset(packed, 0, 8);
-        }
-        i++;
-        offset = i % 8;
-    }
-    // Push the remainder, if we haven't already
-    if (offset != 0) {
-        push_chars(stack, packed);
-    }
-    size_t metadata = i / 8 + (offset == 0 ? 0 : 1);
-    push_offset(stack, offset);
-    push_offset(stack, metadata);
-    return push_heap(heap, stack);//, sfs);
-}
+// static inline bool read(struct Stack *stack, struct Heap *heap)//, struct StackFrames *sfs)
+// {
+//     char packed[8] = {0};
+//     uint64_t i = 0;
+//     size_t offset = 0;
+//     while (true) {
+//         int c = getchar();
+//         if (c == EOF || c == '\n') {
+//             if (c == EOF) clearerr(stdin);
+//             break;
+//         }
+//         packed[offset] = (char) c;
+//         if (offset == 7) {
+//             push_chars(stack, packed);
+//             memset(packed, 0, 8);
+//         }
+//         i++;
+//         offset = i % 8;
+//     }
+//     // Push the remainder, if we haven't already
+//     if (offset != 0) {
+//         push_chars(stack, packed);
+//     }
+//     size_t metadata = i / 8 + (offset == 0 ? 0 : 1);
+//     push_offset(stack, offset);
+//     push_offset(stack, metadata);
+//     return push_heap(heap, stack, NULL);//, sfs);
+// }
 
 // static inline void concat(struct Stack *stack, struct Heap *heap)
 // {
@@ -473,8 +474,11 @@ static inline bool read(struct Stack *stack, struct Heap *heap)//, struct StackF
 void vm_init(struct VirtualMachine *vm, DelValue *instructions)
 {
     vm->stack.values = calloc(STACK_MAX, sizeof(*(vm->stack.values)));
+    vm->stack_obj.values = calloc(STACK_MAX, sizeof(*(vm->stack.values)));
     vm->sfs.values = calloc(STACK_MAX, sizeof(*(vm->sfs.values)));
     vm->sfs.frame_offsets = calloc(STACK_MAX, sizeof(*(vm->sfs.frame_offsets)));
+    vm->sfs_obj.values = calloc(STACK_MAX, sizeof(*(vm->sfs.values)));
+    vm->sfs_obj.frame_offsets = calloc(STACK_MAX, sizeof(*(vm->sfs.frame_offsets)));
     vm->heap.vector = vector_new(HEAP_INIT, HEAP_MAX);
     vm->heap.gc_threshold = GC_GROWTH_FACTOR * vm->heap.vector->capacity;
     vm->instructions = instructions;
@@ -483,8 +487,11 @@ void vm_init(struct VirtualMachine *vm, DelValue *instructions)
 void vm_free(struct VirtualMachine *vm)
 {
     free(vm->stack.values);
+    free(vm->stack_obj.values);
     free(vm->sfs.values);
     free(vm->sfs.frame_offsets);
+    free(vm->sfs_obj.values);
+    free(vm->sfs_obj.frame_offsets);
     vector_free(vm->heap.vector);
 }
 
@@ -532,7 +539,9 @@ uint64_t vm_execute(struct VirtualMachine *vm)
     // Define local variables for VM fields, for convenience (and maybe efficiency)
     enum VirtualMachineStatus status = vm->status;
     struct StackFrames sfs = vm->sfs;
+    struct StackFrames sfs_obj = vm->sfs_obj;
     struct Stack stack = vm->stack;
+    struct Stack stack_obj = vm->stack_obj;
     struct Heap heap = vm->heap;
     size_t ip = vm->ip;
     uint64_t ret = vm->ret;
@@ -553,7 +562,7 @@ uint64_t vm_execute(struct VirtualMachine *vm)
 #endif
                 vm_break;
             vm_case(PUSH_HEAP):
-                if (!push_heap(&heap, &stack)) {//, &sfs)) {
+                if (!push_heap(&heap, &stack, &stack_obj)) {//, &sfs)) {
                     status = VM_STATUS_ERROR;
                     goto exit_loop;
                 }
@@ -632,6 +641,10 @@ uint64_t vm_execute(struct VirtualMachine *vm)
                 val1 = pop(&stack);
                 push_integer(&stack, (-1 * val1.integer));
                 vm_break;
+            vm_case(SET_LOCAL_OBJ):
+                ip++;
+                set_local(&stack, &sfs_obj, instructions[ip].offset);
+                vm_break;
             vm_case(SET_LOCAL):
                 ip++;
                 set_local(&stack, &sfs, instructions[ip].offset);
@@ -639,6 +652,12 @@ uint64_t vm_execute(struct VirtualMachine *vm)
             vm_case(DEFINE):
                 // TODO: Figure out how to make this compile-time only
                 sfs.index++;
+                vm_break;
+            vm_case(GET_LOCAL_OBJ):
+                ip++;
+                val1 = get_local(&sfs_obj, instructions[ip].offset);
+                check_push();
+                push(&stack, val1);
                 vm_break;
             vm_case(GET_LOCAL):
                 ip++;
@@ -689,15 +708,18 @@ uint64_t vm_execute(struct VirtualMachine *vm)
                     goto exit_loop;
                 }
                 stack_frame_enter(&sfs);
+                stack_frame_enter(&sfs_obj);
                 vm_break;
             vm_case(POP_SCOPE):
                 stack_frame_exit(&sfs);
+                stack_frame_exit(&sfs_obj);
                 vm_break;
             vm_case(READ):
-                if (!read(&stack, &heap)) {//, &sfs)) {
-                    status = VM_STATUS_ERROR;
-                    goto exit_loop;
-                }
+                assert(false);
+                // if (!read(&stack, &heap)) {//, &sfs)) {
+                //     status = VM_STATUS_ERROR;
+                //     goto exit_loop;
+                // }
                 vm_break;
             vm_case(PRINT): {
                 print(&stack, &heap);
@@ -743,7 +765,9 @@ exit_loop:
     // Update state of VM before exiting
     vm->status = status;
     vm->sfs = sfs;
+    vm->sfs_obj = sfs_obj;
     vm->stack = stack;
+    vm->stack_obj = stack_obj;
     vm->heap = heap;
     vm->ip = ip;
     vm->ret = ret;

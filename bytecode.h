@@ -41,6 +41,8 @@ enum Code {
     EXIT,
     GET_LOCAL,
     SET_LOCAL,
+    GET_LOCAL_OBJ,
+    SET_LOCAL_OBJ,
     DEFINE,
     GET_HEAP,
     SET_HEAP,

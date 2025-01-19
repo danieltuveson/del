@@ -87,15 +87,23 @@ static inline void compile_type(struct Globals *globals, Type type)
     vector_append(&(globals->cc->instructions), value);
 }
 
-static void compile_get_local(struct Globals *globals, size_t offset)
+static void compile_get_local(struct Globals *globals, struct Definition *def)
 {
-    load_opcode(globals, GET_LOCAL);
-    load_offset(globals, offset);
+    if (is_object(def->type)) {
+        load_opcode(globals, GET_LOCAL_OBJ);
+    } else {
+        load_opcode(globals, GET_LOCAL);
+    }
+    load_offset(globals, def->scope_offset);
 }
 
-static void compile_set_local(struct Globals *globals, struct Definition *def) //size_t offset)
+static void compile_set_local(struct Globals *globals, struct Definition *def)
 {
-    load_opcode(globals, SET_LOCAL);
+    if (is_object(def->type)) {
+        load_opcode(globals, SET_LOCAL_OBJ);
+    } else {
+        load_opcode(globals, SET_LOCAL);
+    }
     load_offset(globals, def->scope_offset);
 }
 
@@ -143,7 +151,6 @@ static void compile_funargs(struct Globals *globals, Definitions *defs)
 {
     linkedlist_foreach(lnode, defs->head) {
         struct Definition *def = lnode->value;
-        // compile_set_local(globals, def->scope_offset);
         compile_set_local(globals, def);
     }
 }
@@ -340,7 +347,7 @@ static void compile_value(struct Globals *globals, struct Value *val)
             compile_constructor(globals, val->constructor);
             break;
         case VTYPE_GET_LOCAL:
-            compile_get_local(globals, val->get_local->scope_offset);
+            compile_get_local(globals, val->get_local);
             break;
         case VTYPE_GET_PROPERTY:
             compile_get_property(globals, val->get_property, false);
@@ -613,7 +620,7 @@ static void compile_increment(struct Globals *globals, struct Value *val, int64_
     if (val->vtype == VTYPE_GET_PROPERTY) {
         index = compile_get_property(globals, val->get_property, true);
     } else if (val->vtype == VTYPE_GET_LOCAL) {
-        compile_get_local(globals, val->get_local->scope_offset);
+        compile_get_local(globals, val->get_local);
     } else {
         assert(false);
     }
@@ -631,7 +638,6 @@ static void compile_increment(struct Globals *globals, struct Value *val, int64_
         compile_offset(globals, index);
         load_opcode(globals, SET_HEAP);
     } else if (val->vtype == VTYPE_GET_LOCAL) {
-        // compile_set_local(globals, val->get_local->scope_offset);
         compile_set_local(globals, val->get_local);
     }
 }
@@ -641,7 +647,6 @@ static void compile_statement(struct Globals *globals, struct Statement *stmt)
     switch (stmt->type) {
         case STMT_SET_LOCAL:
             compile_value(globals, stmt->set_local->expr);
-            // compile_set_local(globals, stmt->set_local->def->scope_offset);
             compile_set_local(globals, stmt->set_local->def);
             if (stmt->set_local->is_define) load_opcode(globals, DEFINE);
             break;
@@ -676,6 +681,7 @@ static void compile_statement(struct Globals *globals, struct Statement *stmt)
             compile_builtin_funcall(globals, stmt->funcall);
             break;
         case STMT_LET:
+            // TODO: I don't think this is correctly handling multiple declarations
             load_opcode(globals, DEFINE);
             break;
         case STMT_DEC:

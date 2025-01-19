@@ -1,0 +1,14 @@
+
+function main() {
+    let x, y, z;
+    let a = 4;
+    if true {
+        y = 2;
+        z = 3;
+        x = "five";
+    }
+    else {
+    }
+    println(x, y, z, a);
+}
+

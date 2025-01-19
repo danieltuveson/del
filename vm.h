@@ -32,7 +32,9 @@ typedef struct {
 struct VirtualMachine {
     enum VirtualMachineStatus status;
     struct StackFrames sfs;
+    struct StackFrames sfs_obj;
     struct Stack stack;
+    struct Stack stack_obj;
     struct Heap heap;
     size_t ip;
     // size_t scope_offset;

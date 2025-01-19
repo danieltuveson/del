@@ -42,6 +42,7 @@ function main() {
 ## TODO
 - Remove "default" options from switch statements and search for missing cases.
 - The `push_heap` function in the VM is basically just a consturctor. `push_heap` should just allocate and return a pointer to the memory, any constructor logic should be determined before runtime.
+- Variables that could potentially be unset currently default to 0, but should give a compile error.
 - Implement:
   - break / continue (how did I forget about that for so long?)
   - Sum types
