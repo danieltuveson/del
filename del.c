@@ -18,7 +18,7 @@ static bool read_and_compile(struct Vector **instructions_ptr, Allocator allocat
     struct Globals globals = { {0}, 0, NULL, NULL, NULL, NULL, 0, 0, 0, NULL, NULL };
     globals.allocator = allocator;
 
-#if DEBUG
+#if DEBUG_LEXER
     printf("........ READING FILE : %s ........\n", filename);
 #endif
     struct FileContext file = { filename, 0, NULL };
@@ -28,7 +28,7 @@ static bool read_and_compile(struct Vector **instructions_ptr, Allocator allocat
     }
 
     globals.file = &file;
-#if DEBUG
+#if DEBUG_LEXER
     printf("%s\n", globals.file->input);
     print_memory_usage(globals.allocator);
 
@@ -44,17 +44,19 @@ static bool read_and_compile(struct Vector **instructions_ptr, Allocator allocat
                 globals.lexer->error.message);
         return false;
     }
-#if DEBUG
+#if DEBUG_LEXER
     print_lexer(&globals, globals.lexer);
     print_memory_usage(globals.allocator);
 #endif
 
-#if DEBUG
+#if DEBUG_LEXER
     printf("........ PRINTING ALL SYMBOLS ........\n");
     linkedlist_foreach(lnode, globals.symbol_table->head) {
         printf("symbol: '%s'\n", (char *) lnode->value);
     }
+#endif
 
+#if DEBUG_PARSER
     printf("........ PARSING AST FROM TOKENS ........\n");
 #endif
     // struct Parser parser = { globals.lexer.tokens->head, &lexer };
@@ -66,35 +68,35 @@ static bool read_and_compile(struct Vector **instructions_ptr, Allocator allocat
         error_print(&globals);
         return false;
     }
-#if DEBUG
+#if DEBUG_PARSER
     print_tlds(&globals, globals.ast);
     printf("\n");
     print_memory_usage(globals.allocator);
 
     printf("````````````````` CODE `````````````````\n");
-#endif
-#if DEBUG
     print_tlds(&globals, globals.ast);
     printf("\n");
 
+#endif
+#if DEBUG_TYPECHECKER
     printf("`````````````` TYPECHECK ```````````````\n");
 #endif
     if (typecheck(&globals)) {
-#if DEBUG
+#if DEBUG_TYPECHECKER
         printf("program has typechecked\n");
 #endif
     } else {
-#if DEBUG
+#if DEBUG_TYPECHECKER
         printf("program failed to typecheck\n");
 #endif
         return false;
     }
-#if DEBUG
+#if DEBUG_COMPILER
     printf("`````````````` COMPILE ```````````````\n");
 #endif
     compile(&globals, globals.ast);
     *instructions_ptr = globals.cc->instructions;
-#if DEBUG
+#if DEBUG_COMPILER
     printf("\n");
     printf("````````````` INSTRUCTIONS `````````````\n");
     printf("function table:\n");

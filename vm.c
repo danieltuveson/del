@@ -234,7 +234,7 @@ static inline bool push_heap(struct Heap *heap, struct Stack *stack, struct Stac
     // Store count in bits before location
     push_offset(stack, ptr);
     // push_offset(stack_obj, ptr);
-#if DEBUG
+#if DEBUG_RUNTIME
     print_heap(heap);
 #endif
     return true;
@@ -267,7 +267,7 @@ static inline bool push_array(struct Heap *heap, struct Stack *stack)//, struct 
     vector_grow(&(heap->vector), count);
     // Store count in bits before location
     push_offset(stack, ptr);
-#if DEBUG
+#if DEBUG_RUNTIME
     print_heap(heap);
 #endif
     return true;
@@ -353,7 +353,7 @@ static inline void set_local(struct Stack *stack, struct StackFrames *sfs, size_
     size_t sf_offset = stack_frame_offset(sfs);
     // sfs->values[sf_offset + scope_offset].offset = type;
     sfs->values[sf_offset + scope_offset] = val;
-#if DEBUG
+#if DEBUG_RUNTIME
     print_frames(sfs);
 #endif
 }
@@ -495,7 +495,7 @@ void vm_free(struct VirtualMachine *vm)
     vector_free(vm->heap.vector);
 }
 
-#if DEBUG
+#if DEBUG_RUNTIME
 #define emergency_break() do {\
     print_stack(&stack);\
     print_heap(&heap);\
@@ -556,7 +556,7 @@ uint64_t vm_execute(struct VirtualMachine *vm)
                 ip++;
                 check_push();
                 push(&stack, instructions[ip]);
-#if DEBUG
+#if DEBUG_RUNTIME
                 print_stack(&stack);
                 print_heap(&heap);
 #endif
@@ -757,7 +757,7 @@ uint64_t vm_execute(struct VirtualMachine *vm)
         // will not execute
     }
 exit_loop:
-#if DEBUG
+#if DEBUG_RUNTIME
     print_stack(&stack);
     print_frames(&sfs);
     print_heap(&heap);
