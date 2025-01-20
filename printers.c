@@ -91,9 +91,16 @@ void print_instructions(struct Vector *instructions)
             case CALL:
                 printf("CALL\n");
                 break;
+            case GET_LOCAL_OBJ:
+                i++;
+                printf("GET_LOCAL_OBJ %" PRIu64 "\n", instructions->values[i].offset);
+                break;
             case GET_LOCAL:
                 i++;
                 printf("GET_LOCAL %" PRIu64 "\n", instructions->values[i].offset);
+                break;
+            case SET_LOCAL_OBJ:
+                printf("SET_LOCAL_OBJ\n");
                 break;
             case SET_LOCAL:
                 printf("SET_LOCAL\n");

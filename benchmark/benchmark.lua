@@ -1,4 +1,5 @@
 function fib(n)
+    local fbn
     local fibn_minus_2 = 0
     local fibn_minus_1 = 1
     local fibn = fibn_minus_1 + fibn_minus_2
