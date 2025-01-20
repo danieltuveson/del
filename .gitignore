@@ -16,3 +16,4 @@ parser.tab.c
 del
 np
 generated_labels.h
+examples/scratch.del

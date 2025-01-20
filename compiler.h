@@ -19,8 +19,14 @@ typedef union {
 
 typedef struct LinkedList BreakLocations;
 
+struct Comment {
+    size_t location;
+    char *comment;
+};
+
 struct CompilerContext {
     struct Vector *instructions;
+    struct LinkedList *comments;
     BreakLocations *breaks;
     BreakLocations *continues;
     struct FunctionCallTable *funcall_table;

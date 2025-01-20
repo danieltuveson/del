@@ -11,6 +11,21 @@ static void compile_expr(struct Globals *globals, struct Expr *expr);
 static void compile_statement(struct Globals *globals, struct Statement *stmt);
 static void compile_statements(struct Globals *globals, Statements *stmts);
 
+// Function for annotating output bytecode
+static void add_comment(struct Globals *globals, char *fmt, ...) {
+    size_t max_len = 100;
+    char *comment = allocator_malloc(globals->allocator, max_len);
+    memset(comment, 0, max_len);
+    va_list args;
+    va_start(args, fmt);
+    vsnprintf(comment, max_len, fmt, args);
+    va_end(args);
+    struct Comment *c = allocator_malloc(globals->allocator, sizeof(*c));
+    c->location = globals->cc->instructions->length;
+    c->comment = comment;
+    linkedlist_append(globals->cc->comments, c);
+}
+
 /* Move offset pointer to the empty element. Return the offset of the last element added */
 static inline size_t next(struct Globals *globals) {
     assert("offset is out of bounds\n" &&
@@ -87,24 +102,23 @@ static inline void compile_type(struct Globals *globals, Type type)
     vector_append(&(globals->cc->instructions), value);
 }
 
+static void compile_xet_local(struct Globals *globals, struct Definition *def, enum Code op)
+{
+    add_comment(globals, "local '%s'", lookup_symbol(globals, def->name));
+    load_opcode(globals, op);
+    load_offset(globals, def->scope_offset);
+}
+
 static void compile_get_local(struct Globals *globals, struct Definition *def)
 {
-    if (is_object(def->type)) {
-        load_opcode(globals, GET_LOCAL_OBJ);
-    } else {
-        load_opcode(globals, GET_LOCAL);
-    }
-    load_offset(globals, def->scope_offset);
+    enum Code op = is_object(def->type) ? GET_LOCAL_OBJ : GET_LOCAL;
+    compile_xet_local(globals, def, op);
 }
 
 static void compile_set_local(struct Globals *globals, struct Definition *def)
 {
-    if (is_object(def->type)) {
-        load_opcode(globals, SET_LOCAL_OBJ);
-    } else {
-        load_opcode(globals, SET_LOCAL);
-    }
-    load_offset(globals, def->scope_offset);
+    enum Code op = is_object(def->type) ? SET_LOCAL_OBJ : SET_LOCAL;
+    compile_xet_local(globals, def, op);
 }
 
 // Pack 8 byte chunks of chars to push onto stack
@@ -299,6 +313,8 @@ static void compile_builtin_constructor(struct Globals *globals, struct Construc
 
 static void compile_funcall(struct Globals *globals, struct FunCall *funcall)
 {
+    Symbol funname = funcall->access->definition->name;
+    add_comment(globals, "call to %s", lookup_symbol(globals, funname));
     push(globals);
     size_t bookmark = next(globals);
     if (funcall->args != NULL) {
@@ -308,7 +324,6 @@ static void compile_funcall(struct Globals *globals, struct FunCall *funcall)
     }
     load_opcode(globals, PUSH_SCOPE);
     push(globals);
-    Symbol funname = funcall->access->definition->name;
     struct FunctionCallTable *fct = globals->cc->funcall_table;
     add_callsite(globals, fct, funname, next(globals));
     load_opcode(globals, JMP);
@@ -724,6 +739,8 @@ static void compile_tld(struct Globals *globals, struct TopLevelDecl *tld)
             // compile_class(globals, tld->cls);
             break;
         case TLD_TYPE_FUNDEF:
+            add_comment(globals, "function definition %s",
+                    lookup_symbol(globals, tld->fundef->name));
             compile_fundef(globals, tld->fundef);
             break;
     }
@@ -765,6 +782,7 @@ static void resolve_function_declarations(struct Vector *instructions,
 size_t compile(struct Globals *globals, TopLevelDecls *tlds)
 {
     globals->cc->instructions = vector_new(128, INSTRUCTIONS_MAX);
+    globals->cc->comments = linkedlist_new(globals->allocator);
     globals->cc->breaks = linkedlist_new(globals->allocator);
     globals->cc->continues = linkedlist_new(globals->allocator);
     compile_tlds(globals, tlds);

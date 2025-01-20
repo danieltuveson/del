@@ -102,7 +102,7 @@ static bool read_and_compile(struct Vector **instructions_ptr, Allocator allocat
     printf("function table:\n");
     print_ft(&globals, globals.cc->funcall_table);
     printf("\n");
-    print_instructions(globals.cc->instructions);
+    print_instructions(globals.cc);
     printf("\n");
 #endif
     return true;

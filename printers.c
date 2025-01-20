@@ -9,10 +9,25 @@ static void print_statement_indent(struct Globals *globals, struct Statement *st
 
 static const int TAB_WIDTH = 4;
 
-void print_instructions(struct Vector *instructions)
+void print_instructions(struct CompilerContext *cc)
 {
+    struct Vector *instructions = cc->instructions;
+    struct LinkedList *comments = cc->comments;
+    linkedlist_reverse(&comments);
     size_t length = instructions->length;
+    struct Comment *comment = NULL;
+    if (!linkedlist_is_empty(comments)) {
+        comment = linkedlist_pop(comments);
+    }
     for (size_t i = 0; i < length; i++) {
+        while (comment != NULL && comment->location == i) {
+            printf("// %s\n", comment->comment);
+            if (linkedlist_is_empty(comments)) {
+                comment = NULL;
+            } else {
+                comment = linkedlist_pop(comments);
+            }
+        }
         printf("%-5lu", i);
         switch (instructions->values[i].opcode) {
             case PUSH:
@@ -100,10 +115,12 @@ void print_instructions(struct Vector *instructions)
                 printf("GET_LOCAL %" PRIu64 "\n", instructions->values[i].offset);
                 break;
             case SET_LOCAL_OBJ:
-                printf("SET_LOCAL_OBJ\n");
+                i++;
+                printf("SET_LOCAL_OBJ %" PRIu64 "\n", instructions->values[i].offset);
                 break;
             case SET_LOCAL:
-                printf("SET_LOCAL\n");
+                i++;
+                printf("SET_LOCAL %" PRIu64 "\n", instructions->values[i].offset);
                 break;
             case GET_HEAP:
                 printf("GET_HEAP\n");
@@ -140,6 +157,7 @@ void print_instructions(struct Vector *instructions)
                 break;
             default:
                 printf("***non-printable instruction: %d***\n", instructions->values[i].opcode);
+                assert(false);
         }
     }
 }
