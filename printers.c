@@ -19,6 +19,7 @@ void print_instructions(struct CompilerContext *cc)
     if (!linkedlist_is_empty(comments)) {
         comment = linkedlist_pop(comments);
     }
+    size_t index;
     for (size_t i = 0; i < length; i++) {
         while (comment != NULL && comment->location == i) {
             printf("// %s\n", comment->comment);
@@ -123,10 +124,19 @@ void print_instructions(struct CompilerContext *cc)
                 printf("SET_LOCAL %" PRIu64 "\n", instructions->values[i].offset);
                 break;
             case GET_HEAP:
-                printf("GET_HEAP\n");
+                i++;
+                index = instructions->values[i].offset;
+                printf("GET_HEAP %" PRIu64 "\n", index - index / 4 - 1);
+                break;
+            case GET_HEAP_OBJ:
+                i++;
+                index = instructions->values[i].offset;
+                printf("GET_HEAP_OBJ %" PRIu64 "\n", index - index / 4 - 1);
                 break;
             case SET_HEAP:
-                printf("SET_HEAP\n");
+                i++;
+                index = instructions->values[i].offset;
+                printf("SET_HEAP %" PRIu64 "\n", index - index / 4 - 1);
                 break;
             case GET_ARRAY:
                 printf("GET_ARRAY\n");
@@ -162,9 +172,9 @@ void print_instructions(struct CompilerContext *cc)
     }
 }
 
-void print_stack(struct Stack *stack)
+void print_stack(struct Stack *stack, bool is_obj)
 {
-    printf("stack: %lu [ ", stack->offset);
+    printf("stack%s: %lu [ ", is_obj ? "_obj" : "", stack->offset);
     for (size_t i = 0; i < stack->offset; i++) {
         // If it would be interpreted as a huge number, it's probably a negative integer
         if (stack->values[i].integer > INT64_MAX) {

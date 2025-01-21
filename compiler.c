@@ -219,23 +219,26 @@ static void compile_constructor(struct Globals *globals, struct Constructor *con
 
 // Being a little too cheeky with the name of this?
 static uint64_t compile_xet_property(struct Globals *globals, struct GetProperty *get,
-        bool is_increment)
+        enum Code code, bool is_increment)
 {
     compile_value(globals, get->accessor);
     if (is_increment) {
+        assert(false); // fix this later
         load_opcode(globals, DUP);
     }
     struct Class *cls = lookup_class(globals->cc->class_table, get->accessor->type);
     uint64_t index = lookup_property_index(cls, get->property);
-    compile_offset(globals, index);
+    load_opcode(globals, code);
+    load_offset(globals, 1 + 5 * index / 4);
     return index;
 }
 
-static uint64_t compile_get_property(struct Globals *globals, struct GetProperty *get,
+static uint64_t compile_get_property(struct Globals *globals, Type type, struct GetProperty *get,
         bool is_increment)
 {
-    uint64_t index = compile_xet_property(globals, get, is_increment);
-    load_opcode(globals, GET_HEAP);
+    enum Code code = is_object(type) ? GET_HEAP_OBJ : GET_HEAP;
+    uint64_t index = compile_xet_property(globals, get, code, is_increment);
+    // load_opcode(globals, GET_HEAP);
     return index;
 }
 
@@ -365,7 +368,7 @@ static void compile_value(struct Globals *globals, struct Value *val)
             compile_get_local(globals, val->get_local);
             break;
         case VTYPE_GET_PROPERTY:
-            compile_get_property(globals, val->get_property, false);
+            compile_get_property(globals, val->type, val->get_property, false);
             break;
         case VTYPE_INDEX:
             compile_get_index(globals, val->get_property, false);
@@ -517,8 +520,7 @@ static void compile_expr(struct Globals *globals, struct Expr *expr)
 static void compile_set_property(struct Globals *globals, struct SetProperty *set)
 {
     compile_value(globals, set->expr);
-    compile_xet_property(globals, set->access, false);
-    load_opcode(globals, SET_HEAP);
+    compile_xet_property(globals, set->access, SET_HEAP, false);
 }
 
 static void compile_set_index(struct Globals *globals, struct SetProperty *set)
@@ -629,33 +631,33 @@ static void compile_for(struct Globals *globals, struct For *for_stmt)
     compile_loop(globals, for_stmt->condition, for_stmt->stmts, for_stmt->increment);
 }
 
-static void compile_increment(struct Globals *globals, struct Value *val, int64_t num)
-{
-    uint64_t index = 0;
-    if (val->vtype == VTYPE_GET_PROPERTY) {
-        index = compile_get_property(globals, val->get_property, true);
-    } else if (val->vtype == VTYPE_GET_LOCAL) {
-        compile_get_local(globals, val->get_local);
-    } else {
-        assert(false);
-    }
-    if (val->type == TYPE_INT) {
-        compile_int(globals, num);
-        load_opcode(globals, ADD);
-    } else if (val->type == TYPE_FLOAT) {
-        compile_float(globals, (double)num);
-        load_opcode(globals, FLOAT_ADD);
-    } else {
-        assert(false);
-    }
-    if (val->vtype == VTYPE_GET_PROPERTY) {
-        load_opcode(globals, SWAP);
-        compile_offset(globals, index);
-        load_opcode(globals, SET_HEAP);
-    } else if (val->vtype == VTYPE_GET_LOCAL) {
-        compile_set_local(globals, val->get_local);
-    }
-}
+// static void compile_increment(struct Globals *globals, struct Value *val, int64_t num)
+// {
+//     uint64_t index = 0;
+//     if (val->vtype == VTYPE_GET_PROPERTY) {
+//         index = compile_get_property(globals, val->get_property, true);
+//     } else if (val->vtype == VTYPE_GET_LOCAL) {
+//         compile_get_local(globals, val->get_local);
+//     } else {
+//         assert(false);
+//     }
+//     if (val->type == TYPE_INT) {
+//         compile_int(globals, num);
+//         load_opcode(globals, ADD);
+//     } else if (val->type == TYPE_FLOAT) {
+//         compile_float(globals, (double)num);
+//         load_opcode(globals, FLOAT_ADD);
+//     } else {
+//         assert(false);
+//     }
+//     if (val->vtype == VTYPE_GET_PROPERTY) {
+//         load_opcode(globals, SWAP);
+//         compile_offset(globals, index);
+//         load_opcode(globals, SET_HEAP);
+//     } else if (val->vtype == VTYPE_GET_LOCAL) {
+//         compile_set_local(globals, val->get_local);
+//     }
+// }
 
 static void compile_statement(struct Globals *globals, struct Statement *stmt)
 {
@@ -699,12 +701,12 @@ static void compile_statement(struct Globals *globals, struct Statement *stmt)
             // TODO: I don't think this is correctly handling multiple declarations
             load_opcode(globals, DEFINE);
             break;
-        case STMT_DEC:
-            compile_increment(globals, stmt->val, -1);
-            break;
-        case STMT_INC:
-            compile_increment(globals, stmt->val, 1);
-            break;
+        // case STMT_DEC:
+            // compile_increment(globals, stmt->val, -1);
+            // break;
+        // case STMT_INC:
+            // compile_increment(globals, stmt->val, 1);
+            // break;
         default:
             assert("Error cannot compile statement type: not implemented\n" && false);
             break;

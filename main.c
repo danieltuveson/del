@@ -20,7 +20,6 @@ int main(int argc, char *argv[])
         del_allocator_freeall(allocator);
         return EXIT_FAILURE;
     }
-    del_allocator_freeall(allocator);
 
     // Run
     DelVM vm;

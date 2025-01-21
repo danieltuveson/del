@@ -18,7 +18,7 @@ static bool read_and_compile(struct Vector **instructions_ptr, Allocator allocat
     struct Globals globals = { {0}, 0, NULL, NULL, NULL, NULL, 0, 0, 0, NULL, NULL };
     globals.allocator = allocator;
 
-#if DEBUG_LEXER
+#if DEBUG_TEXT
     printf("........ READING FILE : %s ........\n", filename);
 #endif
     struct FileContext file = { filename, 0, NULL };
@@ -28,10 +28,12 @@ static bool read_and_compile(struct Vector **instructions_ptr, Allocator allocat
     }
 
     globals.file = &file;
-#if DEBUG_LEXER
+#if DEBUG_TEXT
     printf("%s\n", globals.file->input);
     print_memory_usage(globals.allocator);
+#endif
 
+#if DEBUG_LEXER
     printf("........ TOKENIZING INPUT ........\n");
 #endif
     struct Lexer lexer;

@@ -162,6 +162,9 @@ static inline void push_offset(struct Stack *stack, size_t offset)
 
 static inline DelValue pop(struct Stack *stack)
 {
+#if DEBUG_RUNTIME
+    assert(stack->offset > 0);
+#endif
     return stack->values[--stack->offset];
 }
 
@@ -232,8 +235,8 @@ static inline bool push_heap(struct Heap *heap, struct Stack *stack, struct Stac
         vector_append(&(heap->vector), value);
     }
     // Store count in bits before location
-    push_offset(stack, ptr);
-    // push_offset(stack_obj, ptr);
+    // push_offset(stack, ptr);
+    push_offset(stack_obj, ptr);
 #if DEBUG_RUNTIME
     print_heap(heap);
 #endif
@@ -274,10 +277,10 @@ static inline bool push_array(struct Heap *heap, struct Stack *stack)//, struct 
 }
 
 /* Get value from the heap and push it onto the stack */
-static inline bool get_heap(struct Heap *heap, struct Stack *stack)
+// Technically we now need GET_HEAP_OBJ if the element we're pushing back
+// onto the stack is an object
+static inline bool get_heap(struct Heap *heap, size_t index, size_t ptr, struct Stack *stack)
 {
-    size_t index = 1 + 5 * pop(stack).offset / 4;
-    size_t ptr = pop(stack).offset;
     size_t location = get_location(ptr);
     if (ptr == 0) {
         return false;
@@ -286,10 +289,11 @@ static inline bool get_heap(struct Heap *heap, struct Stack *stack)
     return true;
 }
 
-static inline void set_heap(struct Heap *heap, struct Stack *stack)
+// Do we now need SET_HEAP_OBJ, similar to GET_HEAP_OBJ?
+static inline void set_heap(struct Heap *heap, size_t index, struct Stack *stack,
+        struct Stack *stack_obj)
 {
-    size_t index = 1 + 5 * pop(stack).offset / 4;
-    size_t ptr = pop(stack).offset;
+    size_t ptr = pop(stack_obj).offset;
     DelValue value = pop(stack);
     size_t location = get_location(ptr);
     heap->vector->values[location + index] = value;
@@ -353,9 +357,6 @@ static inline void set_local(struct Stack *stack, struct StackFrames *sfs, size_
     size_t sf_offset = stack_frame_offset(sfs);
     // sfs->values[sf_offset + scope_offset].offset = type;
     sfs->values[sf_offset + scope_offset] = val;
-#if DEBUG_RUNTIME
-    print_frames(sfs);
-#endif
 }
 
 static void print_string(struct Stack *stack, struct Heap *heap)
@@ -368,7 +369,7 @@ static void print_string(struct Stack *stack, struct Heap *heap)
     }
 }
 
-static void print(struct Stack *stack, struct Heap *heap)
+static void print(struct Stack *stack, struct Stack *stack_obj, struct Heap *heap)
 {
     size_t ptr, location, count;
     DelValue dval, dtype;
@@ -396,11 +397,12 @@ static void print(struct Stack *stack, struct Heap *heap)
             }
             break;
         case TYPE_STRING:
-            print_string(stack, heap);
+            print_string(stack_obj, heap);
             break;
         default:
-            ptr = pop(stack).offset;
+            ptr = pop(stack_obj).offset;
             location = get_location(ptr);
+            // I think I can remove the "/2" now that I've redesigned the heap?
             count = get_count(ptr) / 2;
             if (location == 0) {
                 printf("null");
@@ -474,7 +476,7 @@ static void print(struct Stack *stack, struct Heap *heap)
 void vm_init(struct VirtualMachine *vm, DelValue *instructions)
 {
     vm->stack.values = calloc(STACK_MAX, sizeof(*(vm->stack.values)));
-    vm->stack_obj.values = calloc(STACK_MAX, sizeof(*(vm->stack.values)));
+    vm->stack_obj.values = calloc(STACK_MAX, sizeof(*(vm->stack_obj.values)));
     vm->sfs.values = calloc(STACK_MAX, sizeof(*(vm->sfs.values)));
     vm->sfs.frame_offsets = calloc(STACK_MAX, sizeof(*(vm->sfs.frame_offsets)));
     vm->sfs_obj.values = calloc(STACK_MAX, sizeof(*(vm->sfs.values)));
@@ -497,10 +499,11 @@ void vm_free(struct VirtualMachine *vm)
 
 #if DEBUG_RUNTIME
 #define emergency_break() do {\
-    print_stack(&stack);\
-    print_heap(&heap);\
     /* if (iterations > 200000) {*/\
     if (iterations > 200) {\
+        print_stack(&stack, false);\
+        print_stack(&stack_obj, true);\
+        print_heap(&heap);\
         printf("infinite loop detected, ending execution\n");\
         status = VM_STATUS_ERROR;\
         goto exit_loop;\
@@ -526,8 +529,8 @@ void vm_free(struct VirtualMachine *vm)
 } while(0)
 
 // Bounds check on pushes to stack
-#define check_push() do {\
-    if (unexpected(stack.offset >= STACK_MAX - 1)) { \
+#define check_push(stack_ptr) do {\
+    if (unexpected((stack_ptr)->offset >= STACK_MAX - 1)) { \
         printf("Error: stack overflow (calculation too large)\n");\
         status = VM_STATUS_ERROR;\
         goto exit_loop;\
@@ -554,11 +557,18 @@ uint64_t vm_execute(struct VirtualMachine *vm)
         switch (instructions[ip].opcode) {
             vm_case(PUSH):
                 ip++;
-                check_push();
+                check_push(&stack);
                 push(&stack, instructions[ip]);
 #if DEBUG_RUNTIME
-                print_stack(&stack);
-                print_heap(&heap);
+                print_stack(&stack, false);
+#endif
+                vm_break;
+            vm_case(PUSH_OBJ):
+                ip++;
+                check_push(&stack_obj);
+                push(&stack_obj, instructions[ip]);
+#if DEBUG_RUNTIME
+                print_stack(&stack_obj, true);
 #endif
                 vm_break;
             vm_case(PUSH_HEAP):
@@ -576,15 +586,27 @@ uint64_t vm_execute(struct VirtualMachine *vm)
             vm_case(LEN_ARRAY):
                 TODO();
                 vm_break;
+            vm_case(GET_HEAP_OBJ):
+                ip++;
+                val1 = pop(&stack_obj);
+                if (!get_heap(&heap, instructions[ip].offset, val1.offset, &stack_obj)) {
+                    printf("Error: null pointer exception\n");
+                    status = VM_STATUS_ERROR;
+                    goto exit_loop;
+                }
+                vm_break;
             vm_case(GET_HEAP):
-                if (!get_heap(&heap, &stack)) {
+                ip++;
+                val1 = pop(&stack_obj);
+                if (!get_heap(&heap, instructions[ip].offset, val1.offset, &stack)) {
                     printf("Error: null pointer exception\n");
                     status = VM_STATUS_ERROR;
                     goto exit_loop;
                 }
                 vm_break;
             vm_case(SET_HEAP):
-                set_heap(&heap, &stack);
+                ip++;
+                set_heap(&heap, instructions[ip].offset, &stack, &stack_obj);
                 vm_break;
             vm_case(GET_ARRAY):
                 if (!get_array(&heap, &stack)) {
@@ -643,7 +665,13 @@ uint64_t vm_execute(struct VirtualMachine *vm)
                 vm_break;
             vm_case(SET_LOCAL_OBJ):
                 ip++;
-                set_local(&stack, &sfs_obj, instructions[ip].offset);
+                set_local(&stack_obj, &sfs_obj, instructions[ip].offset);
+#if DEBUG_RUNTIME
+                printf("regular frame: ");
+                print_frames(&sfs);
+                printf("object frame: ");
+                print_frames(&sfs_obj);
+#endif
                 vm_break;
             vm_case(SET_LOCAL):
                 ip++;
@@ -656,13 +684,13 @@ uint64_t vm_execute(struct VirtualMachine *vm)
             vm_case(GET_LOCAL_OBJ):
                 ip++;
                 val1 = get_local(&sfs_obj, instructions[ip].offset);
-                check_push();
-                push(&stack, val1);
+                check_push(&stack_obj);
+                push(&stack_obj, val1);
                 vm_break;
             vm_case(GET_LOCAL):
                 ip++;
                 val1 = get_local(&sfs, instructions[ip].offset);
-                check_push();
+                check_push(&stack);
                 push(&stack, val1);
                 vm_break;
             vm_case(JE):
@@ -722,7 +750,7 @@ uint64_t vm_execute(struct VirtualMachine *vm)
                 // }
                 vm_break;
             vm_case(PRINT): {
-                print(&stack, &heap);
+                print(&stack, &stack_obj, &heap);
                 vm_break;
             }
             vm_case(FLOAT_ADD): eval_binary_op_f(&stack, val1, val2, +);  vm_break;
@@ -758,7 +786,8 @@ uint64_t vm_execute(struct VirtualMachine *vm)
     }
 exit_loop:
 #if DEBUG_RUNTIME
-    print_stack(&stack);
+    print_stack(&stack, false);
+    print_stack(&stack_obj, true);
     print_frames(&sfs);
     print_heap(&heap);
 #endif

@@ -2,6 +2,7 @@
 // separate line and there should be no additional linebreaks after "enum Code {"
 enum Code {
     PUSH,
+    PUSH_OBJ,
     DUP,
     PUSH_HEAP,
     PUSH_STRING,
@@ -45,6 +46,7 @@ enum Code {
     SET_LOCAL_OBJ,
     DEFINE,
     GET_HEAP,
+    GET_HEAP_OBJ,
     SET_HEAP,
     GET_ARRAY,
     SET_ARRAY,

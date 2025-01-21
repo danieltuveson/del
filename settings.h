@@ -34,6 +34,7 @@
 
 #if DEBUG_ALL
 #define DEBUG_GENERAL 1
+#define DEBUG_TEXT 1
 #define DEBUG_LEXER 1
 #define DEBUG_PARSER 1
 #define DEBUG_TYPECHECKER 1
@@ -44,6 +45,9 @@
 
 #ifndef DEBUG_GENERAL
 #define DEBUG_GENERAL 0
+#endif
+#ifndef DEBUG_TEXT
+#define DEBUG_TEXT 0
 #endif
 #ifndef DEBUG_LEXER
 #define DEBUG_LEXER 0
