@@ -61,11 +61,11 @@ static inline void compile_offset(struct Globals *globals, size_t offset)
 
 static void compile_heap(struct Globals *globals, size_t metadata, size_t count)
 {
-    // Load metadata
-    compile_offset(globals, metadata);
-    // Load count
-    compile_offset(globals, count);
     load_opcode(globals, PUSH_HEAP);
+    // Load count
+    load_offset(globals, count);
+    // Load metadata
+    load_offset(globals, metadata);
 }
 
 static inline void compile_int(struct Globals *globals, int64_t integer)
@@ -75,13 +75,13 @@ static inline void compile_int(struct Globals *globals, int64_t integer)
     vector_append(&(globals->cc->instructions), value);
 }
 
-static inline void compile_chars(struct Globals *globals, char chars[8])
-{
-    push(globals);
-    DelValue value;
-    memcpy(value.chars, chars, 8);
-    vector_append(&(globals->cc->instructions), value);
-}
+// static inline void compile_chars(struct Globals *globals, char chars[8])
+// {
+//     push(globals);
+//     DelValue value;
+//     memcpy(value.chars, chars, 8);
+//     vector_append(&(globals->cc->instructions), value);
+// }
 
 static inline void compile_float(struct Globals *globals, double floating)
 {
@@ -122,25 +122,44 @@ static void compile_set_local(struct Globals *globals, struct Definition *def)
 }
 
 // Pack 8 byte chunks of chars to push onto stack
+// TODO: Make byte array builtin, probably repurpose this code
+// static void compile_string(struct Globals *globals, char *string)
+// {
+//     char packed[8] = {0};
+//     uint64_t i = 0;
+//     int offset = 0;
+//     while (string[i] != '\0') {
+//         packed[offset] = string[i];
+//         if (offset == 7) {
+//             compile_chars(globals, packed);
+//             memset(packed, 0, 8);
+//         }
+//         i++;
+//         offset = i % 8;
+//     }
+//     // Push the remainder, if we haven't already
+//     if (offset != 0) {
+//         compile_chars(globals, packed);
+//     }
+//     compile_heap(globals, offset, i / 8 + (offset == 0 ? 0 : 1));
+// }
+
+static size_t add_to_pool(struct Globals *globals, char *string)
+{
+    size_t len = 0;
+    for (len = 0; string[len] != '\0'; len++) ;
+    len++; // null byte
+    char *str = calloc(len, sizeof(char));
+    memcpy(str, string, len);
+    globals->cc->string_pool[globals->cc->string_count] = str;
+    size_t old_count = globals->cc->string_count++;
+    return old_count;
+}
+
 static void compile_string(struct Globals *globals, char *string)
 {
-    char packed[8] = {0};
-    uint64_t i = 0;
-    int offset = 0;
-    while (string[i] != '\0') {
-        packed[offset] = string[i];
-        if (offset == 7) {
-            compile_chars(globals, packed);
-            memset(packed, 0, 8);
-        }
-        i++;
-        offset = i % 8;
-    }
-    // Push the remainder, if we haven't already
-    if (offset != 0) {
-        compile_chars(globals, packed);
-    }
-    compile_heap(globals, offset, i / 8 + (offset == 0 ? 0 : 1));
+    size_t index = add_to_pool(globals, string);
+    compile_offset(globals, index);
 }
 
 static void compile_str_eq(struct Globals *globals, struct Value *val1, struct Value *val2)
@@ -188,6 +207,9 @@ static void compile_fundef(struct Globals *globals, struct FunDef *fundef)
 // Every i % 4 == 0 element stores types of the next 4 values
 // types | value | value | value | value | types | value ...
 // (But reverse order, since the heap pops them off in the opposite order)
+// TODO: Make this just allocate memory. Handle setting initial values in 
+// either user defined constructor, or create a compile time constructor
+// that doesn't require a separate opcode
 static void compile_constructor(struct Globals *globals, struct Constructor *constructor)
 {
     uint16_t types[4] = {0};
@@ -199,7 +221,6 @@ static void compile_constructor(struct Globals *globals, struct Constructor *con
         struct Value *value = lnode->value;
         compile_value(globals, value);
         size_t index = count < rem ? rem - i - 1: 3 - i;
-        // size_t index = 3 - i;
         types[index] = (uint16_t)value->type;
         if (index == 0) {
             DelValue dvalue;
@@ -263,7 +284,7 @@ static void compile_get_index(struct Globals *globals, struct GetProperty *get, 
     load_opcode(globals, GET_ARRAY);
 }
 
-static void compile_print(struct Globals *globals, Values *args, bool has_newline)
+static void compile_print(struct Globals *globals, Values *args)
 {
     linkedlist_foreach(lnode, args->head) {
         struct Value *value = lnode->value;
@@ -271,20 +292,13 @@ static void compile_print(struct Globals *globals, Values *args, bool has_newlin
         compile_type(globals, value->type);
         load_opcode(globals, PRINT);
     }
-    if (has_newline) {
-        compile_string(globals, "\n");
-        compile_type(globals, TYPE_STRING);
-        load_opcode(globals, PRINT);
-    }
 }
 
 static void compile_builtin_funcall(struct Globals *globals, struct FunCall *funcall)
 {
     Symbol funname = funcall->access->definition->name;
-    if (funname == BUILTIN_PRINT) {
-        compile_print(globals, funcall->args, false);
-    } else if (funname == BUILTIN_PRINTLN) {
-        compile_print(globals, funcall->args, true);
+    if (funname == BUILTIN_PRINT || funname == BUILTIN_PRINTLN) {
+        compile_print(globals, funcall->args);
     } else if (funname == BUILTIN_READ) {
         load_opcode(globals, READ);
     } else {
@@ -314,6 +328,7 @@ static void compile_builtin_constructor(struct Globals *globals, struct Construc
     compile_array(globals, constructor);
 }
 
+// TODO make this + return work correctly for objects
 static void compile_funcall(struct Globals *globals, struct FunCall *funcall)
 {
     Symbol funname = funcall->access->definition->name;
@@ -520,7 +535,8 @@ static void compile_expr(struct Globals *globals, struct Expr *expr)
 static void compile_set_property(struct Globals *globals, struct SetProperty *set)
 {
     compile_value(globals, set->expr);
-    compile_xet_property(globals, set->access, SET_HEAP, false);
+    enum Code code = is_object(set->expr->type) ? SET_HEAP_OBJ : SET_HEAP;
+    compile_xet_property(globals, set->access, code, false);
 }
 
 static void compile_set_index(struct Globals *globals, struct SetProperty *set)
@@ -787,6 +803,12 @@ size_t compile(struct Globals *globals, TopLevelDecls *tlds)
     globals->cc->comments = linkedlist_new(globals->allocator);
     globals->cc->breaks = linkedlist_new(globals->allocator);
     globals->cc->continues = linkedlist_new(globals->allocator);
+    globals->cc->string_count = 0;
+    if (globals->string_count > 0) {
+        globals->cc->string_pool = calloc(globals->string_count, sizeof(char *));
+    } else {
+        globals->cc->string_pool = NULL;
+    }
     compile_tlds(globals, tlds);
     resolve_function_declarations(globals->cc->instructions, globals->cc->funcall_table);
     return globals->cc->instructions->length;

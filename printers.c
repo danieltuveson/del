@@ -35,6 +35,10 @@ void print_instructions(struct CompilerContext *cc)
                 i++;
                 printf("PUSH %" PRIu64 "\n", instructions->values[i].integer);
                 break;
+            case PUSH_OBJ:
+                i++;
+                printf("PUSH_OBJ %" PRIu64 "\n", instructions->values[i].integer);
+                break;
             case DUP:
                 printf("DUP\n");
                 break;
@@ -62,6 +66,18 @@ void print_instructions(struct CompilerContext *cc)
             case MOD:
                 printf("MOD\n");
                 break;
+            case FLOAT_ADD:
+                printf("FLOAT_ADD\n");
+                break;
+            case FLOAT_SUB:
+                printf("FLOAT_SUB\n");
+                break;
+            case FLOAT_MUL:
+                printf("FLOAT_MUL\n");
+                break;
+            case FLOAT_DIV:
+                printf("FLOAT_DIV\n");
+                break;
             case JE:
                 printf("JE\n");
                 break;
@@ -83,8 +99,32 @@ void print_instructions(struct CompilerContext *cc)
             case LT:
                 printf("LT\n");
                 break;
+            case LTE:
+                printf("LTE\n");
+                break;
             case GT:
                 printf("GT\n");
+                break;
+            case GTE: 
+                printf("GTE\n");
+                break;
+            case FLOAT_EQ:
+                printf("FLOAT_EQ\n");
+                break;
+            case FLOAT_NEQ:
+                printf("FLOAT_NEQ\n");
+                break;
+            case FLOAT_LT:
+                printf("FLOAT_LT\n");
+                break;
+            case FLOAT_LTE:
+                printf("FLOAT_LTE\n");
+                break;
+            case FLOAT_GT:
+                printf("FLOAT_GT\n");
+                break;
+            case FLOAT_GTE:
+                printf("FLOAT_GTE\n");
                 break;
             case AND:
                 printf("AND\n");
@@ -92,17 +132,17 @@ void print_instructions(struct CompilerContext *cc)
             case OR:
                 printf("OR\n");
                 break;
-            case LTE:
-                printf("LTE\n");
-                break;
-            case GTE: 
-                printf("GTE\n");
-                break;
             case UNARY_PLUS: 
                 printf("UNARY_PLUS\n");
                 break;
             case UNARY_MINUS:
                 printf("UNARY_MINUS\n");
+                break;
+            case FLOAT_UNARY_PLUS:
+                printf("FLOAT_UNARY_PLUS\n");
+                break;
+            case FLOAT_UNARY_MINUS:
+                printf("FLOAT_UNARY_MINUS\n");
                 break;
             case CALL:
                 printf("CALL\n");
@@ -138,6 +178,11 @@ void print_instructions(struct CompilerContext *cc)
                 index = instructions->values[i].offset;
                 printf("SET_HEAP %" PRIu64 "\n", index - index / 4 - 1);
                 break;
+            case SET_HEAP_OBJ:
+                i++;
+                index = instructions->values[i].offset;
+                printf("SET_HEAP_OBJ %" PRIu64 "\n", index - index / 4 - 1);
+                break;
             case GET_ARRAY:
                 printf("GET_ARRAY\n");
                 break;
@@ -167,7 +212,7 @@ void print_instructions(struct CompilerContext *cc)
                 break;
             default:
                 printf("***non-printable instruction: %d***\n", instructions->values[i].opcode);
-                assert(false);
+                // assert(false);
         }
     }
 }

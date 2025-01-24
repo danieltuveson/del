@@ -67,6 +67,9 @@
 
 // #define VM_INSTANCES_MAX        10000
 // #define INSTRUCTIONS_MAX        100000
+// WARNING: Currently changing INSTRUCTIONS_MAX to a lower number will result in it failing at 
+// runtime. The safest way to restrict the maximum upper bound of compiler memory, restrict the
+// maximum allowed size of a program input file.
 #define INSTRUCTIONS_MAX        UINT64_MAX
 #define STACK_MAX               1000
 // #define HEAP_MAX                1024

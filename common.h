@@ -49,7 +49,8 @@ struct Globals {
     struct LinkedListNode *parser;
     // Used to store strings for each symbol
     struct LinkedList *symbol_table; 
-    // Keep track of number of functions and classes parsed
+    // Keep track of number of functions, classes, and strings parsed
+    uint64_t string_count;
     uint64_t class_count;
     uint64_t function_count;
     // Stores the symbol for "main"
@@ -58,6 +59,12 @@ struct Globals {
     struct LinkedList *ast;
     // Stores compiler context
     struct CompilerContext *cc;
+};
+
+struct Program {
+    struct Vector *instructions;
+    size_t string_count;
+    char **string_pool;
 };
 
 /* Primitive that objects can have */

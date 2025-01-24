@@ -168,12 +168,12 @@ static inline DelValue pop(struct Stack *stack)
     return stack->values[--stack->offset];
 }
 
-static inline void dup(struct Stack *stack)
-{
-    DelValue v = pop(stack);
-    push(stack, v);
-    push(stack, v);
-}
+#define dup(stack_ptr) do {\
+    val1 = pop(stack_ptr);\
+    push(stack_ptr, val1);\
+    check_push(stack_ptr);\
+    push(stack_ptr, val1);\
+} while(0)
 
 static inline void swap(struct Stack *stack)
 {
@@ -210,10 +210,9 @@ static inline void switch_op(struct Stack *stack)
 
 /* Pops values from the stack and pushes them onto the heap */
 // TODO: Rewrite this + compiler so that push_heap allocates but doesn't set anything
-static inline bool push_heap(struct Heap *heap, struct Stack *stack, struct Stack *stack_obj)
+static inline bool push_heap(size_t count, size_t metadata, struct Heap *heap,
+        struct Stack *stack, struct Stack *stack_obj)
 {
-    size_t count = pop(stack).offset;
-    size_t metadata = pop(stack).offset;
     size_t ptr = heap->vector->length;
     set_count(&ptr, count);
     set_metadata(&ptr, metadata);
@@ -230,12 +229,28 @@ static inline bool push_heap(struct Heap *heap, struct Stack *stack, struct Stac
         // gc_collect(heap, stack, sfs);
     }
     // vector_grow(&(heap->vector), count);
+    uint16_t types[4] = {0};
+    uint16_t type_index = 0;
+    DelValue value;
     for (size_t i = 0; i < count; i++) {
-        DelValue value = pop(stack);
+        if (i % 5 == 0) {
+            value = pop(stack);
+            memcpy(types, value.types, 8);
+            type_index = 0;
+            // printf("\n====================\n%i\n====================\n", types[type_index]);
+        } else {
+            Type type = types[type_index];
+            if (is_object(type)) {
+                value = pop(stack_obj);
+                // printf("\n====================\nthis is an object\n====================\n");
+            } else {
+                value = pop(stack);
+                // printf("\n====================\nthis is a primitive\n====================\n");
+            }
+            type_index++;
+        }
         vector_append(&(heap->vector), value);
     }
-    // Store count in bits before location
-    // push_offset(stack, ptr);
     push_offset(stack_obj, ptr);
 #if DEBUG_RUNTIME
     print_heap(heap);
@@ -290,11 +305,8 @@ static inline bool get_heap(struct Heap *heap, size_t index, size_t ptr, struct 
 }
 
 // Do we now need SET_HEAP_OBJ, similar to GET_HEAP_OBJ?
-static inline void set_heap(struct Heap *heap, size_t index, struct Stack *stack,
-        struct Stack *stack_obj)
+static inline void set_heap(struct Heap *heap, size_t index, size_t ptr, DelValue value)
 {
-    size_t ptr = pop(stack_obj).offset;
-    DelValue value = pop(stack);
     size_t location = get_location(ptr);
     heap->vector->values[location + index] = value;
 }
@@ -359,17 +371,17 @@ static inline void set_local(struct Stack *stack, struct StackFrames *sfs, size_
     sfs->values[sf_offset + scope_offset] = val;
 }
 
-static void print_string(struct Stack *stack, struct Heap *heap)
-{
-    size_t ptr = pop(stack).offset;
-    size_t location = get_location(ptr);
-    size_t count = get_count(ptr);
-    for (int i = count - 1; i >= 0; i--) {
-        printf("%.*s", 8, heap->vector->values[location + i].chars);
-    }
-}
+// static void print_string(struct Stack *stack, struct Heap *heap)
+// {
+//     size_t ptr = pop(stack).offset;
+//     size_t location = get_location(ptr);
+//     size_t count = get_count(ptr);
+//     for (int i = count - 1; i >= 0; i--) {
+//         printf("%.*s", 8, heap->vector->values[location + i].chars);
+//     }
+// }
 
-static void print(struct Stack *stack, struct Stack *stack_obj, struct Heap *heap)
+static void print(struct Stack *stack, struct Stack *stack_obj, char **string_pool)
 {
     size_t ptr, location, count;
     DelValue dval, dtype;
@@ -397,7 +409,8 @@ static void print(struct Stack *stack, struct Stack *stack_obj, struct Heap *hea
             }
             break;
         case TYPE_STRING:
-            print_string(stack_obj, heap);
+            location = pop(stack).offset;
+            printf("%s", string_pool[location]);
             break;
         default:
             ptr = pop(stack_obj).offset;
@@ -473,7 +486,7 @@ static void print(struct Stack *stack, struct Stack *stack_obj, struct Heap *hea
 // }
 
 // Assumes that vm is stack allocated / zeroed out
-void vm_init(struct VirtualMachine *vm, DelValue *instructions)
+void vm_init(struct VirtualMachine *vm, DelValue *instructions, char **string_pool)
 {
     vm->stack.values = calloc(STACK_MAX, sizeof(*(vm->stack.values)));
     vm->stack_obj.values = calloc(STACK_MAX, sizeof(*(vm->stack_obj.values)));
@@ -484,6 +497,7 @@ void vm_init(struct VirtualMachine *vm, DelValue *instructions)
     vm->heap.vector = vector_new(HEAP_INIT, HEAP_MAX);
     vm->heap.gc_threshold = GC_GROWTH_FACTOR * vm->heap.vector->capacity;
     vm->instructions = instructions;
+    vm->string_pool = string_pool;
 }
 
 void vm_free(struct VirtualMachine *vm)
@@ -552,6 +566,9 @@ uint64_t vm_execute(struct VirtualMachine *vm)
     DelValue val2 = vm->val2;
     size_t iterations = vm->iterations;
     DelValue *instructions = vm->instructions;
+    char **string_pool = vm->string_pool;
+    size_t count;
+    size_t metadata;
 #include "threading.h"
     while (1) {
         switch (instructions[ip].opcode) {
@@ -572,7 +589,13 @@ uint64_t vm_execute(struct VirtualMachine *vm)
 #endif
                 vm_break;
             vm_case(PUSH_HEAP):
-                if (!push_heap(&heap, &stack, &stack_obj)) {//, &sfs)) {
+                ip++;
+                count = instructions[ip].offset;
+                // printf("\n==============\ncount: %lu\n==============\n", count);
+                ip++;
+                metadata = instructions[ip].offset;
+                // printf("\n==============\nmetadata: %lu\n==============\n", metadata);
+                if (!push_heap(count, metadata, &heap, &stack, &stack_obj)) {//, &sfs)) {
                     status = VM_STATUS_ERROR;
                     goto exit_loop;
                 }
@@ -604,9 +627,17 @@ uint64_t vm_execute(struct VirtualMachine *vm)
                     goto exit_loop;
                 }
                 vm_break;
+            vm_case(SET_HEAP_OBJ):
+                ip++;
+                val1 = pop(&stack_obj);
+                val2 = pop(&stack_obj);
+                set_heap(&heap, instructions[ip].offset, val1.offset, val2);
+                vm_break;
             vm_case(SET_HEAP):
                 ip++;
-                set_heap(&heap, instructions[ip].offset, &stack, &stack_obj);
+                val1 = pop(&stack_obj);
+                val2 = pop(&stack);
+                set_heap(&heap, instructions[ip].offset, val1.offset, val2);
                 vm_break;
             vm_case(GET_ARRAY):
                 if (!get_array(&heap, &stack)) {
@@ -726,9 +757,6 @@ uint64_t vm_execute(struct VirtualMachine *vm)
             vm_case(SWAP):
                 swap(&stack);
                 vm_break;
-            vm_case(SWITCH):
-                switch_op(&stack);
-                vm_break;
             vm_case(PUSH_SCOPE):
                 if (sfs.index >= STACK_MAX - 1 || sfs.frame_offsets_index >= STACK_MAX - 1) {
                     printf("Error: stack overflow\n");
@@ -750,7 +778,7 @@ uint64_t vm_execute(struct VirtualMachine *vm)
                 // }
                 vm_break;
             vm_case(PRINT): {
-                print(&stack, &stack_obj, &heap);
+                print(&stack, &stack_obj, string_pool);
                 vm_break;
             }
             vm_case(FLOAT_ADD): eval_binary_op_f(&stack, val1, val2, +);  vm_break;
@@ -771,9 +799,7 @@ uint64_t vm_execute(struct VirtualMachine *vm)
                 val1 = pop(&stack);
                 push_floating(&stack, (-1 * val1.floating));
                 vm_break;
-            vm_case(PUSH_STRING):
-            vm_case(GET_CHAR):
-            vm_case(SET_CHAR):
+            // vm_case(PUSH_STRING):
             default:
                 printf("unknown instruction encountered: '%" PRIu64 "'",
                         instructions[ip].offset);
@@ -804,6 +830,7 @@ exit_loop:
     vm->val2 = val2;
     vm->iterations = iterations;
     vm->instructions = instructions;
+    vm->string_pool = string_pool;
     return ret;
 }
 

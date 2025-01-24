@@ -709,8 +709,6 @@ static bool typecheck_print(struct Globals *globals, struct TypeCheckerContext *
         struct Value *val = lnode->value;
         Type val_type = typecheck_value(globals, context, val);
         if (val_type == TYPE_UNDEFINED) {
-            
-            printf("this bad\n");
             return false;
         }
     }
@@ -812,7 +810,11 @@ static bool typecheck_statement(struct Globals *globals, struct TypeCheckerConte
             return ret;
         case STMT_BUILTIN_FUNCALL: {
             Symbol name = stmt->funcall->access->definition->name;
-            if (name == BUILTIN_PRINT || name == BUILTIN_PRINTLN) {
+            if (name == BUILTIN_PRINT) {
+                ret = typecheck_print(globals, context, stmt->funcall->args);
+            } else if (name == BUILTIN_PRINTLN) {
+                // This is kind of a hack
+                linkedlist_append(stmt->funcall->args, new_string(globals, "\n"));
                 ret = typecheck_print(globals, context, stmt->funcall->args);
             } else {
                 assert("Error: not implemented\n" && false);

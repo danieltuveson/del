@@ -10,9 +10,9 @@
 #                          DEBUG_COMPILER, DEBUG_RUNTIME
 # - For one-off things that I don't want to run in "prod" and will probably delete: DEBUG
 # - To enable everything: DEBUG_ALL
-# CFLAGS = -O2 -g -Wall -Wextra -DGCOFF=0 -DTHREADED_CODE_ENABLED=1
-CFLAGS = -O2 -g -Wall -Wextra -DGCOFF=0 -DTHREADED_CODE_ENABLED=1 \
-		 -DDEBUG_TEXT=1 -DDEBUG_COMPILER=1 -DDEBUG_RUNTIME=1
+CFLAGS = -O2 -g -Wall -Wextra -DGCOFF=0 -DTHREADED_CODE_ENABLED=1
+# CFLAGS = -O2 -g -Wall -Wextra -DGCOFF=0 -DTHREADED_CODE_ENABLED=1 \
+# 		 -DDEBUG_TEXT=1 -DDEBUG_COMPILER=1 -DDEBUG_RUNTIME=1
 objects = common.o allocator.o linkedlist.o vector.o readfile.o lexer.o error.o \
 	      parser.o ast.o functiontable.o typecheck.o compiler.o vm.o \
 		  printers.o del.o

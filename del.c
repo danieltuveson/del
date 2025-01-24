@@ -12,10 +12,9 @@
 #include "vector.h"
 
 
-static bool read_and_compile(struct Vector **instructions_ptr, Allocator allocator,
-        char *filename)
+static bool read_and_compile(struct Program **program, Allocator allocator, char *filename)
 {
-    struct Globals globals = { {0}, 0, NULL, NULL, NULL, NULL, 0, 0, 0, NULL, NULL };
+    struct Globals globals = { {0}, 0, NULL, NULL, NULL, NULL, 0, 0, 0, 0, NULL, NULL };
     globals.allocator = allocator;
 
 #if DEBUG_TEXT
@@ -97,7 +96,10 @@ static bool read_and_compile(struct Vector **instructions_ptr, Allocator allocat
     printf("`````````````` COMPILE ```````````````\n");
 #endif
     compile(&globals, globals.ast);
-    *instructions_ptr = globals.cc->instructions;
+    *program = malloc(sizeof(**program));
+    (*program)->instructions = globals.cc->instructions;
+    (*program)->string_count = globals.cc->string_count;
+    (*program)->string_pool = globals.cc->string_pool;
 #if DEBUG_COMPILER
     printf("\n");
     printf("````````````` INSTRUCTIONS `````````````\n");
@@ -139,18 +141,23 @@ void del_allocator_freeall(DelAllocator da)
     allocator_freeall(allocator);
 }
 
-void del_instructions_free(DelInstructions del_instructions)
+void del_program_free(DelProgram del_program)
 {
-    struct Vector *instructions = (struct Vector *) del_instructions;
-    vector_free(instructions);
+    struct Program *program = (struct Program *) del_program;
+    vector_free(program->instructions);
+    for (size_t i = 0; i < program->string_count; i++) {
+        free(program->string_pool[i]);
+    }
+    if (program->string_pool != NULL) free(program->string_pool);
+    free(program);
 }
 
-void del_vm_init(DelVM *del_vm, DelInstructions del_instructions)
+void del_vm_init(DelVM *del_vm, DelProgram del_program)
 {
     struct VirtualMachine *vm = malloc(sizeof(*vm));
     memset(vm, 0, sizeof(*vm));
-    struct Vector *instructions = (struct Vector *) del_instructions;
-    vm_init(vm, instructions->values);
+    struct Program *program = (struct Program *) del_program;
+    vm_init(vm, program->instructions->values, program->string_pool);
     *del_vm = (DelVM) vm;
 }
 
@@ -173,13 +180,14 @@ void del_vm_free(DelVM del_vm)
     free(vm);
 }
 
-DelInstructions del_read_and_compile(DelAllocator del_allocator, char *filename)
+DelProgram del_read_and_compile(DelAllocator del_allocator, char *filename)
 {
-    struct Vector *instructions;
+    struct Program *program = NULL;
     Allocator allocator = (Allocator) del_allocator;
-    if (read_and_compile(&instructions, allocator, filename)) {
-        DelInstructions del_instructions = (DelInstructions) instructions;
-        return del_instructions;
+    if (read_and_compile(&program, allocator, filename)) {
+        DelProgram del_program = (DelProgram) program;
+        return del_program;
     }
     return 0;
 }
+

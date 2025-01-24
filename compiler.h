@@ -26,6 +26,8 @@ struct Comment {
 
 struct CompilerContext {
     struct Vector *instructions;
+    size_t string_count;
+    char **string_pool;
     struct LinkedList *comments;
     BreakLocations *breaks;
     BreakLocations *continues;

@@ -43,9 +43,10 @@ struct VirtualMachine {
     DelValue val2;
     size_t iterations;
     DelValue *instructions;
+    char **string_pool;
 };
 
-void vm_init(struct VirtualMachine *vm, DelValue *instructions);
+void vm_init(struct VirtualMachine *vm, DelValue *instructions, char **string_pool);
 void vm_free(struct VirtualMachine *vm);
 uint64_t vm_execute(struct VirtualMachine *vm);
 

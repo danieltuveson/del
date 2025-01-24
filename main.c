@@ -15,23 +15,23 @@ int main(int argc, char *argv[])
 
     // Compile
     DelAllocator allocator = del_allocator_new();
-    DelInstructions instructions = del_read_and_compile(allocator, argv[1]);
-    if (!instructions) {
+    DelProgram program = del_read_and_compile(allocator, argv[1]);
+    if (!program) {
         del_allocator_freeall(allocator);
         return EXIT_FAILURE;
     }
 
     // Run
     DelVM vm;
-    del_vm_init(&vm, instructions);
+    del_vm_init(&vm, program);
     del_vm_execute(vm);
     if (del_vm_status(vm) == VM_STATUS_ERROR) {
         del_vm_free(vm);
-        del_instructions_free(instructions);
+        del_program_free(program);
         return EXIT_FAILURE;
     }
     del_vm_free(vm);
-    del_instructions_free(instructions);
+    del_program_free(program);
     return EXIT_SUCCESS;
 }
 

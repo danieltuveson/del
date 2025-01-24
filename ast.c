@@ -270,6 +270,7 @@ static struct Value *new_value(struct Globals *globals, enum ValueType vtype, Ty
 
 struct Value *new_string(struct Globals *globals, char *string)
 {
+    globals->string_count++;
     struct Value *val = new_value(globals, VTYPE_STRING, TYPE_STRING);
     val->string = string;
     return val;
