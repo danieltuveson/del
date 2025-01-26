@@ -186,8 +186,14 @@ void print_instructions(struct CompilerContext *cc)
             case GET_ARRAY:
                 printf("GET_ARRAY\n");
                 break;
+            case GET_ARRAY_OBJ:
+                printf("GET_ARRAY_OBJ\n");
+                break;
             case SET_ARRAY:
                 printf("SET_ARRAY\n");
+                break;
+            case SET_ARRAY_OBJ:
+                printf("SET_ARRAY_OBJ\n");
                 break;
             case EXIT:
                 printf("EXIT\n");
@@ -212,7 +218,7 @@ void print_instructions(struct CompilerContext *cc)
                 break;
             default:
                 printf("***non-printable instruction: %d***\n", instructions->values[i].opcode);
-                // assert(false);
+                assert(false);
         }
     }
 }
@@ -231,16 +237,17 @@ void print_stack(struct Stack *stack, bool is_obj)
     printf("]\n");
 }
 
-void print_frames(struct StackFrames *sfs)
+void print_frames(struct StackFrames *sfs, bool is_obj)
 {
-    printf("all variables:");
+    char *objstr = is_obj ? "object " : "";
+    printf("all %svariables:", objstr);
     for (size_t i = 0; i < sfs->index; i++) {
         // printf(" { %s: ", lookup_symbol(globals, sfs->names[i]));
         printf(" { %lu: ", i);
         printf("%" PRIi64 " }, ", (int64_t) sfs->values[i].integer);
     }
     printf("\n");
-    printf("frame offsets: ");
+    printf("%sframe offsets: ", objstr);
     for (size_t i = 0; i < sfs->frame_offsets_index; i++) {
         printf("%lu, ", sfs->frame_offsets[i]);
     }
@@ -250,7 +257,7 @@ void print_frames(struct StackFrames *sfs)
         size_t upper = i == sfs->frame_offsets_index
                   ? sfs->index
                   : sfs->frame_offsets[i];
-        printf("frame %ld: [ ", (unsigned long) i);
+        printf("%sframe %ld: [ ", objstr, (unsigned long) i);
         for (size_t j = lower; j < upper; j++) {
             // printf(" { %s: ", lookup_symbol(globals, sfs->names[j]));
             printf(" { %lu: ", j);

@@ -227,13 +227,16 @@ static Types *parse_type_args(struct Globals *globals)
         Type type = parse_type(globals);
         if (type == TYPE_UNDEFINED) {
             return NULL;
+        } else if (is_array(type)) {
+            error_parser(globals, "Array may not contain other arrays");
+            return NULL;
         }
         Type *type_ptr = allocator_malloc(globals->allocator, sizeof(*type_ptr));
         *type_ptr = type;
         linkedlist_append(types, type_ptr);
     } while (match(globals, ST_COMMA));
     if (!match(globals, ST_GREATER)) {
-        error_parser(globals, "Unexpected end of type arguments in constructor");
+        error_parser(globals, "Unexpected end of type arguments");
         return NULL;
     }
     return types;
@@ -574,14 +577,27 @@ static Type parse_type(struct Globals *globals)
     } else if (match(globals, ST_STRING)) {
         return TYPE_STRING;
     } else if (match(globals, T_SYMBOL)) {
-        return nth_token(old_head, 1)->symbol;
-    }
-    if (match(globals, ST_LESS)) {
-        assert(false);
+        Symbol symbol = nth_token(old_head, 1)->symbol;
+        if (symbol != BUILTIN_ARRAY) {
+            return symbol;
+        } else if (!match(globals, ST_LESS)) {
+            error_parser(globals, "Array declaration is missing type");
+            return TYPE_UNDEFINED;
+        }
         Types *types = parse_type_args(globals);
         if (types == NULL) {
             return TYPE_UNDEFINED;
+        } else if (types->length != 1) {
+            // TODO: Do proper generics, eventually
+            error_parser(globals, "Array declaration has too many types");
+            return TYPE_UNDEFINED;
         }
+        Type *type_ptr = types->head->value;
+        if (is_array(*type_ptr)) {
+            error_parser(globals, "Array may not contain other arrays");
+            return TYPE_UNDEFINED;
+        }
+        return array_of(*type_ptr);
     }
     error_parser(globals, "Invalid type");
     return TYPE_UNDEFINED;
@@ -601,7 +617,6 @@ static struct Definition *parse_definition(struct Globals *globals)
         error_parser(globals, "Expected colon");
         return NULL;
     } else if ((type = parse_type(globals)) == TYPE_UNDEFINED) {
-        error_parser(globals, "Invalid type");
         return NULL;
     }
     return new_define(globals, nth_token(old_head, 1)->symbol, type);

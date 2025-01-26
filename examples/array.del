@@ -3,11 +3,11 @@ class Thing {
     wing: float;
 }
 
-class ThingSlice {
-    start : int;
-    end : int;
-    arr : Array;
-}
+// class ThingSlice {
+//     start : int;
+//     end : int;
+//     arr : Array;
+// }
 
 // class List<T> {
 //     count: int;

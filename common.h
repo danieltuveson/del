@@ -68,7 +68,7 @@ struct Program {
 };
 
 /* Primitive that objects can have */
-typedef uint64_t Type;
+typedef uint16_t Type;
 #define TYPE_UNDEFINED UINT64_C(0)
 #define TYPE_NULL UINT64_C(1)
 #define TYPE_BOOL UINT64_C(2)
@@ -108,6 +108,11 @@ static inline bool is_array(Type type)
 static inline Type type_of_array(Type type)
 {
     return ~TYPE_ARRAY & type;
+}
+
+static inline Type array_of(Type type)
+{
+    return TYPE_ARRAY | type;
 }
 
 /* List functions */

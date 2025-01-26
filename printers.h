@@ -26,7 +26,7 @@ void print_ft(struct Globals *globals, struct FunctionCallTable *ft);
 /* VM printers */
 void print_instructions(struct CompilerContext *cc);
 void print_stack(struct Stack *stack, bool is_obj);
-void print_frames(struct StackFrames *sfs);
+void print_frames(struct StackFrames *sfs, bool is_obj);
 void print_heap(struct Heap *heap);
 
 /* Misc. */

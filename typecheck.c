@@ -323,7 +323,7 @@ static Type typecheck_new_array(struct Globals *globals, struct TypeCheckerConte
         return TYPE_UNDEFINED;
     }
     Type *type_ptr = constructor->types->head->value;
-    return TYPE_ARRAY | (*type_ptr);
+    return array_of(*type_ptr);
 }
 
 static Type typecheck_read(Values *args)

@@ -237,28 +237,22 @@ static inline bool push_heap(size_t count, size_t metadata, struct Heap *heap,
             value = pop(stack);
             memcpy(types, value.types, 8);
             type_index = 0;
-            // printf("\n====================\n%i\n====================\n", types[type_index]);
         } else {
             Type type = types[type_index];
-            if (is_object(type)) {
-                value = pop(stack_obj);
-                // printf("\n====================\nthis is an object\n====================\n");
-            } else {
-                value = pop(stack);
-                // printf("\n====================\nthis is a primitive\n====================\n");
-            }
+            value = is_object(type) ? pop(stack_obj) : pop(stack);
             type_index++;
         }
         vector_append(&(heap->vector), value);
     }
     push_offset(stack_obj, ptr);
-#if DEBUG_RUNTIME
-    print_heap(heap);
-#endif
+// #if DEBUG_RUNTIME
+//     print_heap(heap);
+// #endif
     return true;
 }
 
-static inline bool push_array(struct Heap *heap, struct Stack *stack)//, struct StackFrames *sfs)
+// static inline bool push_array(struct Heap *heap, struct Stack *stack)//, struct StackFrames *sfs)
+static inline bool push_array(struct Heap *heap, struct Stack *stack, struct Stack *stack_obj)
 {
     int64_t dirty_length = pop(stack).integer;
     size_t obj_size = pop(stack).offset;
@@ -284,10 +278,10 @@ static inline bool push_array(struct Heap *heap, struct Stack *stack)//, struct 
     }
     vector_grow(&(heap->vector), count);
     // Store count in bits before location
-    push_offset(stack, ptr);
-#if DEBUG_RUNTIME
-    print_heap(heap);
-#endif
+    push_offset(stack_obj, ptr);
+// #if DEBUG_RUNTIME
+//     print_heap(heap);
+// #endif
     return true;
 }
 
@@ -311,10 +305,8 @@ static inline void set_heap(struct Heap *heap, size_t index, size_t ptr, DelValu
     heap->vector->values[location + index] = value;
 }
 
-static inline bool get_array(struct Heap *heap, struct Stack *stack)
+static inline bool get_array(int64_t index, size_t ptr, struct Heap *heap, struct Stack *stack)
 {
-    int64_t index = pop(stack).integer;
-    size_t ptr = pop(stack).offset;
     size_t location = get_location(ptr);
     size_t count = get_count(ptr);
     if (index < 0 || index >= (int64_t)count) {
@@ -325,10 +317,8 @@ static inline bool get_array(struct Heap *heap, struct Stack *stack)
     return true;
 }
 
-static inline bool set_array(struct Heap *heap, struct Stack *stack)
+static inline bool set_array(int64_t index, size_t ptr, struct Heap *heap, struct Stack *stack)
 {
-    int64_t index = pop(stack).integer;
-    size_t ptr = pop(stack).offset;
     size_t location = get_location(ptr);
     size_t count = get_count(ptr);
     if (index < 0 || index >= (int64_t)count) {
@@ -364,10 +354,8 @@ static inline DelValue get_local(struct StackFrames *sfs, size_t scope_offset)
 
 static inline void set_local(struct Stack *stack, struct StackFrames *sfs, size_t scope_offset)
 {
-    // size_t type = pop(stack).offset;
     DelValue val = pop(stack);
     size_t sf_offset = stack_frame_offset(sfs);
-    // sfs->values[sf_offset + scope_offset].offset = type;
     sfs->values[sf_offset + scope_offset] = val;
 }
 
@@ -534,11 +522,26 @@ void vm_free(struct VirtualMachine *vm)
     }\
 } while(0)
 
+#if DEBUG_RUNTIME
+#define debug_print_all() do{\
+    print_stack(&stack, false);\
+    print_stack(&stack_obj, true);\
+    print_frames(&sfs, false);\
+    print_frames(&sfs_obj, true);\
+    print_heap(&heap);\
+    printf("======================================\n");\
+} while(0)
+#else
+#define debug_print_all()
+#endif
+
+
 #define on_break() do {\
     ip++;\
     iterations++;\
     /* For fun, lets exit whenever we reach 100 iterations */ \
     /* pause_after(UINT64_MAX);*/\
+    debug_print_all();\
     emergency_break();\
 } while(0)
 
@@ -550,6 +553,10 @@ void vm_free(struct VirtualMachine *vm)
         goto exit_loop;\
     }\
 } while(0)
+
+static inline bool is_stack_overflow(struct StackFrames *sfs) {
+    return sfs->index >= STACK_MAX - 1 || sfs->frame_offsets_index >= STACK_MAX - 1;
+}
 
 uint64_t vm_execute(struct VirtualMachine *vm)
 {
@@ -576,47 +583,36 @@ uint64_t vm_execute(struct VirtualMachine *vm)
                 ip++;
                 check_push(&stack);
                 push(&stack, instructions[ip]);
-#if DEBUG_RUNTIME
-                print_stack(&stack, false);
-#endif
+// #if DEBUG_RUNTIME
+//                 print_stack(&stack, false);
+// #endif
                 vm_break;
             vm_case(PUSH_OBJ):
                 ip++;
                 check_push(&stack_obj);
                 push(&stack_obj, instructions[ip]);
-#if DEBUG_RUNTIME
-                print_stack(&stack_obj, true);
-#endif
+// #if DEBUG_RUNTIME
+//                 print_stack(&stack_obj, true);
+// #endif
                 vm_break;
             vm_case(PUSH_HEAP):
                 ip++;
                 count = instructions[ip].offset;
-                // printf("\n==============\ncount: %lu\n==============\n", count);
                 ip++;
                 metadata = instructions[ip].offset;
-                // printf("\n==============\nmetadata: %lu\n==============\n", metadata);
                 if (!push_heap(count, metadata, &heap, &stack, &stack_obj)) {//, &sfs)) {
                     status = VM_STATUS_ERROR;
                     goto exit_loop;
                 }
                 vm_break;
             vm_case(PUSH_ARRAY):
-                if (!push_array(&heap, &stack)) {//, &sfs)) {
+                if (!push_array(&heap, &stack, &stack_obj)) {
                     status = VM_STATUS_ERROR;
                     goto exit_loop;
                 }
                 vm_break;
             vm_case(LEN_ARRAY):
                 TODO();
-                vm_break;
-            vm_case(GET_HEAP_OBJ):
-                ip++;
-                val1 = pop(&stack_obj);
-                if (!get_heap(&heap, instructions[ip].offset, val1.offset, &stack_obj)) {
-                    printf("Error: null pointer exception\n");
-                    status = VM_STATUS_ERROR;
-                    goto exit_loop;
-                }
                 vm_break;
             vm_case(GET_HEAP):
                 ip++;
@@ -627,11 +623,14 @@ uint64_t vm_execute(struct VirtualMachine *vm)
                     goto exit_loop;
                 }
                 vm_break;
-            vm_case(SET_HEAP_OBJ):
+            vm_case(GET_HEAP_OBJ):
                 ip++;
                 val1 = pop(&stack_obj);
-                val2 = pop(&stack_obj);
-                set_heap(&heap, instructions[ip].offset, val1.offset, val2);
+                if (!get_heap(&heap, instructions[ip].offset, val1.offset, &stack_obj)) {
+                    printf("Error: null pointer exception\n");
+                    status = VM_STATUS_ERROR;
+                    goto exit_loop;
+                }
                 vm_break;
             vm_case(SET_HEAP):
                 ip++;
@@ -639,14 +638,40 @@ uint64_t vm_execute(struct VirtualMachine *vm)
                 val2 = pop(&stack);
                 set_heap(&heap, instructions[ip].offset, val1.offset, val2);
                 vm_break;
+            vm_case(SET_HEAP_OBJ):
+                ip++;
+                val1 = pop(&stack_obj);
+                val2 = pop(&stack_obj);
+                set_heap(&heap, instructions[ip].offset, val1.offset, val2);
+                vm_break;
             vm_case(GET_ARRAY):
-                if (!get_array(&heap, &stack)) {
+                val1 = pop(&stack);
+                val2 = pop(&stack_obj);
+                if (!get_array(val1.integer, val2.offset, &heap, &stack)) {
+                    status = VM_STATUS_ERROR;
+                    goto exit_loop;
+                }
+                vm_break;
+            vm_case(GET_ARRAY_OBJ):
+                val1 = pop(&stack);
+                val2 = pop(&stack_obj);
+                if (!get_array(val1.integer, val2.offset, &heap, &stack_obj)) {
                     status = VM_STATUS_ERROR;
                     goto exit_loop;
                 }
                 vm_break;
             vm_case(SET_ARRAY):
-                if (!set_array(&heap, &stack)) {
+                val1 = pop(&stack);
+                val2 = pop(&stack_obj);
+                if (!set_array(val1.integer, val2.offset, &heap, &stack)) {
+                    status = VM_STATUS_ERROR;
+                    goto exit_loop;
+                }
+                vm_break;
+            vm_case(SET_ARRAY_OBJ):
+                val1 = pop(&stack);
+                val2 = pop(&stack_obj);
+                if (!set_array(val1.integer, val2.offset, &heap, &stack_obj)) {
                     status = VM_STATUS_ERROR;
                     goto exit_loop;
                 }
@@ -694,35 +719,33 @@ uint64_t vm_execute(struct VirtualMachine *vm)
                 val1 = pop(&stack);
                 push_integer(&stack, (-1 * val1.integer));
                 vm_break;
-            vm_case(SET_LOCAL_OBJ):
-                ip++;
-                set_local(&stack_obj, &sfs_obj, instructions[ip].offset);
-#if DEBUG_RUNTIME
-                printf("regular frame: ");
-                print_frames(&sfs);
-                printf("object frame: ");
-                print_frames(&sfs_obj);
-#endif
-                vm_break;
             vm_case(SET_LOCAL):
                 ip++;
                 set_local(&stack, &sfs, instructions[ip].offset);
                 vm_break;
+            vm_case(SET_LOCAL_OBJ):
+                ip++;
+                set_local(&stack_obj, &sfs_obj, instructions[ip].offset);
+// #if DEBUG_RUNTIME
+//                 print_frames(&sfs, false);
+//                 print_frames(&sfs_obj, true);
+// #endif
+                vm_break;
             vm_case(DEFINE):
                 // TODO: Figure out how to make this compile-time only
                 sfs.index++;
-                vm_break;
-            vm_case(GET_LOCAL_OBJ):
-                ip++;
-                val1 = get_local(&sfs_obj, instructions[ip].offset);
-                check_push(&stack_obj);
-                push(&stack_obj, val1);
                 vm_break;
             vm_case(GET_LOCAL):
                 ip++;
                 val1 = get_local(&sfs, instructions[ip].offset);
                 check_push(&stack);
                 push(&stack, val1);
+                vm_break;
+            vm_case(GET_LOCAL_OBJ):
+                ip++;
+                val1 = get_local(&sfs_obj, instructions[ip].offset);
+                check_push(&stack_obj);
+                push(&stack_obj, val1);
                 vm_break;
             vm_case(JE):
                 assert("JE not implemented\n" && false);
@@ -758,7 +781,7 @@ uint64_t vm_execute(struct VirtualMachine *vm)
                 swap(&stack);
                 vm_break;
             vm_case(PUSH_SCOPE):
-                if (sfs.index >= STACK_MAX - 1 || sfs.frame_offsets_index >= STACK_MAX - 1) {
+                if (unexpected(is_stack_overflow(&sfs) || is_stack_overflow(&sfs_obj))) {
                     printf("Error: stack overflow\n");
                     status = VM_STATUS_ERROR;
                     goto exit_loop;
@@ -814,7 +837,8 @@ exit_loop:
 #if DEBUG_RUNTIME
     print_stack(&stack, false);
     print_stack(&stack_obj, true);
-    print_frames(&sfs);
+    print_frames(&sfs, false);
+    print_frames(&sfs_obj, true);
     print_heap(&heap);
 #endif
     // Update state of VM before exiting
