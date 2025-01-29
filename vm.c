@@ -254,15 +254,13 @@ static inline bool push_heap(size_t count, size_t metadata, struct Heap *heap,
 // static inline bool push_array(struct Heap *heap, struct Stack *stack)//, struct StackFrames *sfs)
 static inline bool push_array(struct Heap *heap, struct Stack *stack, struct Stack *stack_obj)
 {
-    int64_t dirty_length = pop(stack).integer;
-    size_t obj_size = pop(stack).offset;
-    if (dirty_length < 1) {
+    int64_t dirty_count = pop(stack).integer;
+    if (dirty_count < 1) {
         printf("Fatal runtime error: index of array less than 1\n");
         return false;
     }
     size_t ptr = heap->vector->length;
-    size_t length = (size_t) dirty_length;
-    size_t count = obj_size * length;
+    size_t count = (size_t) dirty_count;
     set_count(&ptr, count);
     size_t new_usage = heap->vector->length + count;
     if (new_usage > heap->vector->max_capacity) {
@@ -369,27 +367,22 @@ static inline void set_local(struct Stack *stack, struct StackFrames *sfs, size_
 //     }
 // }
 
-static void print(struct Stack *stack, struct Stack *stack_obj, char **string_pool)
+static void print_primitive(Type type, DelValue dval, char **string_pool)
 {
-    size_t ptr, location, count;
-    DelValue dval, dtype;
-    dtype = pop(stack);
-    Type t = dtype.type;
-    switch (t) {
+    switch (type) {
         case TYPE_NULL:
-            dval = pop(stack);
             printf("null");
             break;
+        case TYPE_BYTE:
+            printf("%c", dval.byte);
+            break;
         case TYPE_INT:
-            dval = pop(stack);
             printf("%" PRIi64 "", dval.integer);
             break;
         case TYPE_FLOAT:
-            dval = pop(stack);
             printf("%f", dval.floating);
             break;
         case TYPE_BOOL:
-            dval = pop(stack);
             if (dval.integer == 0) {
                 printf("false");
             } else {
@@ -397,19 +390,93 @@ static void print(struct Stack *stack, struct Stack *stack_obj, char **string_po
             }
             break;
         case TYPE_STRING:
-            location = pop(stack).offset;
-            printf("%s", string_pool[location]);
+            printf("%s", string_pool[dval.offset]);
             break;
         default:
-            ptr = pop(stack_obj).offset;
-            location = get_location(ptr);
-            // I think I can remove the "/2" now that I've redesigned the heap?
-            count = get_count(ptr) / 2;
-            if (location == 0) {
-                printf("null");
+            assert(false);
+    }
+}
+
+static void print_addr(size_t location)
+{
+    if (location == 0) {
+        printf("null");
+    } else {
+        printf("<%lu>", location);
+    }
+}
+
+static void pprint_primitive(Type type, DelValue dval, char **string_pool)
+{
+    if (type == TYPE_STRING) {
+        printf("\"");
+    } else if (type == TYPE_BYTE) {
+        printf("'");
+    }
+    print_primitive(type, dval, string_pool);
+    if (type == TYPE_STRING) {
+        printf("\"");
+    } else if (type == TYPE_BYTE) {
+        printf("'");
+    }
+}
+
+static void print_object(struct Heap *heap, size_t location, size_t count, char **string_pool)
+{
+    uint16_t types[4] = {0};
+    uint16_t type_index = 0;
+    printf("{ ");
+    for (size_t i = 0; i < count; i++) {
+        DelValue value = heap->vector->values[i + location];
+        if (i % 5 == 0) {
+            memcpy(types, value.types, 8);
+            type_index = 0;
+        } else {
+            Type type = types[type_index];
+            if (is_object(type)) {
+                print_addr(get_location(value.offset));
             } else {
-                printf("<%lu>, of size %lu", location, count);
+                pprint_primitive(type, value, string_pool);
             }
+            type_index++;
+            if (i != count - 1) printf(", ");
+        }
+    }
+    printf(" }");
+}
+
+static void print(struct Heap *heap, struct Stack *stack, struct Stack *stack_obj,
+        char **string_pool)
+{
+    size_t ptr, location, count;
+    DelValue dtype = pop(stack);
+    Type type = dtype.type;
+    if (!is_object(type)) {
+        DelValue dval = pop(stack);
+        print_primitive(type, dval, string_pool);
+        return;
+    }
+    ptr = pop(stack_obj).offset;
+    location = get_location(ptr);
+    count = get_count(ptr);
+    if (is_array(type)) {
+        Type arr_type = type_of_array(type);
+        printf("{ ");
+        if (!is_object(arr_type)) {
+            for (size_t i = location; i < count + location; i++) {
+                pprint_primitive(arr_type, heap->vector->values[i], string_pool);
+                if (i != count + location - 1) printf(", ");
+            }
+        } else {
+            for (uint64_t i = location; i < count + location; i++) {
+                ptr = heap->vector->values[i].offset;
+                print_addr(get_location(ptr));
+                if (i != count + location - 1) printf(", ");
+            }
+        }
+        printf(" }");
+    } else {
+        print_object(heap, location, count, string_pool);
     }
 }
 
@@ -501,8 +568,8 @@ void vm_free(struct VirtualMachine *vm)
 
 #if DEBUG_RUNTIME
 #define emergency_break() do {\
-    /* if (iterations > 200000) {*/\
-    if (iterations > 200) {\
+    if (iterations > 200000) {\
+    /* if (iterations > 200) {*/\
         print_stack(&stack, false);\
         print_stack(&stack_obj, true);\
         print_heap(&heap);\
@@ -735,6 +802,9 @@ uint64_t vm_execute(struct VirtualMachine *vm)
                 // TODO: Figure out how to make this compile-time only
                 sfs.index++;
                 vm_break;
+            vm_case(DEFINE_OBJ):
+                sfs_obj.index++;
+                vm_break;
             vm_case(GET_LOCAL):
                 ip++;
                 val1 = get_local(&sfs, instructions[ip].offset);
@@ -764,7 +834,10 @@ uint64_t vm_execute(struct VirtualMachine *vm)
                 ip--; // reverse the effects of the ip++ in vm_break
                 vm_break;
             vm_case(POP):
-                ret = pop(&stack).integer;
+                pop(&stack);
+                vm_break;
+            vm_case(POP_OBJ):
+                pop(&stack_obj);
                 vm_break;
             vm_case(EXIT):
                 status = VM_STATUS_COMPLETED;
@@ -801,7 +874,7 @@ uint64_t vm_execute(struct VirtualMachine *vm)
                 // }
                 vm_break;
             vm_case(PRINT): {
-                print(&stack, &stack_obj, string_pool);
+                print(&heap, &stack, &stack_obj, string_pool);
                 vm_break;
             }
             vm_case(FLOAT_ADD): eval_binary_op_f(&stack, val1, val2, +);  vm_break;

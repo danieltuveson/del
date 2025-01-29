@@ -41,6 +41,16 @@ static inline void load_opcode(struct Globals *globals, enum Code opcode)
     vector_append(&(globals->cc->instructions), value);
 }
 
+static inline void pop(struct Globals *globals)
+{
+    load_opcode(globals, POP);
+}
+
+static inline void pop_obj(struct Globals *globals)
+{
+    load_opcode(globals, POP_OBJ);
+}
+
 static inline void push(struct Globals *globals)
 {
     load_opcode(globals, PUSH);
@@ -95,6 +105,13 @@ static inline void compile_bool(struct Globals *globals, int64_t boolean)
     compile_int(globals, boolean);
 }
 
+static inline void compile_byte(struct Globals *globals, char byte)
+{
+    push(globals);
+    DelValue value = { .byte = byte };
+    vector_append(&(globals->cc->instructions), value);
+}
+
 static inline void compile_type(struct Globals *globals, Type type)
 {
     push(globals);
@@ -104,7 +121,12 @@ static inline void compile_type(struct Globals *globals, Type type)
 
 static void compile_xet_local(struct Globals *globals, struct Definition *def, enum Code op)
 {
-    add_comment(globals, "local '%s'", lookup_symbol(globals, def->name));
+    add_comment(globals, "local %s : %s%s%s%s",
+            lookup_symbol(globals, def->name),
+            lookup_symbol(globals, def->type),
+            is_array(def->type) ? "<" : "",
+            is_array(def->type) ? lookup_symbol(globals, type_of_array(def->type)) : "",
+            is_array(def->type) ? ">" : "");
     load_opcode(globals, op);
     load_offset(globals, def->scope_offset);
 }
@@ -185,6 +207,7 @@ static void compile_funargs(struct Globals *globals, Definitions *defs)
     linkedlist_foreach(lnode, defs->head) {
         struct Definition *def = lnode->value;
         compile_set_local(globals, def);
+        load_opcode(globals, is_object(def->type) ? DEFINE_OBJ: DEFINE);
     }
 }
 
@@ -309,16 +332,8 @@ static void compile_builtin_funcall(struct Globals *globals, struct FunCall *fun
 
 static void compile_array(struct Globals *globals, struct Constructor *constructor)
 {
-    Type type = *((Type *)constructor->types->head->value);
-    size_t size_of_type = 1;
-    if (is_object(type)) {
-        struct Class *cls = lookup_class(globals->cc->class_table, type);
-        size_of_type = cls->definitions->length;
-    }
-    compile_offset(globals, size_of_type);
     compile_value(globals, constructor->funcall->args->head->value);
     load_opcode(globals, PUSH_ARRAY);
-    return;
 }
 
 static void compile_builtin_constructor(struct Globals *globals, struct Constructor *constructor)
@@ -329,11 +344,10 @@ static void compile_builtin_constructor(struct Globals *globals, struct Construc
     compile_array(globals, constructor);
 }
 
-// TODO make this + return work correctly for objects
-static void compile_funcall(struct Globals *globals, struct FunCall *funcall)
+static void compile_funcall(struct Globals *globals, struct FunCall *funcall, bool is_stmt)
 {
     Symbol funname = funcall->access->definition->name;
-    add_comment(globals, "call to %s", lookup_symbol(globals, funname));
+    add_comment(globals, "function call: %s", lookup_symbol(globals, funname));
     push(globals);
     size_t bookmark = next(globals);
     if (funcall->args != NULL) {
@@ -348,6 +362,14 @@ static void compile_funcall(struct Globals *globals, struct FunCall *funcall)
     load_opcode(globals, JMP);
     globals->cc->instructions->values[bookmark].offset = globals->cc->instructions->length;
     load_opcode(globals, POP_SCOPE);
+    struct FunDef *fundef = lookup_fun(globals->cc->fundef_table, funname);
+    if (is_stmt && fundef->rettype != TYPE_UNDEFINED) {
+        if (is_object(fundef->rettype)) {
+            pop_obj(globals);
+        } else {
+            pop(globals);
+        }
+    }
 }
 
 static void compile_value(struct Globals *globals, struct Value *val)
@@ -355,6 +377,9 @@ static void compile_value(struct Globals *globals, struct Value *val)
     switch (val->vtype) {
         case VTYPE_STRING:
             compile_string(globals, val->string);
+            break;
+        case VTYPE_BYTE:
+            compile_byte(globals, val->byte);
             break;
         case VTYPE_INT:
             compile_int(globals, val->integer);
@@ -372,7 +397,7 @@ static void compile_value(struct Globals *globals, struct Value *val)
             compile_expr(globals, val->expr);
             break;
         case VTYPE_FUNCALL:
-            compile_funcall(globals, val->funcall); 
+            compile_funcall(globals, val->funcall, false); 
             break;
         case VTYPE_BUILTIN_FUNCALL:
             compile_builtin_funcall(globals, val->funcall); 
@@ -396,6 +421,11 @@ static void compile_value(struct Globals *globals, struct Value *val)
     }
 }
 
+static inline bool is_int_type(struct Value *val)
+{
+    return val->type == TYPE_INT || val->type == TYPE_BYTE;
+}
+
 static void compile_expr(struct Globals *globals, struct Expr *expr)
 {
     struct Value *val1, *val2;
@@ -411,7 +441,7 @@ static void compile_expr(struct Globals *globals, struct Expr *expr)
         case OP_EQEQ:
            if (val1->type == TYPE_FLOAT) {
                compile_binary_op(globals, val1, val2, FLOAT_EQ);
-           } else if (val1->type == TYPE_INT || val1->type == TYPE_BOOL) {
+           } else if (is_int_type(val1) || val1->type == TYPE_BOOL) {
                compile_binary_op(globals, val1, val2, EQ);
            } else if (val1->type == TYPE_STRING) {
                // compile_str_eq(globals, val1, val2)
@@ -423,7 +453,7 @@ static void compile_expr(struct Globals *globals, struct Expr *expr)
         case OP_NOT_EQ:
            if (val1->type == TYPE_FLOAT) {
                compile_binary_op(globals, val1, val2, FLOAT_NEQ);
-           } else if (val1->type == TYPE_INT || val1->type == TYPE_BOOL) {
+           } else if (is_int_type(val1) || val1->type == TYPE_BOOL) {
                compile_binary_op(globals, val1, val2, NEQ);
            } else if (val1->type == TYPE_STRING) {
                assert(false);
@@ -434,7 +464,7 @@ static void compile_expr(struct Globals *globals, struct Expr *expr)
         case OP_GREATER_EQ:
            if (val1->type == TYPE_FLOAT) {
                compile_binary_op(globals, val1, val2, FLOAT_GTE);
-           } else if (val1->type == TYPE_INT) {
+           } else if (is_int_type(val1)) {
                compile_binary_op(globals, val1, val2, GTE);
            } else {
                assert(false);
@@ -443,7 +473,7 @@ static void compile_expr(struct Globals *globals, struct Expr *expr)
         case OP_GREATER:
            if (val1->type == TYPE_FLOAT) {
                compile_binary_op(globals, val1, val2, FLOAT_GT);
-           } else if (val1->type == TYPE_INT) {
+           } else if (is_int_type(val1)) {
                compile_binary_op(globals, val1, val2, GT);
            } else {
                assert(false);
@@ -452,7 +482,7 @@ static void compile_expr(struct Globals *globals, struct Expr *expr)
         case OP_LESS_EQ:
            if (val1->type == TYPE_FLOAT) {
                compile_binary_op(globals, val1, val2, FLOAT_LTE);
-           } else if (val1->type == TYPE_INT) {
+           } else if (is_int_type(val1)) {
                compile_binary_op(globals, val1, val2, LTE);
            } else {
                assert(false);
@@ -461,7 +491,7 @@ static void compile_expr(struct Globals *globals, struct Expr *expr)
         case OP_LESS:
            if (val1->type == TYPE_FLOAT) {
                compile_binary_op(globals, val1, val2, FLOAT_LT);
-           } else if (val1->type == TYPE_INT) {
+           } else if (is_int_type(val1)) {
                compile_binary_op(globals, val1, val2, LT);
            } else {
                assert(false);
@@ -470,7 +500,7 @@ static void compile_expr(struct Globals *globals, struct Expr *expr)
         case OP_PLUS:
            if (val1->type == TYPE_FLOAT) {
                compile_binary_op(globals, val1, val2, FLOAT_ADD);
-           } else if (val1->type == TYPE_INT) {
+           } else if (is_int_type(val1)) {
                compile_binary_op(globals, val1, val2, ADD);
            } else if (val1->type == TYPE_STRING) {
                assert(false);
@@ -481,7 +511,7 @@ static void compile_expr(struct Globals *globals, struct Expr *expr)
         case OP_MINUS:
            if (val1->type == TYPE_FLOAT) {
                compile_binary_op(globals, val1, val2, FLOAT_SUB);
-           } else if (val1->type == TYPE_INT) {
+           } else if (is_int_type(val1)) {
                compile_binary_op(globals, val1, val2, SUB);
            } else {
                assert(false);
@@ -490,7 +520,7 @@ static void compile_expr(struct Globals *globals, struct Expr *expr)
         case OP_STAR:
            if (val1->type == TYPE_FLOAT) {
                compile_binary_op(globals, val1, val2, FLOAT_MUL);
-           } else if (val1->type == TYPE_INT) {
+           } else if (is_int_type(val1)) {
                compile_binary_op(globals, val1, val2, MUL);
            } else {
                assert(false);
@@ -499,7 +529,7 @@ static void compile_expr(struct Globals *globals, struct Expr *expr)
         case OP_SLASH:
            if (val1->type == TYPE_FLOAT) {
                compile_binary_op(globals, val1, val2, FLOAT_DIV);
-           } else if (val1->type == TYPE_INT) {
+           } else if (is_int_type(val1)) {
                compile_binary_op(globals, val1, val2, DIV);
            } else {
                assert(false);
@@ -686,7 +716,9 @@ static void compile_statement(struct Globals *globals, struct Statement *stmt)
         case STMT_SET_LOCAL:
             compile_value(globals, stmt->set_local->expr);
             compile_set_local(globals, stmt->set_local->def);
-            if (stmt->set_local->is_define) load_opcode(globals, DEFINE);
+            if (stmt->set_local->is_define) {
+                load_opcode(globals, is_object(stmt->set_local->def->type) ? DEFINE_OBJ: DEFINE);
+            }
             break;
         case STMT_SET_PROPERTY:
             compile_set_property(globals, stmt->set_property);
@@ -713,14 +745,16 @@ static void compile_statement(struct Globals *globals, struct Statement *stmt)
             compile_for(globals, stmt->for_stmt);
             break;
         case STMT_FUNCALL:
-            compile_funcall(globals, stmt->funcall);
+            compile_funcall(globals, stmt->funcall, true);
             break;
         case STMT_BUILTIN_FUNCALL:
             compile_builtin_funcall(globals, stmt->funcall);
             break;
         case STMT_LET:
-            // TODO: I don't think this is correctly handling multiple declarations
-            load_opcode(globals, DEFINE);
+            linkedlist_foreach(lnode, stmt->let->head) {
+                struct Definition *def = lnode->value;
+                load_opcode(globals, is_object(def->type) ? DEFINE_OBJ: DEFINE);
+            }
             break;
         case STMT_DEC:
             compile_increment(globals, stmt->val, -1);
@@ -751,7 +785,7 @@ static void compile_entrypoint(struct Globals *globals)
     Symbol funname = globals->entrypoint;
     struct Accessor *a = new_accessor(globals, funname, linkedlist_new(globals->allocator));
     struct Statement *stmt = new_sfuncall(globals, a, NULL, false);
-    compile_funcall(globals, stmt->funcall);
+    compile_funcall(globals, stmt->funcall, true);
     load_opcode(globals, EXIT);
 }
 
@@ -762,7 +796,7 @@ static void compile_tld(struct Globals *globals, struct TopLevelDecl *tld)
             // compile_class(globals, tld->cls);
             break;
         case TLD_TYPE_FUNDEF:
-            add_comment(globals, "function definition %s",
+            add_comment(globals, "function definition: %s",
                     lookup_symbol(globals, tld->fundef->name));
             compile_fundef(globals, tld->fundef);
             break;
@@ -805,9 +839,9 @@ static void resolve_function_declarations(struct Vector *instructions,
 size_t compile(struct Globals *globals, TopLevelDecls *tlds)
 {
     globals->cc->instructions = vector_new(128, INSTRUCTIONS_MAX);
-    globals->cc->comments = linkedlist_new(globals->allocator);
-    globals->cc->breaks = linkedlist_new(globals->allocator);
-    globals->cc->continues = linkedlist_new(globals->allocator);
+    globals->cc->comments     = linkedlist_new(globals->allocator);
+    globals->cc->breaks       = linkedlist_new(globals->allocator);
+    globals->cc->continues    = linkedlist_new(globals->allocator);
     globals->cc->string_count = 0;
     if (globals->string_count > 0) {
         globals->cc->string_pool = calloc(globals->string_count, sizeof(char *));

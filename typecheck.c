@@ -194,6 +194,7 @@ static Type typecheck_expression(struct Globals *globals, struct TypeCheckerCont
     const bool are_both_float  = left_is_float && right_is_float;
     const bool are_both_bool   = (type_left  == TYPE_BOOL) && (type_right == TYPE_BOOL);
     const bool are_both_string = (type_left  == TYPE_STRING) && (type_right == TYPE_STRING);
+    const bool are_both_byte   = (type_left  == TYPE_BYTE) && (type_right == TYPE_BYTE);
     const bool are_both_obj    = left_is_obj && right_is_obj;
     // const int are_both_other  = expr->val1 right_is_string;
     // have to find a way to handle non-primitives
@@ -215,8 +216,8 @@ static Type typecheck_expression(struct Globals *globals, struct TypeCheckerCont
             // fall through
         case OP_NOT_EQ:
             if (op_str == NULL) op_str = "!=";
-            if (are_both_int || are_both_float || are_both_bool || are_both_string || 
-                    are_both_obj) {
+            if (are_both_int || are_both_float || are_both_bool || are_both_string
+                    || are_both_byte || are_both_obj) {
                 return TYPE_BOOL;
             } else {
                 printf("Error: mismatched types on '%s' operands\n", op_str);
@@ -233,7 +234,7 @@ static Type typecheck_expression(struct Globals *globals, struct TypeCheckerCont
             // fall through
         case OP_LESS:
             if (op_str == NULL) op_str = "<";
-            if (are_both_int || are_both_float) {
+            if (are_both_int || are_both_float || are_both_byte) {
                 return TYPE_BOOL;
             } else {
                 printf("Error: mismatched types on '%s' operands\n", op_str);
@@ -242,6 +243,8 @@ static Type typecheck_expression(struct Globals *globals, struct TypeCheckerCont
         case OP_PLUS:
             if (are_both_int) {
                 return TYPE_INT;
+            } else if (are_both_byte) {
+                return TYPE_BYTE;
             } else if (are_both_float) {
                 return TYPE_FLOAT;
             } else if (are_both_string) {
@@ -260,8 +263,12 @@ static Type typecheck_expression(struct Globals *globals, struct TypeCheckerCont
             if (op_str == NULL) op_str = "/";
             if (are_both_int) {
                 return TYPE_INT;
+            } else if (are_both_byte) {
+                return TYPE_BYTE;
             } else if (are_both_float) {
                 return TYPE_FLOAT;
+            } else if (are_both_byte) {
+                return TYPE_BYTE;
             } else {
                 printf("Error: mismatched types for '%s' operands\n", op_str);
                 return TYPE_UNDEFINED;
@@ -270,6 +277,8 @@ static Type typecheck_expression(struct Globals *globals, struct TypeCheckerCont
             if (op_str == NULL) op_str = "%";
             if (are_both_int) {
                 return TYPE_INT;
+            } else if (are_both_byte) {
+                return TYPE_BYTE;
             } else if (are_both_float) {
                 printf("Error: cannot use %s on floats\n", op_str);
                 return TYPE_UNDEFINED;
@@ -342,6 +351,8 @@ static Type typecheck_value(struct Globals *globals, struct TypeCheckerContext *
     switch (val->vtype) {
         case VTYPE_STRING:
             return TYPE_STRING;
+        case VTYPE_BYTE:
+            return TYPE_BYTE;
         case VTYPE_INT:
             return TYPE_INT;
         case VTYPE_FLOAT:
@@ -648,7 +659,7 @@ static bool typecheck_increment(struct Globals *globals, struct TypeCheckerConte
         struct Value *val)
 {
     Type type = typecheck_value(globals, context, val);
-    return type == TYPE_INT || type == TYPE_FLOAT;
+    return type == TYPE_INT || TYPE_BYTE || type == TYPE_FLOAT;
 }
 
 static bool typecheck_funcall(struct Globals *globals, struct TypeCheckerContext *context,
@@ -946,6 +957,11 @@ static bool typecheck_fundef(struct Globals *globals, struct TypeCheckerContext 
 static bool typecheck_class(struct Globals *globals, struct TypeCheckerContext *context,
         struct Class *cls)
 {
+    if (linkedlist_is_empty(cls->definitions)) {
+        printf("Error: class '%s' declare with no fields\n",
+                lookup_symbol(globals, cls->name));
+        return false;
+    }
     size_t i = 0;
     linkedlist_foreach(lnode, cls->definitions->head) {
         struct Definition *def = lnode->value;
@@ -1050,6 +1066,7 @@ static struct TypeCheckerContext *init_typechecker(struct Globals *globals)
     cc->instructions = NULL;
     cc->funcall_table = NULL;
     cc->class_table = class_table;
+    cc->fundef_table = function_table;
     globals->cc = cc;
     assert(globals->ast != NULL);
     return context;
@@ -1062,7 +1079,7 @@ bool typecheck(struct Globals *globals)
         return false;
     }
     bool is_success = typecheck_tlds(globals, context, globals->ast);
-    if (!is_success) printf("failed to typecheck\n");
+    // if (!is_success) printf("failed to typecheck\n");
     return is_success;
 }
 

@@ -17,6 +17,7 @@ typedef struct LinkedList LValues;
 
 enum ValueType {
     VTYPE_STRING,
+    VTYPE_BYTE,
     VTYPE_INT,
     VTYPE_FLOAT,
     VTYPE_BOOL,
@@ -46,6 +47,7 @@ enum OperatorType {
     OP_STAR,
     OP_SLASH,
     OP_PERCENT,
+    OP_CAST,
     // Unary ops
     OP_UNARY_PLUS,
     OP_UNARY_MINUS
@@ -124,6 +126,7 @@ struct Value {
     Type type;
     union {
         char *string;
+        char byte;
         int64_t integer;
         double floating;
         int64_t boolean;
@@ -203,7 +206,6 @@ struct Statement {
     enum StatementType type;
     union {
         Definitions *let;
-        struct Set *set;
         struct IfStatement *if_stmt;
         struct While *while_stmt;
         struct For *for_stmt;
@@ -257,6 +259,7 @@ struct Statement *new_decrement(struct Globals *globals, struct Value *val);
 
 /* Value constructors */
 struct Value *new_string(struct Globals *globals, char *string);
+struct Value *new_byte(struct Globals *globals, char byte);
 struct Value *new_integer(struct Globals *globals, int64_t integer);
 struct Value *new_floating(struct Globals *globals, double floating);
 struct Value *new_boolean(struct Globals *globals, int64_t boolean);
@@ -297,6 +300,7 @@ bin_decl(bin_minus);
 bin_decl(bin_star);
 bin_decl(bin_slash);
 bin_decl(bin_percent);
+bin_decl(bin_cast);
 #undef bin_decl
 
 #endif

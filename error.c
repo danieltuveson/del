@@ -44,7 +44,7 @@ static void get_bad_line(struct Globals *globals, char *text, char *underline, s
 // Making the intermediate arrays smaller to the truncation warnings go away
 #define PRINTF_FUDGE_FACTOR_LENGTH ERROR_MESSAGE_MAX / 4
 
-void error_parser(struct Globals *globals, char *message, ...)
+void error_parser(struct Globals *globals, const char *message, ...)
 {
     char errormsg[PRINTF_FUDGE_FACTOR_LENGTH];
     va_list args;

@@ -276,6 +276,13 @@ struct Value *new_string(struct Globals *globals, char *string)
     return val;
 }
 
+struct Value *new_byte(struct Globals *globals, char byte)
+{
+    struct Value *val = new_value(globals, VTYPE_BYTE, TYPE_BYTE);
+    val->byte = byte;
+    return val;
+}
+
 struct Value *new_integer(struct Globals *globals, int64_t integer)
 {
     struct Value *val = new_value(globals, VTYPE_INT, TYPE_INT);
@@ -415,6 +422,7 @@ define_binary_op(bin_minus, OP_MINUS)
 define_binary_op(bin_star, OP_STAR)
 define_binary_op(bin_slash, OP_SLASH)
 define_binary_op(bin_percent, OP_PERCENT)
+define_binary_op(bin_cast, OP_CAST)
 
 #undef define_binary_op
 

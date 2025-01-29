@@ -22,6 +22,9 @@ static struct Value *parse_unaryexpr(struct Globals *globals);
 static struct Statement *parse_statement(struct Globals *globals);
 static Type parse_type(struct Globals *globals);
 
+// Common error messages
+const char *expected_semicolon = "Expected semicolon";
+
 static inline bool parser_peek(struct Globals *globals, enum TokenType match)
 {
     if (globals->parser == NULL) {
@@ -135,11 +138,11 @@ static struct ExprPair compexpr_pairs[] = {
 };
 
 static struct ExprPair addexpr_pairs[] = {
-    { ST_PLUS,  bin_plus }, { ST_MINUS, bin_minus },
+    { ST_PLUS, bin_plus }, { ST_MINUS, bin_minus },
 };
 
 static struct ExprPair multexpr_pairs[] = {
-    { ST_STAR,  bin_star }, { ST_SLASH, bin_slash }, { ST_PERCENT, bin_percent },
+    { ST_STAR, bin_star }, { ST_SLASH, bin_slash }, { ST_PERCENT, bin_percent },
 };
 
 static inline struct Value *parse_multexpr(struct Globals *globals)
@@ -315,6 +318,8 @@ static struct Value *parse_subexpr(struct Globals *globals)
         return new_floating(globals, nth_token(old_head, 1)->floating);
     } else if (match(globals, T_STRING)) {
         return new_string(globals, nth_token(old_head, 1)->string);
+    } else if (match(globals, T_BYTE)) {
+        return new_byte(globals, nth_token(old_head, 1)->byte);
     } else if (match(globals, ST_TRUE)) {
         return new_boolean(globals, 1);
     } else if (match(globals, ST_FALSE)) {
@@ -524,6 +529,38 @@ static struct Statement *parse_if(struct Globals *globals)
     return first_if_stmt;
 }
 
+static struct Statement *parse_for(struct Globals *globals)
+{
+    // Parens are allowed to surround for loop arguments but are not required
+    bool redundant_paren = match(globals, ST_OPEN_PAREN);
+    struct Statement *init = parse_line(globals);
+    if (init == NULL) {
+        return NULL;
+    } else if (!match(globals, ST_SEMICOLON)) {
+        error_parser(globals, expected_semicolon);
+        return NULL;
+    }
+    struct Value *expr = parse_expr(globals);
+    if (expr == NULL) {
+        return NULL;
+    } else if (!match(globals, ST_SEMICOLON)) {
+        error_parser(globals, expected_semicolon);
+        return NULL;
+    }
+    struct Statement *increment = parse_line(globals);
+    if (increment == NULL) {
+        return NULL;
+    } else if (redundant_paren != match(globals, ST_CLOSE_PAREN)) {
+        error_parser(globals, "Mismatched parenthesis");
+        return NULL;
+    }
+    Statements *stmts = parse_block(globals, "for block");
+    if (stmts == NULL) {
+        return NULL;
+    }
+    return new_for(globals, init, expr, increment, stmts);
+}
+
 static struct Statement *parse_statement(struct Globals *globals)
 {
     struct Value *expr = NULL;
@@ -535,20 +572,7 @@ static struct Statement *parse_statement(struct Globals *globals)
         }
         return NULL;
     } else if (match(globals, ST_FOR)) {
-        struct Statement *init, *increment;
-        // Parens are allowed to surround for loop arguments but are not required
-        bool redundant_paren = match(globals, ST_OPEN_PAREN);
-        if ((init = parse_line(globals)) && match(globals, ST_SEMICOLON)
-                && (expr = parse_expr(globals)) && match(globals, ST_SEMICOLON) 
-                && (increment = parse_line(globals))) {
-            if (redundant_paren != match(globals, ST_CLOSE_PAREN)) {
-                error_parser(globals, "Mismatched parenthesis");
-                return NULL;
-            } else if ((stmts = parse_block(globals, "for block"))) {
-                return new_for(globals, init, expr, increment, stmts);
-            }
-        }
-        return NULL;
+        return parse_for(globals);
     } else if (match(globals, ST_WHILE)) {
         if ((expr = parse_expr(globals))) {
             if ((stmts = parse_block(globals, "while block"))) {
@@ -576,6 +600,8 @@ static Type parse_type(struct Globals *globals)
         return TYPE_BOOL;
     } else if (match(globals, ST_STRING)) {
         return TYPE_STRING;
+    } else if (match(globals, ST_BYTE)) {
+        return TYPE_BYTE;
     } else if (match(globals, T_SYMBOL)) {
         Symbol symbol = nth_token(old_head, 1)->symbol;
         if (symbol != BUILTIN_ARRAY) {
@@ -701,7 +727,7 @@ static bool parse_class_definition(struct Globals *globals, Definitions *definit
         } else if ((type = parse_type(globals)) == TYPE_UNDEFINED) {
             return false;
         } else if (!match(globals, ST_SEMICOLON)) {
-            error_parser(globals, "Expected semicolon");
+            error_parser(globals, expected_semicolon);
             return false;
         }
         struct Definition *def = new_define(globals, symbol, type);

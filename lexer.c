@@ -22,6 +22,7 @@ struct TokenMapping keywords[] = {
     { "let",         ST_LET },
     { "new",         ST_NEW },
     { "string",      ST_STRING },
+    { "byte",        ST_BYTE },
     { "int",         ST_INT },
     { "float",       ST_FLOAT },
     { "bool",        ST_BOOL },
@@ -42,7 +43,8 @@ struct TokenMapping symbols2[] = {
     { "<=",       ST_LESS_EQ },
     { ">=",       ST_GREATER_EQ },
     { "++",       ST_INC },
-    { "--",       ST_DEC }
+    { "--",       ST_DEC },
+    { "::",       ST_CAST }
 };
 
 struct TokenMapping symbols1[] = {
@@ -91,6 +93,14 @@ static struct Token *new_integer_token(struct Globals *globals, int start, int e
 {
     struct Token *token = new_token(globals, start, end, T_INT);
     token->integer = integer;
+    return token;
+}
+
+static struct Token *new_byte_token(struct Globals *globals, int start, int end,
+        char byte)
+{
+    struct Token *token = new_token(globals, start, end, T_BYTE);
+    token->byte = byte;
     return token;
 }
 
@@ -212,6 +222,41 @@ static void tokenize_string(struct Globals *globals)
     char *str = make_string(globals, globals->file->input, init_offset, globals->lexer->offset);
     linkedlist_append(globals->lexer->tokens, new_string_token(globals, init_offset, globals->lexer->offset, str));
     next(globals);
+}
+
+static void tokenize_byte(struct Globals *globals)
+{
+    char *unexpected_end = "Unexpected end of byte";
+    int init_offset = globals->lexer->offset;
+    char c = peek(globals);
+    if (c == '\n' || c == '\0') {
+        globals->lexer->error.message = unexpected_end;
+        return;
+    } else if (c == '\'') {
+        globals->lexer->error.message = "Byte must contain a value";
+        return;
+    }
+    next(globals);
+    if (c == '\\') {
+        if (peek(globals) == 'n') {
+            c = '\n';
+        } else if (peek(globals) == '\\') {
+            c = '\\';
+        } else if (peek(globals) == '\'') {
+            c = '\'';
+        } else {
+            globals->lexer->error.message = "Unknown escape sequence in byte";
+            return;
+        }
+        next(globals);
+    }
+    if (peek(globals) != '\'') {
+        globals->lexer->error.message = unexpected_end;
+        return;
+    }
+    next(globals);
+    struct Token *token = new_byte_token(globals, init_offset, globals->lexer->offset, c);
+    linkedlist_append(globals->lexer->tokens, token);
 }
 
 static bool match_simple_token_list(struct Globals *globals, struct TokenMapping *tm_list, size_t length,
@@ -419,6 +464,9 @@ bool tokenize(struct Globals *globals)
         } else if (peek(globals) ==  '"') {
             next(globals);
             tokenize_string(globals);
+        } else if (peek(globals) ==  '\'') {
+            next(globals);
+            tokenize_byte(globals);
         } else if (match_simple_token(globals)) {
             // Do nothing, match_simple_token will consume the token on success
         } else if (isalpha(peek(globals)) || peek(globals) == '_') {

@@ -7,6 +7,7 @@ enum TokenType {
     T_SYMBOL,
     T_INT,
     T_FLOAT,
+    T_BYTE,
     T_COMMENT,
     ST_IF,
     ST_ELSE,
@@ -20,6 +21,7 @@ enum TokenType {
     ST_LET,
     ST_NEW,
     ST_STRING,
+    ST_BYTE,
     ST_INT,
     ST_FLOAT,
     ST_BOOL,
@@ -57,7 +59,8 @@ enum TokenType {
     ST_TRUE,
     ST_FALSE,
     ST_INC,
-    ST_DEC
+    ST_DEC,
+    ST_CAST
 };
 
 struct Token {
@@ -70,6 +73,7 @@ struct Token {
         uint64_t integer;
         double floating;
         char *string;
+        char byte;
     };
 };
 

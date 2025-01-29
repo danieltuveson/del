@@ -11,6 +11,7 @@ typedef union {
     int64_t integer;
     size_t offset;
     double floating;
+    char byte;
     char chars[8];
     uint16_t types[4];
     enum Code opcode;
@@ -33,6 +34,7 @@ struct CompilerContext {
     BreakLocations *continues;
     struct FunctionCallTable *funcall_table;
     struct ClassTable *class_table;
+    struct FunctionTable *fundef_table;
 };
 
 size_t compile(struct Globals *globals, TopLevelDecls *tlds);

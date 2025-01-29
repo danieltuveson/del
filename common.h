@@ -74,35 +74,36 @@ typedef uint16_t Type;
 #define TYPE_BOOL UINT64_C(2)
 #define TYPE_INT UINT64_C(3)
 #define TYPE_FLOAT UINT64_C(4)
-#define TYPE_STRING UINT64_C(5)
+#define TYPE_BYTE UINT64_C(5)
+#define TYPE_STRING UINT64_C(6)
 
 /* Array type modifies other types */
 #define TYPE_ARRAY (UINT64_C(1) << 15)
 
 /* Builtin functions */
-#define BUILTIN_PRINT UINT64_C(6)
-#define BUILTIN_PRINTLN UINT64_C(7)
-#define BUILTIN_READ UINT64_C(8)
-#define BUILTIN_CONCAT UINT64_C(9)
-#define BUILTIN_ARRAY UINT64_C(10)
+#define BUILTIN_PRINT UINT64_C(7)
+#define BUILTIN_PRINTLN UINT64_C(8)
+#define BUILTIN_READ UINT64_C(9)
+#define BUILTIN_CONCAT UINT64_C(10)
+#define BUILTIN_ARRAY UINT64_C(11)
 
 /* Builtin methods */
-#define BUILTIN_CONSTRUCTOR UINT64_C(11)
+#define BUILTIN_CONSTRUCTOR UINT64_C(12)
 
 /* Builtin variables */
-#define BUILTIN_SELF UINT64_C(12)
+#define BUILTIN_SELF UINT64_C(13)
 
 #define BUILTIN_FIRST BUILTIN_PRINT
 #define BUILTIN_LAST BUILTIN_SELF
 
-static inline bool is_object(Type type)
-{
-    return type > BUILTIN_LAST || type == BUILTIN_ARRAY;
-}
-
 static inline bool is_array(Type type)
 {
     return (TYPE_ARRAY & type) > 0;
+}
+
+static inline bool is_object(Type type)
+{
+    return type > BUILTIN_LAST || is_array(type);
 }
 
 static inline Type type_of_array(Type type)

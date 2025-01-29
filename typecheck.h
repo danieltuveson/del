@@ -24,6 +24,7 @@ struct Scope {
 };
 
 struct Class *lookup_class(struct ClassTable *ct, Symbol symbol);
+struct FunDef *lookup_fun(struct FunctionTable *ft, Symbol symbol);
 bool typecheck(struct Globals *globals);
 
 #endif

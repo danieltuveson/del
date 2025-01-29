@@ -20,6 +20,7 @@ void print_instructions(struct CompilerContext *cc)
         comment = linkedlist_pop(comments);
     }
     size_t index;
+    DelValue val1, val2;
     for (size_t i = 0; i < length; i++) {
         while (comment != NULL && comment->location == i) {
             printf("// %s\n", comment->comment);
@@ -43,7 +44,11 @@ void print_instructions(struct CompilerContext *cc)
                 printf("DUP\n");
                 break;
             case PUSH_HEAP:
-                printf("PUSH_HEAP\n");
+                i++;
+                val1 = instructions->values[i];
+                i++;
+                val2 = instructions->values[i];
+                printf("PUSH_HEAP %lu (count), %lu (metadata)\n", val1.offset, val2.offset);
                 break;
             case PUSH_ARRAY:
                 printf("PUSH_ARRAY\n");
@@ -89,6 +94,9 @@ void print_instructions(struct CompilerContext *cc)
                 break;
             case POP:
                 printf("POP\n");
+                break;
+            case POP_OBJ:
+                printf("POP_OBJ\n");
                 break;
             case EQ:
                 printf("EQ\n");
@@ -209,6 +217,9 @@ void print_instructions(struct CompilerContext *cc)
                 break;
             case DEFINE:
                 printf("DEFINE\n");
+                break;
+            case DEFINE_OBJ:
+                printf("DEFINE_OBJ\n");
                 break;
             case PRINT:
                 printf("PRINT\n");
