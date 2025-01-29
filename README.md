@@ -32,6 +32,7 @@ function sum(r : Range) : int {
 function main() {
     let range = new Range(0, 100);
     let sum = sum(range);
+    println(sum);
 }
 ```
 
@@ -44,10 +45,8 @@ function main() {
 - The `push_heap` function in the VM is basically just a consturctor. `push_heap` should just allocate and return a pointer to the memory, any constructor logic should be determined before runtime.
 - Variables that could potentially be unset currently default to 0, but should give a compile error.
 - Implement:
-  - break / continue (how did I forget about that for so long?)
   - Sum types
   - Basic FFI, or at least add some simple IO
-  - Arrays
   - Java-style interfaces
   - Function pointers
   - Module / namespace solutions
