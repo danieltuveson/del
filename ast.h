@@ -29,7 +29,8 @@ enum ValueType {
     VTYPE_BUILTIN_CONSTRUCTOR,
     VTYPE_GET_LOCAL,
     VTYPE_GET_PROPERTY,
-    VTYPE_INDEX
+    VTYPE_INDEX,
+    VTYPE_CAST
 };
 
 enum OperatorType {
@@ -121,6 +122,11 @@ struct Accessor {
     LValues *lvalues;
 };
 
+struct Cast {
+    struct Value *value;
+    Type type;
+};
+
 struct Value {
     enum ValueType vtype;
     Type type;
@@ -138,6 +144,7 @@ struct Value {
         // New values to replace get
         struct Definition *get_local;
         struct GetProperty *get_property;
+        struct Cast *cast;
     };
 };
 
@@ -274,6 +281,7 @@ struct Value *new_get_local(struct Globals *globals, Symbol variable);
 struct Value *new_get_property(struct Globals *globals, struct Value *accessor, Symbol property);
 struct Value *new_get_indexed(struct Globals *globals, struct Value *accessor,
         struct Value *index);
+struct Value *new_cast(struct Globals *globals, struct Value *value, Type type);
 
 struct LValue *new_property(struct Globals *globals, Symbol property);
 struct LValue *new_index(struct Globals *globals, struct Value *index);
@@ -300,7 +308,6 @@ bin_decl(bin_minus);
 bin_decl(bin_star);
 bin_decl(bin_slash);
 bin_decl(bin_percent);
-bin_decl(bin_cast);
 #undef bin_decl
 
 #endif

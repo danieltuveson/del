@@ -297,6 +297,12 @@ static struct Value *parse_property_access(struct Globals *globals, struct Value
                 return NULL;
             }
             val = new_get_indexed(globals, val, index);
+        } else if (match(globals, ST_CAST)) {
+            Type type = parse_type(globals);
+            if (TYPE_UNDEFINED) {
+                return NULL;
+            }
+            return new_cast(globals, val, type);
         } else {
             break;
         }

@@ -354,6 +354,15 @@ struct Value *new_get_indexed(struct Globals *globals, struct Value *accessor,
     return val;
 }
 
+struct Value *new_cast(struct Globals *globals, struct Value *value, Type type)
+{
+    struct Value *val = new_value(globals, VTYPE_CAST, TYPE_UNDEFINED);
+    val->cast = allocator_malloc(globals->allocator, sizeof(struct Cast));
+    val->cast->value = value;
+    val->cast->type = type;
+    return val;
+}
+
 struct Value *new_expr(struct Globals *globals, struct Expr *expr)
 {
     struct Value *val = new_value(globals, VTYPE_EXPR, TYPE_UNDEFINED);
@@ -422,7 +431,6 @@ define_binary_op(bin_minus, OP_MINUS)
 define_binary_op(bin_star, OP_STAR)
 define_binary_op(bin_slash, OP_SLASH)
 define_binary_op(bin_percent, OP_PERCENT)
-define_binary_op(bin_cast, OP_CAST)
 
 #undef define_binary_op
 

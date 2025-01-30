@@ -140,17 +140,17 @@ void print_instructions(struct CompilerContext *cc)
             case OR:
                 printf("OR\n");
                 break;
-            case UNARY_PLUS: 
-                printf("UNARY_PLUS\n");
-                break;
             case UNARY_MINUS:
                 printf("UNARY_MINUS\n");
                 break;
-            case FLOAT_UNARY_PLUS:
-                printf("FLOAT_UNARY_PLUS\n");
-                break;
             case FLOAT_UNARY_MINUS:
                 printf("FLOAT_UNARY_MINUS\n");
+                break;
+            case CAST_INT:
+                printf("CAST_INT");
+                break;
+            case CAST_FLOAT:
+                printf("CAST_FLOAT");
                 break;
             case CALL:
                 printf("CALL\n");

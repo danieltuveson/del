@@ -30,6 +30,7 @@ static Type typecheck_get_property(struct Globals *globals, struct TypeCheckerCo
         struct GetProperty *get);
 static Type typecheck_get_index(struct Globals *globals, struct TypeCheckerContext *context,
         struct GetProperty *get);
+static bool typecheck_type(struct Globals *globals, struct TypeCheckerContext *context, Type type);
 
 #define table_lookup(table, length, symbol)\
     uint64_t i = symbol % length;\
@@ -43,11 +44,17 @@ static Type typecheck_get_index(struct Globals *globals, struct TypeCheckerConte
 
 struct Class *lookup_class(struct ClassTable *ct, Symbol symbol)
 {
+    if (ct->size == 0) {
+        return NULL;
+    }
     table_lookup(ct->table, ct->size, symbol);
 }
 
 struct FunDef *lookup_fun(struct FunctionTable *ft, Symbol symbol)
 {
+    if (ft->size == 0) {
+        return NULL;
+    }
     table_lookup(ft->table, ft->size, symbol);
 }
 
@@ -335,6 +342,56 @@ static Type typecheck_new_array(struct Globals *globals, struct TypeCheckerConte
     return array_of(*type_ptr);
 }
 
+static Type typecheck_cast(struct Globals *globals, struct TypeCheckerContext *context,
+        struct Cast *cast)
+{
+    const char *generic_err = "Error: cannot cast %s to %s\n";
+    Type type = typecheck_value(globals, context, cast->value);
+    if (type == TYPE_UNDEFINED) {
+        return TYPE_UNDEFINED;
+    } else if (!typecheck_type(globals, context, cast->type)) {
+        return TYPE_UNDEFINED;
+    } else if (type == cast->type) {
+        char *type_str = lookup_symbol(globals, type);
+        printf("Error: cast from %s to %s is redundant\n", type_str, type_str);
+        return TYPE_UNDEFINED;
+    }
+    switch (type) {
+        case TYPE_INT:
+            if (!(cast->type & (TYPE_BOOL|TYPE_FLOAT|TYPE_BYTE))) {
+                printf(generic_err, type, cast->type);
+                return TYPE_UNDEFINED;
+            }
+            return cast->type;
+        case TYPE_BOOL:
+            if (!(cast->type & (TYPE_INT|TYPE_FLOAT|TYPE_BYTE))) {
+                printf(generic_err, type, cast->type);
+                return TYPE_UNDEFINED;
+            }
+            return cast->type;
+        case TYPE_FLOAT:
+            if (!(cast->type & (TYPE_BOOL|TYPE_INT|TYPE_BYTE))) {
+                printf(generic_err, type, cast->type);
+                return TYPE_UNDEFINED;
+            }
+            return cast->type;
+        case TYPE_BYTE:
+            if (!(cast->type & (TYPE_BOOL|TYPE_FLOAT|TYPE_INT))) {
+                printf(generic_err, type, cast->type);
+                return TYPE_UNDEFINED;
+            }
+            return cast->type;
+        case TYPE_STRING:
+            TODO();
+            break;
+        case TYPE_NULL:
+            printf("Error: cannot cast null\n");
+            return TYPE_UNDEFINED;
+    }
+    printf("Error: cannot cast objects\n");
+    return TYPE_UNDEFINED;
+}
+
 static Type typecheck_read(Values *args)
 {
     if (args == NULL || args->length == 0) {
@@ -363,6 +420,9 @@ static Type typecheck_value(struct Globals *globals, struct TypeCheckerContext *
             return TYPE_NULL;
         case VTYPE_EXPR:
             val->type = typecheck_expression(globals, context, val->expr);
+            return val->type;
+        case VTYPE_CAST:
+            val->type = typecheck_cast(globals, context, val->cast);
             return val->type;
         case VTYPE_CONSTRUCTOR:
             val->type = typecheck_constructor(globals, context, val->constructor);

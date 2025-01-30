@@ -142,6 +142,11 @@ static inline void push(struct Stack *stack, DelValue val)
     stack->values[stack->offset++] = val;
 }
 
+static inline void push_byte(struct Stack *stack, char byte)
+{
+    stack->values[stack->offset++].byte = byte;
+}
+
 static inline void push_integer(struct Stack *stack, int64_t integer)
 {
     stack->values[stack->offset++].integer = integer;
@@ -289,6 +294,7 @@ static inline bool push_array(struct Heap *heap, struct Stack *stack, struct Sta
 static inline bool get_heap(struct Heap *heap, size_t index, size_t ptr, struct Stack *stack)
 {
     size_t location = get_location(ptr);
+    printf("ptr: %lu\n", location);
     if (ptr == 0) {
         return false;
     }
@@ -778,10 +784,6 @@ uint64_t vm_execute(struct VirtualMachine *vm)
             vm_case(GTE): eval_binary_op(&stack, val1, val2, >=); vm_break;
             vm_case(LT):  eval_binary_op(&stack, val1, val2, <);  vm_break;
             vm_case(GT):  eval_binary_op(&stack, val1, val2, >);  vm_break;
-            vm_case(UNARY_PLUS):
-                val1 = pop(&stack);
-                push_integer(&stack, val1.integer);
-                vm_break;
             vm_case(UNARY_MINUS):
                 val1 = pop(&stack);
                 push_integer(&stack, (-1 * val1.integer));
@@ -842,6 +844,14 @@ uint64_t vm_execute(struct VirtualMachine *vm)
             vm_case(EXIT):
                 status = VM_STATUS_COMPLETED;
                 goto exit_loop;
+            vm_case(CAST_INT):
+                val1 = pop(&stack);
+                push_integer(&stack, (int64_t)val1.floating);
+                vm_break;
+            vm_case(CAST_FLOAT):
+                val1 = pop(&stack);
+                push_floating(&stack, (double)val1.integer);
+                vm_break;
             vm_case(CALL):
                 // symbol = (Symbol) pop(&stack);
                 // if (strcmp(lookup_symbol(symbol), "print") == 0) {
@@ -887,10 +897,6 @@ uint64_t vm_execute(struct VirtualMachine *vm)
             vm_case(FLOAT_GTE): eval_binary_op_f(&stack, val1, val2, >=); vm_break;
             vm_case(FLOAT_LT):  eval_binary_op_f(&stack, val1, val2, <);  vm_break;
             vm_case(FLOAT_GT):  eval_binary_op_f(&stack, val1, val2, >);  vm_break;
-            vm_case(FLOAT_UNARY_PLUS):
-                val1 = pop(&stack);
-                push_floating(&stack, val1.floating);
-                vm_break;
             vm_case(FLOAT_UNARY_MINUS):
                 val1 = pop(&stack);
                 push_floating(&stack, (-1 * val1.floating));

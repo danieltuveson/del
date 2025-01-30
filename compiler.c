@@ -308,6 +308,24 @@ static void compile_get_index(struct Globals *globals, Type type, struct GetProp
     load_opcode(globals, is_object(type) ? GET_ARRAY_OBJ : GET_ARRAY);
 }
 
+static bool is_int(Type type)
+{
+    return type & (TYPE_INT | TYPE_BYTE | TYPE_BOOL);
+}
+
+static void compile_cast(struct Globals *globals, struct Cast *cast)
+{
+    compile_value(globals, cast->value);
+    if (is_int(cast->type) && cast->value->type == TYPE_FLOAT) {
+        load_opcode(globals, CAST_INT);
+    } else if (cast->type == TYPE_FLOAT && is_int(cast->value->type)) {
+        load_opcode(globals, CAST_FLOAT);
+    } else if (is_int(cast->value->type) && is_int(cast->type)) {
+    } else {
+        assert(false);
+    }
+}
+
 static void compile_print(struct Globals *globals, Values *args)
 {
     linkedlist_foreach(lnode, args->head) {
@@ -413,6 +431,9 @@ static void compile_value(struct Globals *globals, struct Value *val)
             break;
         case VTYPE_INDEX:
             compile_get_index(globals, val->type, val->get_property, false);
+            break;
+        case VTYPE_CAST:
+            compile_cast(globals, val->cast);
             break;
         case VTYPE_BUILTIN_CONSTRUCTOR:
             compile_builtin_constructor(globals, val->constructor);
@@ -539,19 +560,13 @@ static void compile_expr(struct Globals *globals, struct Expr *expr)
            compile_binary_op(globals, val1, val2, MOD);
            break;
         case OP_UNARY_PLUS:
-           if (val1->type == TYPE_FLOAT) {
-               compile_unary_op(globals, val1, FLOAT_UNARY_PLUS);
-           } else if (val1->type == TYPE_INT) {
-               compile_unary_op(globals, val1, UNARY_PLUS);
-           } else {
-               assert(false);
-           }
+           // Why do languages even have this
            break;
         case OP_UNARY_MINUS:
            if (val1->type == TYPE_FLOAT) {
                compile_unary_op(globals, val1, FLOAT_UNARY_MINUS);
            } else if (val1->type == TYPE_INT) {
-               compile_unary_op(globals, val1, UNARY_PLUS);
+               compile_unary_op(globals, val1, UNARY_MINUS);
            } else {
                assert(false);
            }
