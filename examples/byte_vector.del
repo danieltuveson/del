@@ -1,0 +1,60 @@
+
+class ByteVector {
+    length : int;
+    array : Array<byte>;
+}
+
+function new_bv(len : int) : ByteVector {
+    return new ByteVector(len, new Array<byte>(len));
+}
+
+function print_bv(bv : ByteVector) {
+    println(bv.length, ", ", bv.array);
+}
+
+function main() {
+    let bv = new_bv(12);
+    init_array(bv.array);
+    print_bv(bv);
+    let stripped = strip_non_alpha(bv);
+    print_bv(stripped);
+}
+
+function is_alpha(b : byte) : bool {
+    return (b >= 'a' && b <= 'z') || (b >= 'A' && b <= 'Z');
+}
+
+function strip_non_alpha(vect : ByteVector) : ByteVector {
+    let alpha_count = 0;
+    for (let i = 0; i < vect.length; i++) {
+        if is_alpha(vect.array[i]) {
+            alpha_count++;
+        }
+    }
+    let new_arr = new Array<byte>(alpha_count);
+    let new_vect = new ByteVector(alpha_count, new_arr);
+    alpha_count = 0;
+    for (let i = 0; i < vect.length; i++) {
+        if is_alpha(vect.array[i]) {
+            new_vect.array[alpha_count] = vect.array[i];
+            alpha_count++;
+        } 
+    }
+    return new_vect;
+}
+
+function init_array(arr : Array<byte>) {
+    arr[0] = 'h';
+    arr[1] = 'e';
+    arr[2] = 'l';
+    arr[3] = 'l';
+    arr[4] = 'o';
+    arr[5] = ',';
+    arr[6] = 'w';
+    arr[7] = 'o';
+    arr[8] = 'r';
+    arr[9] = 'l';
+    arr[10] = 'd';
+    arr[11] = '!';
+}
+

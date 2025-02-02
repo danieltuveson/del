@@ -25,8 +25,8 @@ void init_symbol_table(struct Globals *globals)
     add_symbol("bool");
     add_symbol("int");
     add_symbol("float");
-    add_symbol("string");
     add_symbol("byte");
+    add_symbol("string");
 
     // Builtin functions
     add_symbol("print");

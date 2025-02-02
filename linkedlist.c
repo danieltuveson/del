@@ -84,7 +84,7 @@ void linkedlist_reverse(struct LinkedList **ll_ptr)
 
 bool linkedlist_is_empty(struct LinkedList *ll)
 {
-    return ll->length == 0;
+    return ll == NULL || ll->length == 0;
 }
 
 void linkedlist_print(struct LinkedList *ll, void (*printer)(void *))

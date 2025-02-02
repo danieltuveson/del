@@ -69,8 +69,10 @@ static void enter_scope(struct Globals *globals, struct Scope **current, bool is
     scope->rettype = TYPE_UNDEFINED;
     if (*current != NULL && !isfunction) {
         scope->varcount = (*current)->varcount;
+        scope->objcount = (*current)->objcount;
     } else {
         scope->varcount = 0;
+        scope->objcount = 0;
     }
     scope->definitions = linkedlist_new(globals->allocator);
     scope->parent = *current;
@@ -106,35 +108,42 @@ static bool is_in_loop(struct Scope *scope)
     return false;
 }
 
-static bool add_var(struct Globals *globals, struct Scope *current, struct Definition *def)
+static bool add_var(struct Globals *globals, struct TypeCheckerContext *context,
+        struct Definition *def)
 {
-    if (lookup_var(current, def->name) != NULL) {
+    context->enclosing_func->num_locals++;
+    if (lookup_var(context->scope, def->name) != NULL) {
         printf("Error: variable '%s' shadows existing definition\n",
                 lookup_symbol(globals, def->name));
         return false;
     }
-    def->scope_offset = current->varcount;
-    current->varcount++;
-    linkedlist_append(current->definitions, def);
+    if (is_object(def->type)) {
+        def->scope_offset = context->scope->objcount;
+        context->scope->objcount++;
+    } else {
+        def->scope_offset = context->scope->varcount;
+        context->scope->varcount++;
+    }
+    linkedlist_append(context->scope->definitions, def);
     return true;
 }
 
-static bool add_type(struct Scope *current, struct Definition *def)
-{
-    linkedlist_foreach(lnode, current->definitions->head) {
-        struct Definition *lookup_def = lnode->value;
-        if (lookup_def->name == def->name) {
-            lookup_def->type = def->type;
-            lookup_def->scope_offset = def->scope_offset;
-            return true;
-        }
-    }
-    if (current->parent == NULL) {
-        return false;
-    } else {
-        return add_type(current->parent, def);
-    }
-}
+// static bool add_type(struct Scope *current, struct Definition *def)
+// {
+//     linkedlist_foreach(lnode, current->definitions->head) {
+//         struct Definition *lookup_def = lnode->value;
+//         if (lookup_def->name == def->name) {
+//             lookup_def->type = def->type;
+//             lookup_def->scope_offset = def->scope_offset;
+//             return true;
+//         }
+//     }
+//     if (current->parent == NULL) {
+//         return false;
+//     } else {
+//         return add_type(current->parent, def);
+//     }
+// }
 
 static bool add_class(struct ClassTable *ct, struct Class *cls)
 {
@@ -342,6 +351,11 @@ static Type typecheck_new_array(struct Globals *globals, struct TypeCheckerConte
     return array_of(*type_ptr);
 }
 
+static bool oneof(Type t, Type t0, Type t1, Type t2)
+{
+    return t == t0 || t == t1 || t == t2;
+}
+
 static Type typecheck_cast(struct Globals *globals, struct TypeCheckerContext *context,
         struct Cast *cast)
 {
@@ -358,25 +372,25 @@ static Type typecheck_cast(struct Globals *globals, struct TypeCheckerContext *c
     }
     switch (type) {
         case TYPE_INT:
-            if (!(cast->type & (TYPE_BOOL|TYPE_FLOAT|TYPE_BYTE))) {
+            if (!(oneof(cast->type, TYPE_BOOL, TYPE_FLOAT, TYPE_BYTE))) {
                 printf(generic_err, type, cast->type);
                 return TYPE_UNDEFINED;
             }
             return cast->type;
         case TYPE_BOOL:
-            if (!(cast->type & (TYPE_INT|TYPE_FLOAT|TYPE_BYTE))) {
+            if (!(oneof(cast->type, TYPE_INT, TYPE_FLOAT, TYPE_BYTE))) {
                 printf(generic_err, type, cast->type);
                 return TYPE_UNDEFINED;
             }
             return cast->type;
         case TYPE_FLOAT:
-            if (!(cast->type & (TYPE_BOOL|TYPE_INT|TYPE_BYTE))) {
+            if (!(oneof(cast->type, TYPE_BOOL, TYPE_INT, TYPE_BYTE))) {
                 printf(generic_err, type, cast->type);
                 return TYPE_UNDEFINED;
             }
             return cast->type;
         case TYPE_BYTE:
-            if (!(cast->type & (TYPE_BOOL|TYPE_FLOAT|TYPE_INT))) {
+            if (!(oneof(cast->type, TYPE_BOOL, TYPE_FLOAT, TYPE_INT))) {
                 printf(generic_err, type, cast->type);
                 return TYPE_UNDEFINED;
             }
@@ -493,12 +507,7 @@ static Type typecheck_get_local(struct Globals *globals, struct TypeCheckerConte
 static bool typecheck_set_local(struct Globals *globals, struct TypeCheckerContext *context,
         struct SetLocal *set)
 {
-    if (set->is_define) {
-        context->enclosing_func->num_locals++;
-        if (!add_var(globals, context->scope, set->def)) {
-            return false;
-        }
-    } else {
+    if (!set->is_define) {
         struct Definition *def = lookup_var(context->scope, set->def->name);
         if (def == NULL) {
             printf("Error: Symbol '%s' is used before it is declared\n",
@@ -518,7 +527,10 @@ static bool typecheck_set_local(struct Globals *globals, struct TypeCheckerConte
         return false;
     }
     set->def->type = rhs_type;
-    add_type(context->scope, set->def);
+    if (set->is_define && !add_var(globals, context, set->def)) {
+        return false;
+    }
+    // add_type(context->scope, set->def);
     return true;
 }
 
@@ -599,10 +611,9 @@ static bool scope_vars(struct Globals *globals, struct TypeCheckerContext *conte
 {
     linkedlist_foreach(lnode, defs->head) {
         struct Definition *def = lnode->value;
-        if (!add_var(globals, context->scope, def)) {
+        if (!add_var(globals, context, def)) {
             return false;
         }
-        context->enclosing_func->num_locals++;
     }
     return true;
 }
@@ -719,7 +730,11 @@ static bool typecheck_increment(struct Globals *globals, struct TypeCheckerConte
         struct Value *val)
 {
     Type type = typecheck_value(globals, context, val);
-    return type == TYPE_INT || TYPE_BYTE || type == TYPE_FLOAT;
+    if (!(type == TYPE_INT || type == TYPE_BYTE || type == TYPE_FLOAT)) {
+        printf("Error: cannot increment value of type '%s'\n", lookup_symbol(globals, type));
+        return false;
+    }
+    return true;
 }
 
 static bool typecheck_funcall(struct Globals *globals, struct TypeCheckerContext *context,
@@ -844,6 +859,25 @@ static Type typecheck_constructor(struct Globals *globals, struct TypeCheckerCon
     return cls->name;
 }
 
+static bool typecheck_definitions(struct Globals *globals, struct TypeCheckerContext *context,
+        Definitions *defs)
+{
+    linkedlist_foreach(lnode, defs->head) {
+        struct Definition *def = lnode->value;
+        if (!typecheck_type(globals, context, def->type)) {
+            return false;
+        }
+    }
+    return true;
+}
+
+// TODO: make it check that all values are initialized
+static bool typecheck_let(struct Globals *globals, struct TypeCheckerContext *context,
+        Definitions *let)
+{
+    return scope_vars(globals, context, let) && typecheck_definitions(globals, context, let);
+}
+
 static bool typecheck_statement(struct Globals *globals, struct TypeCheckerContext *context,
         struct Statement *stmt)
 {
@@ -863,7 +897,7 @@ static bool typecheck_statement(struct Globals *globals, struct TypeCheckerConte
             ret = typecheck_set_index(globals, context, stmt->set_property);
             return ret;
         case STMT_LET:
-            ret = scope_vars(globals, context, stmt->let);
+            ret = typecheck_let(globals, context, stmt->let);
             return ret;
         case STMT_IF: {
             ret = typecheck_if(globals, context, stmt->if_stmt);
@@ -885,7 +919,9 @@ static bool typecheck_statement(struct Globals *globals, struct TypeCheckerConte
                 ret = typecheck_print(globals, context, stmt->funcall->args);
             } else if (name == BUILTIN_PRINTLN) {
                 // This is kind of a hack
-                linkedlist_append(stmt->funcall->args, new_string(globals, "\n"));
+                if (!linkedlist_is_empty(stmt->funcall->args)) {
+                    linkedlist_append(stmt->funcall->args, new_string(globals, "\n"));
+                }
                 ret = typecheck_print(globals, context, stmt->funcall->args);
             } else {
                 assert("Error: not implemented\n" && false);
@@ -962,18 +998,6 @@ static bool typecheck_type(struct Globals *globals, struct TypeCheckerContext *c
     return true;
 }
 
-static bool typecheck_fundef_args(struct Globals *globals, struct TypeCheckerContext *context,
-        struct FunDef *fundef)
-{
-    linkedlist_foreach(lnode, fundef->args->head) {
-        struct Definition *def = lnode->value;
-        if (!typecheck_type(globals, context, def->type)) {
-            return false;
-        }
-    }
-    return true;
-}
-
 static bool typecheck_fundef(struct Globals *globals, struct TypeCheckerContext *context,
         struct FunDef *fundef)
 {
@@ -985,7 +1009,7 @@ static bool typecheck_fundef(struct Globals *globals, struct TypeCheckerContext 
     context->enclosing_func = fundef;
     context->scope = scope;
     bool ret = scope_vars(globals, context, fundef->args) 
-        && typecheck_fundef_args(globals, context, fundef)
+        && typecheck_definitions(globals, context, fundef->args)
         && typecheck_type(globals, context, fundef->rettype)
         && typecheck_statements(globals, context, fundef->stmts);
     if (!ret) {

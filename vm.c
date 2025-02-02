@@ -294,8 +294,8 @@ static inline bool push_array(struct Heap *heap, struct Stack *stack, struct Sta
 static inline bool get_heap(struct Heap *heap, size_t index, size_t ptr, struct Stack *stack)
 {
     size_t location = get_location(ptr);
-    printf("ptr: %lu\n", location);
     if (ptr == 0) {
+        printf("Error: null pointer exception\n");
         return false;
     }
     push(stack, heap->vector->values[location + index]);
@@ -313,7 +313,10 @@ static inline bool get_array(int64_t index, size_t ptr, struct Heap *heap, struc
 {
     size_t location = get_location(ptr);
     size_t count = get_count(ptr);
-    if (index < 0 || index >= (int64_t)count) {
+    if (ptr == 0) {
+        printf("Error: null pointer exception\n");
+        return false;
+    } else if (index < 0 || index >= (int64_t)count) {
         printf("Error: array index out of bounds exception\n");
         return false;
     }
@@ -691,7 +694,6 @@ uint64_t vm_execute(struct VirtualMachine *vm)
                 ip++;
                 val1 = pop(&stack_obj);
                 if (!get_heap(&heap, instructions[ip].offset, val1.offset, &stack)) {
-                    printf("Error: null pointer exception\n");
                     status = VM_STATUS_ERROR;
                     goto exit_loop;
                 }
@@ -700,7 +702,6 @@ uint64_t vm_execute(struct VirtualMachine *vm)
                 ip++;
                 val1 = pop(&stack_obj);
                 if (!get_heap(&heap, instructions[ip].offset, val1.offset, &stack_obj)) {
-                    printf("Error: null pointer exception\n");
                     status = VM_STATUS_ERROR;
                     goto exit_loop;
                 }
@@ -824,16 +825,20 @@ uint64_t vm_execute(struct VirtualMachine *vm)
                 vm_break;
             vm_case(JNE):
                 val1 = pop(&stack);
+                ip++;
                 if (!val1.integer) {
-                    ip = pop(&stack).offset;
+                    ip = instructions[ip].offset;
                     ip--; // reverse the effects of the ip++ in vm_break
-                } else {
-                    pop(&stack);
                 }
                 vm_break;
             vm_case(JMP):
-                ip = pop(&stack).offset;
+                ip++;
+                ip = instructions[ip].offset;
                 ip--; // reverse the effects of the ip++ in vm_break
+                vm_break;
+            vm_case(RET):
+                ip = pop(&stack).offset;
+                ip--;
                 vm_break;
             vm_case(POP):
                 pop(&stack);

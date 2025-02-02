@@ -35,6 +35,7 @@ enum Code {
     JE,
     JNE,
     JMP,
+    RET,
     POP,
     POP_OBJ,
     EXIT,

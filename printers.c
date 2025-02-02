@@ -87,10 +87,17 @@ void print_instructions(struct CompilerContext *cc)
                 printf("JE\n");
                 break;
             case JMP:
-                printf("JMP\n");
+                i++;
+                index = instructions->values[i].offset;
+                printf("JMP %" PRIu64 "\n", index);
                 break;
             case JNE:
-                printf("JNE\n");
+                i++;
+                index = instructions->values[i].offset;
+                printf("JNE %" PRIu64 "\n", index);
+                break;
+            case RET:
+                printf("RET\n");
                 break;
             case POP:
                 printf("POP\n");

@@ -67,6 +67,9 @@ struct Program {
     char **string_pool;
 };
 
+/* Array type modifies other types */
+#define TYPE_ARRAY (UINT64_C(1) << 15)
+
 /* Primitive that objects can have */
 typedef uint16_t Type;
 #define TYPE_UNDEFINED UINT64_C(0)
@@ -76,9 +79,6 @@ typedef uint16_t Type;
 #define TYPE_FLOAT UINT64_C(4)
 #define TYPE_BYTE UINT64_C(5)
 #define TYPE_STRING UINT64_C(6)
-
-/* Array type modifies other types */
-#define TYPE_ARRAY (UINT64_C(1) << 15)
 
 /* Builtin functions */
 #define BUILTIN_PRINT UINT64_C(7)

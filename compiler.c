@@ -56,6 +56,11 @@ static inline void push(struct Globals *globals)
     load_opcode(globals, PUSH);
 }
 
+static inline void push_obj(struct Globals *globals)
+{
+    load_opcode(globals, PUSH_OBJ);
+}
+
 static inline void load_offset(struct Globals *globals, size_t offset)
 {
     DelValue value = { .offset = offset };
@@ -82,6 +87,13 @@ static inline void compile_int(struct Globals *globals, int64_t integer)
 {
     push(globals);
     DelValue value = { .integer = integer };
+    vector_append(&(globals->cc->instructions), value);
+}
+
+static inline void compile_null(struct Globals *globals)
+{
+    push_obj(globals);
+    DelValue value = { .offset = 0 };
     vector_append(&(globals->cc->instructions), value);
 }
 
@@ -204,7 +216,7 @@ static void compile_unary_op(struct Globals *globals, struct Value *val, enum Co
 
 static void compile_funargs(struct Globals *globals, Definitions *defs)
 {
-    linkedlist_foreach(lnode, defs->head) {
+    linkedlist_foreach_reverse(lnode, defs->tail) {
         struct Definition *def = lnode->value;
         compile_set_local(globals, def);
         load_opcode(globals, is_object(def->type) ? DEFINE_OBJ: DEFINE);
@@ -233,6 +245,8 @@ static void compile_fundef(struct Globals *globals, struct FunDef *fundef)
 // TODO: Make this just allocate memory. Handle setting initial values in 
 // either user defined constructor, or create a compile time constructor
 // that doesn't require a separate opcode
+// TODO: This evaluates arguments right to left. If we just make constructors a regular 
+// function call, that should make it rtl
 static void compile_constructor(struct Globals *globals, struct Constructor *constructor)
 {
     uint16_t types[4] = {0};
@@ -369,15 +383,15 @@ static void compile_funcall(struct Globals *globals, struct FunCall *funcall, bo
     push(globals);
     size_t bookmark = next(globals);
     if (funcall->args != NULL) {
-        linkedlist_foreach_reverse(lnode, funcall->args->tail) {
+        linkedlist_foreach(lnode, funcall->args->head) {
             compile_value(globals, lnode->value);
         }
     }
     load_opcode(globals, PUSH_SCOPE);
-    push(globals);
+    // push(globals);
+    load_opcode(globals, JMP);
     struct FunctionCallTable *fct = globals->cc->funcall_table;
     add_callsite(globals, fct, funname, next(globals));
-    load_opcode(globals, JMP);
     globals->cc->instructions->values[bookmark].offset = globals->cc->instructions->length;
     load_opcode(globals, POP_SCOPE);
     struct FunDef *fundef = lookup_fun(globals->cc->fundef_table, funname);
@@ -409,7 +423,7 @@ static void compile_value(struct Globals *globals, struct Value *val)
             compile_bool(globals, val->boolean);
             break;
         case VTYPE_NULL:
-            compile_int(globals, val->integer);
+            compile_null(globals);
             break;
         case VTYPE_EXPR:
             compile_expr(globals, val->expr);
@@ -592,6 +606,16 @@ static void compile_set_index(struct Globals *globals, struct SetProperty *set)
     load_opcode(globals, is_object(set->expr->type) ? SET_ARRAY_OBJ : SET_ARRAY);
 }
 
+static size_t *compile_exit(struct Globals *globals)
+{
+    size_t *bookmark = allocator_malloc(globals->allocator, sizeof(size_t));
+    // push(globals);
+    // *bookmark = next(globals);
+    load_opcode(globals, JMP);
+    *bookmark = next(globals);
+    return bookmark;
+}
+
 static void compile_return(struct Globals *globals, struct Value *ret)
 {
     if (ret != NULL) {
@@ -600,41 +624,34 @@ static void compile_return(struct Globals *globals, struct Value *ret)
             load_opcode(globals, SWAP);
         }
     }
-    load_opcode(globals, JMP);
-}
-
-static size_t *compile_loop_exit(struct Globals *globals)
-{
-    size_t *bookmark = allocator_malloc(globals->allocator, sizeof(size_t));
-    push(globals);
-    *bookmark = next(globals);
-    load_opcode(globals, JMP);
-    return bookmark;
+    load_opcode(globals, RET);
 }
 
 static void compile_break(struct Globals *globals)
 {
-    linkedlist_append(globals->cc->breaks, compile_loop_exit(globals));
+    linkedlist_append(globals->cc->breaks, compile_exit(globals));
 }
 
 static void compile_continue(struct Globals *globals)
 {
-    linkedlist_append(globals->cc->continues, compile_loop_exit(globals));
+    linkedlist_append(globals->cc->continues, compile_exit(globals));
 }
 
 static void compile_if(struct Globals *globals, struct IfStatement *stmt)
 {
-    push(globals);
-    size_t if_offset = next(globals);
+    // push(globals);
+    // size_t if_offset = next(globals);
     compile_value(globals, stmt->condition);
     load_opcode(globals, JNE);
+    size_t if_offset = next(globals);
     compile_statements(globals, stmt->if_stmts);
 
     size_t else_offset = 0;
     if (stmt->else_stmts) {
-        push(globals);
-        else_offset = next(globals);
+        // push(globals);
+        // else_offset = next(globals);
         load_opcode(globals, JMP);
+        else_offset = next(globals);
     }
 
     // set JNE jump to go to after if statement
@@ -657,15 +674,17 @@ static void compile_loop(struct Globals *globals, struct Value *cond,
     globals->cc->continues = linkedlist_new(globals->allocator);
     // Loop
     size_t top_of_loop = globals->cc->instructions->length;
-    push(globals);
-    size_t old_offset = next(globals);
+    // push(globals);
+    // size_t old_offset = next(globals);
     compile_value(globals, cond);
     load_opcode(globals, JNE);
+    size_t old_offset = next(globals);
     compile_statements(globals, stmts);
     size_t continue_loc = globals->cc->instructions->length;
     if (increment != NULL) compile_statement(globals, increment);
-    compile_offset(globals, top_of_loop);
+    // compile_offset(globals, top_of_loop);
     load_opcode(globals, JMP);
+    load_offset(globals, top_of_loop);
     // Set JNE to the loop exit
     size_t end_of_loop = globals->cc->instructions->length;
     globals->cc->instructions->values[old_offset].offset = end_of_loop;

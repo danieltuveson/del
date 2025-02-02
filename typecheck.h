@@ -19,6 +19,7 @@ struct Scope {
     bool isloop;
     Type rettype; // Stores return type of if/else/return statements
     size_t varcount;
+    size_t objcount;
     Definitions *definitions;
     struct Scope *parent;
 };
