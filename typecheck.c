@@ -84,7 +84,7 @@ static void exit_scope(struct Scope **current)
     *current = (*current)->parent;
 }
 
-static struct Definition *lookup_var(struct Scope *scope, Symbol name)
+static struct Definition *lookup_current_scope_var(struct Scope *scope, Symbol name)
 {
     linkedlist_foreach(lnode, scope->definitions->head) {
         struct Definition *def = lnode->value;
@@ -92,10 +92,16 @@ static struct Definition *lookup_var(struct Scope *scope, Symbol name)
             return def;
         }
     }
-    if (scope->parent != NULL) {
+    return NULL;
+}
+
+static struct Definition *lookup_var(struct Scope *scope, Symbol name)
+{
+    struct Definition *def = lookup_current_scope_var(scope, name);
+    if (def == NULL && scope->parent != NULL) {
         return lookup_var(scope->parent, name);
     }
-    return NULL;
+    return def;
 }
 
 static bool is_in_loop(struct Scope *scope)
@@ -112,7 +118,7 @@ static bool add_var(struct Globals *globals, struct TypeCheckerContext *context,
         struct Definition *def)
 {
     context->enclosing_func->num_locals++;
-    if (lookup_var(context->scope, def->name) != NULL) {
+    if (lookup_current_scope_var(context->scope, def->name) != NULL) {
         printf("Error: variable '%s' shadows existing definition\n",
                 lookup_symbol(globals, def->name));
         return false;
