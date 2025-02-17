@@ -210,14 +210,12 @@ static Type typecheck_expression(struct Globals *globals, struct TypeCheckerCont
     const bool left_is_float   = type_left  == TYPE_FLOAT;
     const bool right_is_float  = type_right == TYPE_FLOAT;
     const bool right_is_undef  = type_right == TYPE_UNDEFINED;
-    const bool left_is_obj     = type_left  == TYPE_NULL || is_object(type_left);
-    const bool right_is_obj    = type_right == TYPE_NULL || is_object(type_right);
     const bool are_both_int    = left_is_int   && right_is_int;
     const bool are_both_float  = left_is_float && right_is_float;
     const bool are_both_bool   = (type_left  == TYPE_BOOL) && (type_right == TYPE_BOOL);
     const bool are_both_string = (type_left  == TYPE_STRING) && (type_right == TYPE_STRING);
     const bool are_both_byte   = (type_left  == TYPE_BYTE) && (type_right == TYPE_BYTE);
-    const bool are_both_obj    = left_is_obj && right_is_obj;
+    const bool are_both_obj    = is_object_or_null(type_left) && is_object_or_null(type_right);
     // const int are_both_other  = expr->val1 right_is_string;
     // have to find a way to handle non-primitives
     char *op_str = NULL;

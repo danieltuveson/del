@@ -1,0 +1,83 @@
+class Tree {
+    num : int;
+    left : Tree;
+    right : Tree;
+}
+
+function add_node(tree : Tree, value : int) {
+    if tree.num < value {
+        if tree.right == null {
+            tree.right = new Tree(value, null, null);
+        } else {
+            add_node(tree.right, value);
+        }
+    } else if tree.num > value {
+        if tree.left == null {
+            tree.left = new Tree(value, null, null);
+        } else {
+            add_node(tree.left, value);
+        }
+    }
+}
+
+function max(t : Tree) : int {
+    if t.right == null {
+        return t.num;
+    }
+    return max(t.right);
+}
+
+function min(t : Tree) : int {
+    if t.left == null {
+        return t.num;
+    }
+    return min(t.left);
+}
+
+function print_spaces(count : int) {
+    while count > 0 {
+        print(" ");
+        count--;
+    }
+}
+
+function print_help(t : Tree, spaces : int) {
+    print_spaces(2 * spaces);
+    println(t.num);
+    if t.right != null {
+        print_help(t.right, spaces + 1);
+    }
+    if t.left != null {
+        print_help(t.left, spaces + 1);
+    }
+}
+
+function print_tree(t : Tree) {
+    if t == null {
+        return;
+    }
+    print_help(t, 0);
+}
+
+function makeTree() : Tree {
+    let root = new Tree(33, null, null);
+    add_node(root, 44);
+    add_node(root, 11);
+    add_node(root, -22);
+    add_node(root, -100);
+    add_node(root, 22);
+    add_node(root, 111);
+    // println("max: ", max(root), ", min: ", min(root));
+    // print_tree(root);
+    return root;
+}
+
+function main() {
+    makeTree();
+    let x = new Array<int>(100);
+    makeTree();
+    makeTree();
+    // let t = makeTree();
+    // print_tree(t);
+}
+

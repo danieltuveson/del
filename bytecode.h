@@ -14,6 +14,8 @@ enum Code {
     MUL,
     DIV,
     MOD,
+    EQ_OBJ,
+    NEQ_OBJ,
     EQ,
     NEQ,
     LT,

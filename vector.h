@@ -22,10 +22,16 @@ void vector_shrink(struct Vector **vector_ptr, size_t n);
 void vector_grow(struct Vector **vector_ptr, size_t n);
 void vector_print(struct Vector *vector);
 
-static inline DelValue vector_index(struct Vector *vector, size_t i)
+static inline DelValue vector_get(struct Vector *vector, size_t i)
 {
     assert(i < vector->length);
     return vector->values[i];
+}
+
+static inline void vector_set(struct Vector *vector, size_t i, DelValue val)
+{
+    assert(i < vector->length);
+    vector->values[i] = val;
 }
 
 #endif

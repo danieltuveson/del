@@ -78,7 +78,7 @@
 #define ERROR_MESSAGE_MAX       250
 #define GC_GROWTH_FACTOR 2
 
-#define IN_BYTES(val) 8 * val
+#define IN_BYTES(val) (8 * val)
 #define INSTRUCTIONS_MAX_BYTES        IN_BYTES(INSTRUCTIONS_MAX)
 #define STACK_MAX_BYTES               IN_BYTES(STACK_MAX)
 #define HEAP_MAX_BYTES                IN_BYTES(HEAP_MAX)

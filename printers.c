@@ -162,6 +162,12 @@ void print_instructions(struct CompilerContext *cc)
             case CALL:
                 printf("CALL\n");
                 break;
+            case EQ_OBJ:
+                printf("EQ_OBJ\n");
+                break;
+            case NEQ_OBJ:
+                printf("NEQ_OBJ\n");
+                break;
             case GET_LOCAL_OBJ:
                 i++;
                 printf("GET_LOCAL_OBJ %" PRIu64 "\n", instructions->values[i].offset);
@@ -759,4 +765,64 @@ void print_binary_helper(uint64_t num, size_t length)
     }
     printf("\n");
 }
+
+// void print_reachable_child_objects(struct GarbageCollector *gc, HeapPointer ptr, struct Heap *heap, char **string_pool)
+// {
+//     if (ptr == 0 || gc_is_marked(ptr)) {
+//         return;
+//     }
+//     gc_remap(gc, ptr);
+//     gc_mark(&ptr);
+//     size_t location = get_location(ptr);
+//     size_t count = get_count(ptr);
+//     // Loop through elements in heap object, mark inner objects
+//     if (is_array_ptr(ptr)) {
+//         if (is_array_of_objects(ptr)) {
+//             printf("marking child array: \n");
+//             for (size_t i = location; i < count + location; i++) {
+//                 DelValue value = vector_get(heap->vector, i);
+//                 gc_mark_children(gc, value.offset, heap, string_pool);
+//             }
+//         }
+//     } else {
+//         printf("marking child object: \n");
+//         print_object(heap, location, count, string_pool);
+//         printf("\n");
+//         uint16_t types[4] = {0};
+//         uint16_t type_index = 0;
+//         for (size_t i = 0; i < count; i++) {
+//             DelValue value = vector_get(heap->vector, i + location);
+//             if (i % 5 == 0) {
+//                 memcpy(types, value.types, 8);
+//                 type_index = 0;
+//             } else {
+//                 Type type = types[type_index];
+//                 if (is_object(type)) {
+//                     printf("recursing...\n");
+//                     gc_mark_children(gc, value.offset, heap, string_pool);
+//                 }
+//                 type_index++;
+//             }
+//         }
+//     }
+// }
+
+// void print_reachable_objects(struct Heap *heap, struct Stack *stack, struct StackFrames *sfs, char **string_pool)
+// {
+//     Allocator allocator = allocator_new();
+//     struct LinkedList *ll = linkedlist_new(allocator);
+//     printf("stack pointers:\n");
+//     for (size_t i = 0; i < stack->offset; i++) {
+//         HeapPointer ptr = stack->values[i].offset;
+//         linkedlist_append(ll,
+//     }
+//     printf("local variable pointers:\n");
+//     for (size_t i = 0; i < sfs->index; i++) {
+//         HeapPointer ptr = sfs->values[i].offset;
+//         gc_mark_children(&gc, ptr, heap, string_pool);
+//     }
+//     printf("========================\n");
+//     allocator_freeall(allocator);
+//     return;
+// }
 

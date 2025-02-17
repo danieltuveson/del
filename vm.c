@@ -3,131 +3,118 @@
 #include "vm.h"
 #include "printers.h"
 #include "vector.h"
+#include "heap_ptr.h"
+#include "gc.h"
 
-typedef uint64_t HeapPointer;
+// Walk the list of values that are alive, marking and putting into PointerRemaps
+//
+// old_loc has old location, new_loc = previous new_loc offset + count of old_loc pointer
+//
+// Basically we want to simulate adding them to the heap before we do it, we can update all of
+// the pointers when we actually start adding them to the new heap
+//
+// unmark once we've moved them into new heap
 
-static inline void set_count(HeapPointer *ptr, size_t count)
-{
-    assert(count <= UINT16_MAX * 3 / 2);
-    *ptr = *ptr | (count << COUNT_OFFSET);
-}
+static void print_object(struct Heap *heap, size_t location, size_t count, char **string_pool);
 
-static inline size_t get_count(HeapPointer ptr)
-{
-    return (ptr & COUNT_MASK) >> COUNT_OFFSET;
-}
-
-static inline void set_metadata(HeapPointer *ptr, size_t metadata)
-{
-    assert(metadata <= UINT8_MAX);
-    *ptr = *ptr | (metadata << METADATA_OFFSET);
-}
-
-static inline size_t get_metadata(HeapPointer ptr)
-{
-    return (ptr & METADATA_MASK) >> METADATA_OFFSET;
-}
-
-static inline size_t get_location(HeapPointer ptr)
-{
-    return ptr & LOCATION_MASK;
-}
-
-static inline void gc_mark(HeapPointer *ptr)
-{
-    *ptr = *ptr | GC_MARK_MASK;
-}
-
-static inline void gc_unmark(HeapPointer *ptr)
-{
-    *ptr = *ptr & ~GC_MARK_MASK;
-}
-
-static inline bool gc_is_marked(HeapPointer ptr)
-{
-    return ((ptr & GC_MARK_MASK) >> GC_MARK_OFFSET);
-}
-
-// Our conservative GC looks for potential pointers in the stack / stack frames.
-// If we make pointers be numbers less likely to appear in a normal program,
-// we lessen the likelyhood of leaving memory around that should have beeen freed
-
-// In binary this is 010101...
-// const uint64_t zero_one_zero_etc = UINT64_C(6148914691236517205);
-// 
-// static inline HeapPointer encode_pointer(HeapPointer ptr)
+// static void print_ptr(struct Heap *heap, HeapPointer ptr, char **string_pool)
 // {
-//     return ~(ptr ^ zero_one_zero_etc);
-// }
-// 
-// static inline HeapPointer decode_pointer(HeapPointer ptr)
-// {
-//     return (~ptr) ^ zero_one_zero_etc;
-// }
-
-/*
-struct StackFrames {
-    size_t index;
-    DelValue *values;
-    size_t frame_offsets_index;
-    size_t *frame_offsets;
-};
-
-// The stack stores almost all data used by the VM 
-struct Stack {
-    size_t offset;
-    DelValue *values;
-};
-
-// A value on the heap is just a slice of bytes
-struct Heap {
-    struct Vector *vector;
-};
-*/
-
-// // Checks if pointer follows correct struct of heap pointer.
-// // It still *might* not be a valid heap pointer.
-// static HeapPointer is_valid_pointer(HeapPointer maybe_ptr, struct Heap *heap, bool is_internal)
-// {
-//     HeapPointer ptr = decode_pointer(maybe_ptr);
-//     size_t loc = get_location(ptr);
+//     size_t location = get_location(ptr);
 //     size_t count = get_count(ptr);
-//     if (count + loc >= heap->vector->length) {
-//         printf("invalid - out of bounds\n");
-//         return 0;
-//     }
-//     if (!is_internal) {
-//         printf("invalid - already flagged\n");
-//         // Shouldn't be marked yet
-//         if (gc_is_marked(ptr)) {
-//             return 0;
-//         }
-//     }
-//     return 0;
+//     print_object(heap, location, count, string_pool);
+//     printf("\n");
 // }
 
-// static bool gc_mark_children(HeapPointer ptr, struct Heap *heap)
-// {
-//     (void)ptr;(void)heap;
-//     return false;
-// }
-// 
-// static void gc_collect(struct Heap *heap, struct Stack *stack, struct StackFrames *sfs)
-// {
-//     (void)sfs;
-//     struct Vector *new_heap = vector_new(HEAP_INIT, HEAP_MAX);
-//     struct Vector *ptrs = vector_new(8, UINT64_MAX);
-//     for (size_t i = 0; i < stack->offset; i++) {
-//         HeapPointer ptr = is_valid_pointer(stack->values[i].offset, heap, false);
-//         if (ptr) {
-//             gc_mark_children(ptr, heap);
-//         }
-//     }
-//     heap->gc_threshold = GC_GROWTH_FACTOR * new_heap->capacity;
-//     heap->vector = new_heap;
-//     vector_free(ptrs);
-//     return;
-// }
+// #if DEBUG_RUNTIME
+// TODO: make this not recursive since that could easily exhaust C stack if we have a large
+// recursive datastructure like a linkedlist 
+static void gc_mark_children(struct GarbageCollector *gc, HeapPointer ptr, struct Heap *heap,
+        char **string_pool)
+// #else
+// static void gc_mark_children(struct GarbageCollector *gc, HeapPointer ptr, struct Heap *heap)
+// #endif
+{
+    if (ptr == 0 || gc_is_marked(ptr)) {
+        return;
+    }
+    gc_remap(gc, ptr);
+    gc_mark(&ptr);
+    size_t location = get_location(ptr);
+    size_t count = get_count(ptr);
+    // Loop through elements in heap object, mark inner objects
+    if (is_array_ptr(ptr)) {
+        if (is_array_of_objects(ptr)) {
+            printf("marking child array: \n");
+            for (size_t i = location; i < count + location; i++) {
+                DelValue value = vector_get(heap->vector, i);
+                gc_mark_children(gc, value.offset, heap, string_pool);
+            }
+        }
+    } else {
+        printf("marking child object: \n");
+        print_object(heap, location, count, string_pool);
+        printf("\n");
+        uint16_t types[4] = {0};
+        uint16_t type_index = 0;
+        for (size_t i = 0; i < count; i++) {
+            DelValue value = vector_get(heap->vector, i + location);
+            if (i % 5 == 0) {
+                memcpy(types, value.types, 8);
+                type_index = 0;
+            } else {
+                Type type = types[type_index];
+                if (is_object(type)) {
+                    printf("recursing...\n");
+                    gc_mark_children(gc, value.offset, heap, string_pool);
+                }
+                type_index++;
+            }
+        }
+    }
+}
+
+// Copy all marked objects into new heap and update pointers to new locations
+static void gc_move(struct GarbageCollector *gc, struct Stack *stack, struct StackFrames *sfs,
+        struct Heap *heap, char **string_pool)
+{
+    printf("stack:\n");
+    for (size_t i = 0; i < stack->offset; i++) {
+        gc_remap_ptr(gc, &stack->values[i].offset);
+        // gc_remap_children(&gc, ptr, heap);
+        // gc_mark_children(&gc, ptr, heap, string_pool);
+    }
+    printf("locals:\n");
+    for (size_t i = 0; i < sfs->index; i++) {
+        gc_remap_ptr(gc, &sfs->values[i].offset);
+        // gc_mark_children(&gc, ptr, heap, string_pool);
+    }
+}
+
+static void gc_collect(struct Heap *heap, struct Stack *stack, struct StackFrames *sfs,
+        char **string_pool)
+{
+    struct Vector *new_heap = vector_new(HEAP_INIT, HEAP_MAX);
+    struct GarbageCollector gc;
+    gc_init(&gc);
+    printf("stack:\n");
+    for (size_t i = 0; i < stack->offset; i++) {
+        HeapPointer ptr = stack->values[i].offset;
+        gc_mark_children(&gc, ptr, heap, string_pool);
+    }
+    printf("locals:\n");
+    for (size_t i = 0; i < sfs->index; i++) {
+        HeapPointer ptr = sfs->values[i].offset;
+        gc_mark_children(&gc, ptr, heap, string_pool);
+    }
+    printf("remap:\n");
+    print_remap(&gc);
+    // heap->gc_threshold = GC_GROWTH_FACTOR * new_heap->capacity;
+    // heap->vector = new_heap;
+    vector_free(new_heap); // this is just to make valgrind happy until I do stuff
+    gc_free(&gc);
+    printf("========================\n");
+    return;
+}
 
 // 
 // static void gc_sweep()
@@ -215,16 +202,20 @@ static inline void switch_op(struct Stack *stack)
 
 /* Pops values from the stack and pushes them onto the heap */
 // TODO: Rewrite this + compiler so that push_heap allocates but doesn't set anything
-static inline bool push_heap(size_t count, size_t metadata, struct Heap *heap,
-        struct Stack *stack, struct Stack *stack_obj)
+static inline bool push_heap(size_t count, size_t metadata, struct Heap *heap, struct Stack *stack,
+        struct Stack *stack_obj, struct StackFrames *sfs_obj, char **string_pool)
 {
     size_t ptr = heap->vector->length;
-    set_count(&ptr, count);
+    if (!set_count(&ptr, count)) {
+        printf("Fatal runtime error: object requires %lu bytes which exceeds maximum size of %lu"
+                " bytes\n", IN_BYTES(count), IN_BYTES(COUNT_MAX));
+        return false;
+    }
     set_metadata(&ptr, metadata);
     size_t new_usage = heap->vector->length + count;
+    // printf("new usage: %lu\n", new_usage);
     if (new_usage > heap->vector->max_capacity) {
-        printf("Fatal runtime error: out of memory\n");
-        printf("Requested %lu bytes but VM only has a capacity of %lu bytes\n",
+        printf("Fatal runtime error: requested %lu bytes but VM only has a capacity of %lu bytes\n",
                 IN_BYTES(new_usage), 
                 IN_BYTES(heap->vector->max_capacity));
         return false;
@@ -244,12 +235,15 @@ static inline bool push_heap(size_t count, size_t metadata, struct Heap *heap,
             type_index = 0;
         } else {
             Type type = types[type_index];
-            value = is_object(type) ? pop(stack_obj) : pop(stack);
+            value = is_object_or_null(type) ? pop(stack_obj) : pop(stack);
             type_index++;
         }
         vector_append(&(heap->vector), value);
     }
     push_offset(stack_obj, ptr);
+    // if (new_usage > 20) {
+    // gc_collect(heap, stack_obj, sfs_obj, string_pool);
+    // }
 // #if DEBUG_RUNTIME
 //     print_heap(heap);
 // #endif
@@ -259,6 +253,7 @@ static inline bool push_heap(size_t count, size_t metadata, struct Heap *heap,
 // static inline bool push_array(struct Heap *heap, struct Stack *stack)//, struct StackFrames *sfs)
 static inline bool push_array(struct Heap *heap, struct Stack *stack, struct Stack *stack_obj)
 {
+    size_t array_type = pop(stack).offset;
     int64_t dirty_count = pop(stack).integer;
     if (dirty_count < 1) {
         printf("Fatal runtime error: index of array less than 1\n");
@@ -266,7 +261,11 @@ static inline bool push_array(struct Heap *heap, struct Stack *stack, struct Sta
     }
     size_t ptr = heap->vector->length;
     size_t count = (size_t) dirty_count;
-    set_count(&ptr, count);
+    if (!set_count(&ptr, count)) {
+        printf("Fatal runtime error: object requires %lu bytes which exceeds maximum size of %lu"
+                " bytes\n", IN_BYTES(count), IN_BYTES(COUNT_MAX));
+        return false;
+    }
     size_t new_usage = heap->vector->length + count;
     if (new_usage > heap->vector->max_capacity) {
         printf("Fatal runtime error: out of memory\n");
@@ -280,7 +279,9 @@ static inline bool push_array(struct Heap *heap, struct Stack *stack, struct Sta
         // gc_collect(heap, stack, sfs);
     }
     vector_grow(&(heap->vector), count);
-    // Store count in bits before location
+    // Store metadata / count in bits before location
+    set_array_bit(&ptr);
+    if (is_object(array_type)) set_array_obj_bit(&ptr);
     push_offset(stack_obj, ptr);
 // #if DEBUG_RUNTIME
 //     print_heap(heap);
@@ -298,7 +299,7 @@ static inline bool get_heap(struct Heap *heap, size_t index, size_t ptr, struct 
         printf("Error: null pointer exception\n");
         return false;
     }
-    push(stack, heap->vector->values[location + index]);
+    push(stack, vector_get(heap->vector, location + index));
     return true;
 }
 
@@ -306,7 +307,7 @@ static inline bool get_heap(struct Heap *heap, size_t index, size_t ptr, struct 
 static inline void set_heap(struct Heap *heap, size_t index, size_t ptr, DelValue value)
 {
     size_t location = get_location(ptr);
-    heap->vector->values[location + index] = value;
+    vector_set(heap->vector, location + index, value);
 }
 
 static inline bool get_array(int64_t index, size_t ptr, struct Heap *heap, struct Stack *stack)
@@ -320,7 +321,7 @@ static inline bool get_array(int64_t index, size_t ptr, struct Heap *heap, struc
         printf("Error: array index out of bounds exception\n");
         return false;
     }
-    push(stack, heap->vector->values[location + index]);
+    push(stack, vector_get(heap->vector, location + index));
     return true;
 }
 
@@ -333,7 +334,7 @@ static inline bool set_array(int64_t index, size_t ptr, struct Heap *heap, struc
         return false;
     }
     DelValue value = pop(stack);
-    heap->vector->values[location + index] = value;
+    vector_set(heap->vector, location + index, value);
     return true;
 }
 
@@ -372,7 +373,7 @@ static inline void set_local(struct Stack *stack, struct StackFrames *sfs, size_
 //     size_t location = get_location(ptr);
 //     size_t count = get_count(ptr);
 //     for (int i = count - 1; i >= 0; i--) {
-//         printf("%.*s", 8, heap->vector->values[location + i].chars);
+//         printf("%.*s", 8, vector_get(heap->vector, location + i).chars);
 //     }
 // }
 
@@ -432,17 +433,21 @@ static void pprint_primitive(Type type, DelValue dval, char **string_pool)
 
 static void print_object(struct Heap *heap, size_t location, size_t count, char **string_pool)
 {
+    if (count == 0 && location == 0) {
+        printf("null");
+        return;
+    }
     uint16_t types[4] = {0};
     uint16_t type_index = 0;
     printf("{ ");
     for (size_t i = 0; i < count; i++) {
-        DelValue value = heap->vector->values[i + location];
+        DelValue value = vector_get(heap->vector, location + i);
         if (i % 5 == 0) {
             memcpy(types, value.types, 8);
             type_index = 0;
         } else {
             Type type = types[type_index];
-            if (is_object(type)) {
+            if (is_object_or_null(type)) {
                 print_addr(get_location(value.offset));
             } else {
                 pprint_primitive(type, value, string_pool);
@@ -460,7 +465,7 @@ static void print(struct Heap *heap, struct Stack *stack, struct Stack *stack_ob
     size_t ptr, location, count;
     DelValue dtype = pop(stack);
     Type type = dtype.type;
-    if (!is_object(type)) {
+    if (!is_object_or_null(type)) {
         DelValue dval = pop(stack);
         print_primitive(type, dval, string_pool);
         return;
@@ -473,12 +478,12 @@ static void print(struct Heap *heap, struct Stack *stack, struct Stack *stack_ob
         printf("{ ");
         if (!is_object(arr_type)) {
             for (size_t i = location; i < count + location; i++) {
-                pprint_primitive(arr_type, heap->vector->values[i], string_pool);
+                pprint_primitive(arr_type, vector_get(heap->vector, i), string_pool);
                 if (i != count + location - 1) printf(", ");
             }
         } else {
             for (uint64_t i = location; i < count + location; i++) {
-                ptr = heap->vector->values[i].offset;
+                ptr = vector_get(heap->vector, i).offset;
                 print_addr(get_location(ptr));
                 if (i != count + location - 1) printf(", ");
             }
@@ -676,7 +681,7 @@ uint64_t vm_execute(struct VirtualMachine *vm)
                 count = instructions[ip].offset;
                 ip++;
                 metadata = instructions[ip].offset;
-                if (!push_heap(count, metadata, &heap, &stack, &stack_obj)) {//, &sfs)) {
+                if (!push_heap(count, metadata, &heap, &stack, &stack_obj, &sfs_obj, string_pool)) {
                     status = VM_STATUS_ERROR;
                     goto exit_loop;
                 }
@@ -788,6 +793,16 @@ uint64_t vm_execute(struct VirtualMachine *vm)
             vm_case(UNARY_MINUS):
                 val1 = pop(&stack);
                 push_integer(&stack, (-1 * val1.integer));
+                vm_break;
+            vm_case(EQ_OBJ):
+                val1 = pop(&stack_obj);
+                val2 = pop(&stack_obj);
+                push_offset(&stack, val2.offset == val1.offset);
+                vm_break;
+            vm_case(NEQ_OBJ):
+                val1 = pop(&stack_obj);
+                val2 = pop(&stack_obj);
+                push_offset(&stack, val2.offset != val1.offset);
                 vm_break;
             vm_case(SET_LOCAL):
                 ip++;

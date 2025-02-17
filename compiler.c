@@ -196,12 +196,6 @@ static void compile_string(struct Globals *globals, char *string)
     compile_offset(globals, index);
 }
 
-static void compile_str_eq(struct Globals *globals, struct Value *val1, struct Value *val2)
-{
-    compile_value(globals, val1);
-    compile_value(globals, val2);
-}
-
 static void compile_binary_op(struct Globals *globals, struct Value *val1, struct Value *val2,
        enum Code op) {
     compile_value(globals, val1);
@@ -362,18 +356,20 @@ static void compile_builtin_funcall(struct Globals *globals, struct FunCall *fun
     }
 }
 
-static void compile_array(struct Globals *globals, struct Constructor *constructor)
+static void compile_array(struct Globals *globals, Type type, struct Constructor *constructor)
 {
     compile_value(globals, constructor->funcall->args->head->value);
+    compile_type(globals, type_of_array(type));
     load_opcode(globals, PUSH_ARRAY);
 }
 
-static void compile_builtin_constructor(struct Globals *globals, struct Constructor *constructor)
+static void compile_builtin_constructor(struct Globals *globals, Type type,
+        struct Constructor *constructor)
 {
     if (constructor->funcall->access->definition->name != BUILTIN_ARRAY) {
         assert("Builtin not implemented" && false);
     }
-    compile_array(globals, constructor);
+    compile_array(globals, type, constructor);
 }
 
 static void compile_funcall(struct Globals *globals, struct FunCall *funcall, bool is_stmt)
@@ -450,7 +446,7 @@ static void compile_value(struct Globals *globals, struct Value *val)
             compile_cast(globals, val->cast);
             break;
         case VTYPE_BUILTIN_CONSTRUCTOR:
-            compile_builtin_constructor(globals, val->constructor);
+            compile_builtin_constructor(globals, val->type, val->constructor);
             break;
         default: printf("compile not implemented yet\n"); assert(false);
     }
@@ -478,6 +474,8 @@ static void compile_expr(struct Globals *globals, struct Expr *expr)
                compile_binary_op(globals, val1, val2, FLOAT_EQ);
            } else if (is_int_type(val1) || val1->type == TYPE_BOOL) {
                compile_binary_op(globals, val1, val2, EQ);
+           } else if (is_object_or_null(val1->type)) {
+               compile_binary_op(globals, val1, val2, EQ_OBJ);
            } else if (val1->type == TYPE_STRING) {
                // compile_str_eq(globals, val1, val2)
                assert(false);
@@ -490,6 +488,8 @@ static void compile_expr(struct Globals *globals, struct Expr *expr)
                compile_binary_op(globals, val1, val2, FLOAT_NEQ);
            } else if (is_int_type(val1) || val1->type == TYPE_BOOL) {
                compile_binary_op(globals, val1, val2, NEQ);
+           } else if (is_object_or_null(val1->type)) {
+               compile_binary_op(globals, val1, val2, NEQ_OBJ);
            } else if (val1->type == TYPE_STRING) {
                assert(false);
            } else {
