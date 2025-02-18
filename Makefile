@@ -30,6 +30,10 @@ thread.h: bytecode.h vm.c
 # test: $(objects) $(tests)
 # 	cc $(CFLAGS) -o test $(objects) $(tests)
 
+install:
+	@sudo cp del /usr/local/bin && echo "del installed at /usr/local/bin"
+	@sudo cp libdel.a /usr/local/lib && echo "libdel.a installed at /usr/local/lib"
+
 clean:
 	rm -f generated_labels.h
 	rm -f del *.o *.a

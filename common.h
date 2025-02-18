@@ -24,6 +24,8 @@ typedef uint64_t Symbol;
 struct Globals {
     // Stores compile-time error message
     char error[ERROR_MESSAGE_MAX];
+    // FILE to print error messages to
+    FILE *ferr;
     // Stores main structs used throughout the program
     Allocator allocator;
     struct FileContext *file;

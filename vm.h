@@ -30,6 +30,8 @@ typedef struct {
 } HeapValue;
 
 struct VirtualMachine {
+    FILE *fout;
+    FILE *ferr;
     enum VirtualMachineStatus status;
     struct StackFrames sfs;
     struct StackFrames sfs_obj;
@@ -46,7 +48,8 @@ struct VirtualMachine {
     char **string_pool;
 };
 
-void vm_init(struct VirtualMachine *vm, DelValue *instructions, char **string_pool);
+void vm_init(struct VirtualMachine *vm, FILE *fin, FILE *ferr, DelValue *instructions,
+        char **string_pool);
 void vm_free(struct VirtualMachine *vm);
 uint64_t vm_execute(struct VirtualMachine *vm);
 

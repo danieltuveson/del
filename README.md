@@ -13,6 +13,8 @@ make
 ./del examples/example.del
 ```
 
+If you want to be able to just run it as `del examples/examples.del`, then `make install` will add it to `/usr/local/bin` and will add `libdel.a` to `/usr/local/lib`. This may or may not be the place your system likes to have user-built libraries / executables.
+
 
 ## Example
 ``` js
@@ -39,8 +41,11 @@ function main() {
 ## In progress / next item to do
 - Implement garbage collection
 
-
 ## TODO
+- Make sure there is no recursion in the compiler / runtime that could lead to a stackoverflow in the C code. Cases to watch out for:
+  - GC can't recursively walk structures (otherwise marking a recursive data structure could potentially overflow the stack).
+  - Lexer should look for / reject highly nested expressions and blocks of a certain depth by counting '{' and '(' (and maybe '<' for generics, though that may need to be done in the parser since '<' is also used for comparisons). This would prevent `if x > 1 { if x > 2 { ... if x > n { ... } ... } }` from blowing up
+  - Probably more cases to watch out for, but those are the ones I can think of
 - Remove "default" options from switch statements and search for missing cases.
 - The `push_heap` function in the VM is basically just a consturctor. `push_heap` should just allocate and return a pointer to the memory, any constructor logic should be determined before runtime.
 - Variables that could potentially be unset currently default to 0, but should give a compile error.

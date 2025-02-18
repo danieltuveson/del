@@ -15,7 +15,8 @@
 //
 // unmark once we've moved them into new heap
 
-static void print_object(struct Heap *heap, size_t location, size_t count, char **string_pool);
+static void print_object(struct Heap *heap, size_t location, size_t count, char **string_pool,
+        FILE *fout);
 
 // static void print_ptr(struct Heap *heap, HeapPointer ptr, char **string_pool)
 // {
@@ -25,6 +26,7 @@ static void print_object(struct Heap *heap, size_t location, size_t count, char 
 //     printf("\n");
 // }
 
+#if 0
 // #if DEBUG_RUNTIME
 // TODO: make this not recursive since that could easily exhaust C stack if we have a large
 // recursive datastructure like a linkedlist 
@@ -115,6 +117,7 @@ static void gc_collect(struct Heap *heap, struct Stack *stack, struct StackFrame
     printf("========================\n");
     return;
 }
+#endif
 
 // 
 // static void gc_sweep()
@@ -203,11 +206,11 @@ static inline void switch_op(struct Stack *stack)
 /* Pops values from the stack and pushes them onto the heap */
 // TODO: Rewrite this + compiler so that push_heap allocates but doesn't set anything
 static inline bool push_heap(size_t count, size_t metadata, struct Heap *heap, struct Stack *stack,
-        struct Stack *stack_obj, struct StackFrames *sfs_obj, char **string_pool)
+        struct Stack *stack_obj, struct StackFrames *sfs_obj, char **string_pool, FILE *ferr)
 {
     size_t ptr = heap->vector->length;
     if (!set_count(&ptr, count)) {
-        printf("Fatal runtime error: object requires %lu bytes which exceeds maximum size of %lu"
+        fprintf(ferr, "Fatal runtime error: object requires %lu bytes which exceeds maximum size of %lu"
                 " bytes\n", IN_BYTES(count), IN_BYTES(COUNT_MAX));
         return false;
     }
@@ -215,7 +218,7 @@ static inline bool push_heap(size_t count, size_t metadata, struct Heap *heap, s
     size_t new_usage = heap->vector->length + count;
     // printf("new usage: %lu\n", new_usage);
     if (new_usage > heap->vector->max_capacity) {
-        printf("Fatal runtime error: requested %lu bytes but VM only has a capacity of %lu bytes\n",
+        fprintf(ferr, "Fatal runtime error: requested %lu bytes but VM only has a capacity of %lu bytes\n",
                 IN_BYTES(new_usage), 
                 IN_BYTES(heap->vector->max_capacity));
         return false;
@@ -251,25 +254,26 @@ static inline bool push_heap(size_t count, size_t metadata, struct Heap *heap, s
 }
 
 // static inline bool push_array(struct Heap *heap, struct Stack *stack)//, struct StackFrames *sfs)
-static inline bool push_array(struct Heap *heap, struct Stack *stack, struct Stack *stack_obj)
+static inline bool push_array(struct Heap *heap, struct Stack *stack, struct Stack *stack_obj,
+        FILE *ferr)
 {
     size_t array_type = pop(stack).offset;
     int64_t dirty_count = pop(stack).integer;
     if (dirty_count < 1) {
-        printf("Fatal runtime error: index of array less than 1\n");
+        fprintf(ferr, "Fatal runtime error: index of array less than 1\n");
         return false;
     }
     size_t ptr = heap->vector->length;
     size_t count = (size_t) dirty_count;
     if (!set_count(&ptr, count)) {
-        printf("Fatal runtime error: object requires %lu bytes which exceeds maximum size of %lu"
+        fprintf(ferr, "Fatal runtime error: object requires %lu bytes which exceeds maximum size of %lu"
                 " bytes\n", IN_BYTES(count), IN_BYTES(COUNT_MAX));
         return false;
     }
     size_t new_usage = heap->vector->length + count;
     if (new_usage > heap->vector->max_capacity) {
-        printf("Fatal runtime error: out of memory\n");
-        printf("Requested %lu bytes but VM only has a capacity of %lu bytes\n",
+        fprintf(ferr, "Fatal runtime error: out of memory\n");
+        fprintf(ferr, "Requested %lu bytes but VM only has a capacity of %lu bytes\n",
                 IN_BYTES(new_usage), 
                 IN_BYTES(heap->vector->max_capacity));
         return false;
@@ -296,7 +300,6 @@ static inline bool get_heap(struct Heap *heap, size_t index, size_t ptr, struct 
 {
     size_t location = get_location(ptr);
     if (ptr == 0) {
-        printf("Error: null pointer exception\n");
         return false;
     }
     push(stack, vector_get(heap->vector, location + index));
@@ -310,15 +313,16 @@ static inline void set_heap(struct Heap *heap, size_t index, size_t ptr, DelValu
     vector_set(heap->vector, location + index, value);
 }
 
-static inline bool get_array(int64_t index, size_t ptr, struct Heap *heap, struct Stack *stack)
+static inline bool get_array(int64_t index, size_t ptr, struct Heap *heap, struct Stack *stack,
+        FILE *ferr)
 {
     size_t location = get_location(ptr);
     size_t count = get_count(ptr);
     if (ptr == 0) {
-        printf("Error: null pointer exception\n");
+        fprintf(ferr, "Error: null pointer exception\n");
         return false;
     } else if (index < 0 || index >= (int64_t)count) {
-        printf("Error: array index out of bounds exception\n");
+        fprintf(ferr, "Error: array index out of bounds exception\n");
         return false;
     }
     push(stack, vector_get(heap->vector, location + index));
@@ -330,7 +334,6 @@ static inline bool set_array(int64_t index, size_t ptr, struct Heap *heap, struc
     size_t location = get_location(ptr);
     size_t count = get_count(ptr);
     if (index < 0 || index >= (int64_t)count) {
-        printf("Error: array index out of bounds exception\n");
         return false;
     }
     DelValue value = pop(stack);
@@ -377,69 +380,70 @@ static inline void set_local(struct Stack *stack, struct StackFrames *sfs, size_
 //     }
 // }
 
-static void print_primitive(Type type, DelValue dval, char **string_pool)
+static void print_primitive(Type type, DelValue dval, char **string_pool, FILE *fout)
 {
     switch (type) {
         case TYPE_NULL:
-            printf("null");
+            fprintf(fout, "null");
             break;
         case TYPE_BYTE:
-            printf("%c", dval.byte);
+            fprintf(fout, "%c", dval.byte);
             break;
         case TYPE_INT:
-            printf("%" PRIi64 "", dval.integer);
+            fprintf(fout, "%" PRIi64 "", dval.integer);
             break;
         case TYPE_FLOAT:
-            printf("%f", dval.floating);
+            fprintf(fout, "%f", dval.floating);
             break;
         case TYPE_BOOL:
             if (dval.integer == 0) {
-                printf("false");
+                fprintf(fout, "false");
             } else {
-                printf("true");
+                fprintf(fout, "true");
             }
             break;
         case TYPE_STRING:
-            printf("%s", string_pool[dval.offset]);
+            fprintf(fout, "%s", string_pool[dval.offset]);
             break;
         default:
             assert(false);
     }
 }
 
-static void print_addr(size_t location)
+static void print_addr(size_t location, FILE *fout)
 {
     if (location == 0) {
-        printf("null");
+        fprintf(fout, "null");
     } else {
-        printf("<%lu>", location);
+        fprintf(fout, "<%lu>", location);
     }
 }
 
-static void pprint_primitive(Type type, DelValue dval, char **string_pool)
+static void pprint_primitive(Type type, DelValue dval, char **string_pool, FILE *fout)
 {
     if (type == TYPE_STRING) {
-        printf("\"");
+        fprintf(fout, "\"");
     } else if (type == TYPE_BYTE) {
-        printf("'");
+        fprintf(fout, "'");
     }
-    print_primitive(type, dval, string_pool);
+    print_primitive(type, dval, string_pool, fout);
     if (type == TYPE_STRING) {
-        printf("\"");
+        fprintf(fout, "\"");
     } else if (type == TYPE_BYTE) {
-        printf("'");
+        fprintf(fout, "'");
     }
 }
 
-static void print_object(struct Heap *heap, size_t location, size_t count, char **string_pool)
+static void print_object(struct Heap *heap, size_t location, size_t count, char **string_pool,
+        FILE *fout)
 {
     if (count == 0 && location == 0) {
-        printf("null");
+        fprintf(fout, "null");
         return;
     }
     uint16_t types[4] = {0};
     uint16_t type_index = 0;
-    printf("{ ");
+    fprintf(fout, "{ ");
     for (size_t i = 0; i < count; i++) {
         DelValue value = vector_get(heap->vector, location + i);
         if (i % 5 == 0) {
@@ -448,49 +452,55 @@ static void print_object(struct Heap *heap, size_t location, size_t count, char 
         } else {
             Type type = types[type_index];
             if (is_object_or_null(type)) {
-                print_addr(get_location(value.offset));
+                print_addr(get_location(value.offset), fout);
             } else {
-                pprint_primitive(type, value, string_pool);
+                pprint_primitive(type, value, string_pool, fout);
             }
             type_index++;
-            if (i != count - 1) printf(", ");
+            if (i != count - 1) fprintf(fout, ", ");
         }
     }
-    printf(" }");
+    fprintf(fout, " }");
 }
 
 static void print(struct Heap *heap, struct Stack *stack, struct Stack *stack_obj,
-        char **string_pool)
+        char **string_pool, FILE *fout)
 {
     size_t ptr, location, count;
     DelValue dtype = pop(stack);
     Type type = dtype.type;
     if (!is_object_or_null(type)) {
         DelValue dval = pop(stack);
-        print_primitive(type, dval, string_pool);
+        print_primitive(type, dval, string_pool, fout);
         return;
     }
     ptr = pop(stack_obj).offset;
     location = get_location(ptr);
     count = get_count(ptr);
-    if (is_array(type)) {
+    if (is_array(type) && type_of_array(type) == TYPE_BYTE) {
+        for (size_t i = location; i < count + location; i++) {
+            fputc(vector_get(heap->vector, i).byte, stdout);
+        }
+    } else if (is_array(type)) {
         Type arr_type = type_of_array(type);
-        printf("{ ");
         if (!is_object(arr_type)) {
+            fprintf(fout, "{ ");
             for (size_t i = location; i < count + location; i++) {
-                pprint_primitive(arr_type, vector_get(heap->vector, i), string_pool);
-                if (i != count + location - 1) printf(", ");
+                pprint_primitive(arr_type, vector_get(heap->vector, i), string_pool, fout);
+                if (i != count + location - 1) fprintf(fout, ", ");
             }
+            fprintf(fout, " }");
         } else {
+            fprintf(fout, "{ ");
             for (uint64_t i = location; i < count + location; i++) {
                 ptr = vector_get(heap->vector, i).offset;
-                print_addr(get_location(ptr));
-                if (i != count + location - 1) printf(", ");
+                print_addr(get_location(ptr), fout);
+                if (i != count + location - 1) fprintf(fout, ", ");
             }
+            fprintf(fout, " }");
         }
-        printf(" }");
     } else {
-        print_object(heap, location, count, string_pool);
+        print_object(heap, location, count, string_pool, fout);
     }
 }
 
@@ -555,8 +565,11 @@ static void print(struct Heap *heap, struct Stack *stack, struct Stack *stack_ob
 // }
 
 // Assumes that vm is stack allocated / zeroed out
-void vm_init(struct VirtualMachine *vm, DelValue *instructions, char **string_pool)
+void vm_init(struct VirtualMachine *vm, FILE *fout, FILE *ferr, DelValue *instructions,
+        char **string_pool)
 {
+    vm->fout = fout;
+    vm->ferr = ferr;
     vm->stack.values = calloc(STACK_MAX, sizeof(*(vm->stack.values)));
     vm->stack_obj.values = calloc(STACK_MAX, sizeof(*(vm->stack_obj.values)));
     vm->sfs.values = calloc(STACK_MAX, sizeof(*(vm->sfs.values)));
@@ -587,7 +600,7 @@ void vm_free(struct VirtualMachine *vm)
         print_stack(&stack, false);\
         print_stack(&stack_obj, true);\
         print_heap(&heap);\
-        printf("infinite loop detected, ending execution\n");\
+        fprintf(vm->ferr, "infinite loop detected, ending execution\n");\
         status = VM_STATUS_ERROR;\
         goto exit_loop;\
     }\
@@ -629,7 +642,7 @@ void vm_free(struct VirtualMachine *vm)
 // Bounds check on pushes to stack
 #define check_push(stack_ptr) do {\
     if (unexpected((stack_ptr)->offset >= STACK_MAX - 1)) { \
-        printf("Error: stack overflow (calculation too large)\n");\
+        fprintf(vm->ferr, "Error: stack overflow (calculation too large)\n");\
         status = VM_STATUS_ERROR;\
         goto exit_loop;\
     }\
@@ -681,13 +694,14 @@ uint64_t vm_execute(struct VirtualMachine *vm)
                 count = instructions[ip].offset;
                 ip++;
                 metadata = instructions[ip].offset;
-                if (!push_heap(count, metadata, &heap, &stack, &stack_obj, &sfs_obj, string_pool)) {
+                if (!push_heap(count, metadata, &heap, &stack, &stack_obj, &sfs_obj, string_pool,
+                            vm->ferr)) {
                     status = VM_STATUS_ERROR;
                     goto exit_loop;
                 }
                 vm_break;
             vm_case(PUSH_ARRAY):
-                if (!push_array(&heap, &stack, &stack_obj)) {
+                if (!push_array(&heap, &stack, &stack_obj, vm->ferr)) {
                     status = VM_STATUS_ERROR;
                     goto exit_loop;
                 }
@@ -699,6 +713,7 @@ uint64_t vm_execute(struct VirtualMachine *vm)
                 ip++;
                 val1 = pop(&stack_obj);
                 if (!get_heap(&heap, instructions[ip].offset, val1.offset, &stack)) {
+                    fprintf(vm->ferr, "Error: null pointer exception\n");
                     status = VM_STATUS_ERROR;
                     goto exit_loop;
                 }
@@ -707,6 +722,7 @@ uint64_t vm_execute(struct VirtualMachine *vm)
                 ip++;
                 val1 = pop(&stack_obj);
                 if (!get_heap(&heap, instructions[ip].offset, val1.offset, &stack_obj)) {
+                    fprintf(vm->ferr, "Error: null pointer exception\n");
                     status = VM_STATUS_ERROR;
                     goto exit_loop;
                 }
@@ -726,7 +742,7 @@ uint64_t vm_execute(struct VirtualMachine *vm)
             vm_case(GET_ARRAY):
                 val1 = pop(&stack);
                 val2 = pop(&stack_obj);
-                if (!get_array(val1.integer, val2.offset, &heap, &stack)) {
+                if (!get_array(val1.integer, val2.offset, &heap, &stack, vm->ferr)) {
                     status = VM_STATUS_ERROR;
                     goto exit_loop;
                 }
@@ -734,7 +750,7 @@ uint64_t vm_execute(struct VirtualMachine *vm)
             vm_case(GET_ARRAY_OBJ):
                 val1 = pop(&stack);
                 val2 = pop(&stack_obj);
-                if (!get_array(val1.integer, val2.offset, &heap, &stack_obj)) {
+                if (!get_array(val1.integer, val2.offset, &heap, &stack_obj, vm->ferr)) {
                     status = VM_STATUS_ERROR;
                     goto exit_loop;
                 }
@@ -743,6 +759,7 @@ uint64_t vm_execute(struct VirtualMachine *vm)
                 val1 = pop(&stack);
                 val2 = pop(&stack_obj);
                 if (!set_array(val1.integer, val2.offset, &heap, &stack)) {
+                    fprintf(vm->ferr, "Error: array index out of bounds exception\n");
                     status = VM_STATUS_ERROR;
                     goto exit_loop;
                 }
@@ -751,6 +768,7 @@ uint64_t vm_execute(struct VirtualMachine *vm)
                 val1 = pop(&stack);
                 val2 = pop(&stack_obj);
                 if (!set_array(val1.integer, val2.offset, &heap, &stack_obj)) {
+                    fprintf(vm->ferr, "Error: array index out of bounds exception\n");
                     status = VM_STATUS_ERROR;
                     goto exit_loop;
                 }
@@ -768,7 +786,7 @@ uint64_t vm_execute(struct VirtualMachine *vm)
                 val1 = pop(&stack);
                 val2 = pop(&stack);
                 if (val1.integer == 0) {
-                    printf("Error: division by zero\n");
+                    fprintf(vm->ferr, "Error: division by zero\n");
                     status = VM_STATUS_ERROR;
                     goto exit_loop;
                 }
@@ -778,7 +796,7 @@ uint64_t vm_execute(struct VirtualMachine *vm)
                 val1 = pop(&stack);
                 val2 = pop(&stack);
                 if (val1.integer == 0) {
-                    printf("Error: division by zero\n");
+                    fprintf(vm->ferr, "Error: division by zero\n");
                     status = VM_STATUS_ERROR;
                     goto exit_loop;
                 }
@@ -885,7 +903,7 @@ uint64_t vm_execute(struct VirtualMachine *vm)
                 vm_break;
             vm_case(PUSH_SCOPE):
                 if (unexpected(is_stack_overflow(&sfs) || is_stack_overflow(&sfs_obj))) {
-                    printf("Error: stack overflow\n");
+                    fprintf(vm->ferr, "Error: stack overflow\n");
                     status = VM_STATUS_ERROR;
                     goto exit_loop;
                 }
@@ -904,7 +922,7 @@ uint64_t vm_execute(struct VirtualMachine *vm)
                 // }
                 vm_break;
             vm_case(PRINT): {
-                print(&heap, &stack, &stack_obj, string_pool);
+                print(&heap, &stack, &stack_obj, string_pool, vm->fout);
                 vm_break;
             }
             vm_case(FLOAT_ADD): eval_binary_op_f(&stack, val1, val2, +);  vm_break;
@@ -923,7 +941,7 @@ uint64_t vm_execute(struct VirtualMachine *vm)
                 vm_break;
             // vm_case(PUSH_STRING):
             default:
-                printf("unknown instruction encountered: '%" PRIu64 "'",
+                fprintf(vm->ferr, "unknown instruction encountered: '%" PRIu64 "'",
                         instructions[ip].offset);
                 status = VM_STATUS_ERROR;
                 goto exit_loop;

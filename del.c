@@ -11,27 +11,8 @@
 #include "printers.h"
 #include "vector.h"
 
-
-static bool read_and_compile(struct Program **program, Allocator allocator, char *filename)
+static bool parse_and_compile(struct Globals globals, struct Program **program)
 {
-    struct Globals globals = { {0}, 0, NULL, NULL, NULL, NULL, 0, 0, 0, 0, NULL, NULL };
-    globals.allocator = allocator;
-
-#if DEBUG_TEXT
-    printf("........ READING FILE : %s ........\n", filename);
-#endif
-    struct FileContext file = { filename, 0, NULL };
-    if (!readfile(&globals, &file)) {
-        printf("Error: could not read contents of empty file\n");
-        return false;
-    }
-
-    globals.file = &file;
-#if DEBUG_TEXT
-    printf("%s\n", globals.file->input);
-    print_memory_usage(globals.allocator);
-#endif
-
 #if DEBUG_LEXER
     printf("........ TOKENIZING INPUT ........\n");
 #endif
@@ -39,7 +20,7 @@ static bool read_and_compile(struct Program **program, Allocator allocator, char
     lexer_init(&globals, &lexer, false);
     globals.lexer = &lexer;
     if (!tokenize(&globals)) {
-        printf("Error at line %d column %d: %s\n",
+        fprintf(globals.ferr, "Error at line %d column %d: %s\n",
                 globals.lexer->error.line_number,
                 globals.lexer->error.column_number,
                 globals.lexer->error.message);
@@ -112,6 +93,45 @@ static bool read_and_compile(struct Program **program, Allocator allocator, char
     return true;
 }
 
+#define INIT_GLOBALS()\
+{ {0}, stderr, 0, NULL, NULL, NULL, NULL, 0, 0, 0, 0, NULL, NULL }
+
+static bool parse_and_compile_file(struct Program **program, Allocator allocator, FILE *ferr,
+        char *filename)
+{
+    struct Globals globals = INIT_GLOBALS();
+    globals.allocator = allocator;
+    globals.ferr = ferr;
+
+#if DEBUG_TEXT
+    printf("........ READING FILE : %s ........\n", filename);
+#endif
+    struct FileContext file = { filename, 0, NULL };
+    if (!readfile(&globals, &file)) {
+        fprintf(globals.ferr, "Error: could not read contents of empty file\n");
+        return false;
+    }
+
+    globals.file = &file;
+#if DEBUG_TEXT
+    printf("%s\n", globals.file->input);
+    print_memory_usage(globals.allocator);
+#endif
+    return parse_and_compile(globals, program);
+}
+
+static bool parse_and_compile_text(struct Program **program, Allocator allocator, FILE *ferr,
+        char *program_text)
+{
+    struct Globals globals = INIT_GLOBALS();
+    globals.allocator = allocator;
+    globals.ferr = ferr;
+    struct FileContext file = { NULL, strlen(program_text), program_text };
+    globals.file = &file;
+    return parse_and_compile(globals, program);
+}
+
+
 /*
 typedef DelValue del_function(DelValue *values, size_t length) DelFunction;
 
@@ -152,12 +172,12 @@ void del_program_free(DelProgram del_program)
     free(program);
 }
 
-void del_vm_init(DelVM *del_vm, DelProgram del_program)
+void del_vm_init(DelVM *del_vm, FILE *fin, FILE *ferr, DelProgram del_program)
 {
     struct VirtualMachine *vm = malloc(sizeof(*vm));
     memset(vm, 0, sizeof(*vm));
     struct Program *program = (struct Program *) del_program;
-    vm_init(vm, program->instructions->values, program->string_pool);
+    vm_init(vm, fin, ferr, program->instructions->values, program->string_pool);
     *del_vm = (DelVM) vm;
 }
 
@@ -180,11 +200,22 @@ void del_vm_free(DelVM del_vm)
     free(vm);
 }
 
-DelProgram del_read_and_compile(DelAllocator del_allocator, char *filename)
+DelProgram del_compile_text(DelAllocator del_allocator, FILE *ferr, char *program_text)
 {
     struct Program *program = NULL;
     Allocator allocator = (Allocator) del_allocator;
-    if (read_and_compile(&program, allocator, filename)) {
+    if (parse_and_compile_text(&program, allocator, ferr, program_text)) {
+        DelProgram del_program = (DelProgram) program;
+        return del_program;
+    }
+    return 0;
+}
+
+DelProgram del_compile_file(DelAllocator del_allocator, FILE *ferr, char *filename)
+{
+    struct Program *program = NULL;
+    Allocator allocator = (Allocator) del_allocator;
+    if (parse_and_compile_file(&program, allocator, ferr, filename)) {
         DelProgram del_program = (DelProgram) program;
         return del_program;
     }

@@ -119,7 +119,7 @@ static bool add_var(struct Globals *globals, struct TypeCheckerContext *context,
 {
     context->enclosing_func->num_locals++;
     if (lookup_current_scope_var(context->scope, def->name) != NULL) {
-        printf("Error: variable '%s' shadows existing definition\n",
+        fprintf(globals->ferr, "Error: variable '%s' shadows existing definition\n",
                 lookup_symbol(globals, def->name));
         return false;
     }
@@ -228,7 +228,7 @@ static Type typecheck_expression(struct Globals *globals, struct TypeCheckerCont
             if (are_both_bool) {
                 return TYPE_BOOL;
             } else {
-                printf("Error: '%s' has non-boolean operands\n", op_str);
+                fprintf(globals->ferr, "Error: '%s' has non-boolean operands\n", op_str);
                 return TYPE_UNDEFINED;
             }
         case OP_EQEQ:
@@ -240,7 +240,7 @@ static Type typecheck_expression(struct Globals *globals, struct TypeCheckerCont
                     || are_both_byte || are_both_obj) {
                 return TYPE_BOOL;
             } else {
-                printf("Error: mismatched types on '%s' operands\n", op_str);
+                fprintf(globals->ferr, "Error: mismatched types on '%s' operands\n", op_str);
                 return TYPE_UNDEFINED;
             }
         case OP_GREATER_EQ:
@@ -257,7 +257,7 @@ static Type typecheck_expression(struct Globals *globals, struct TypeCheckerCont
             if (are_both_int || are_both_float || are_both_byte) {
                 return TYPE_BOOL;
             } else {
-                printf("Error: mismatched types on '%s' operands\n", op_str);
+                fprintf(globals->ferr, "Error: mismatched types on '%s' operands\n", op_str);
                 return TYPE_UNDEFINED;
             }
         case OP_PLUS:
@@ -270,7 +270,7 @@ static Type typecheck_expression(struct Globals *globals, struct TypeCheckerCont
             } else if (are_both_string) {
                 return TYPE_STRING;
             } else {
-                printf("Error: mismatched types for '+' operands\n");
+                fprintf(globals->ferr, "Error: mismatched types for '+' operands\n");
                 return TYPE_UNDEFINED;
             }
         case OP_MINUS:
@@ -290,7 +290,7 @@ static Type typecheck_expression(struct Globals *globals, struct TypeCheckerCont
             } else if (are_both_byte) {
                 return TYPE_BYTE;
             } else {
-                printf("Error: mismatched types for '%s' operands\n", op_str);
+                fprintf(globals->ferr, "Error: mismatched types for '%s' operands\n", op_str);
                 return TYPE_UNDEFINED;
             }
         case OP_PERCENT:
@@ -300,10 +300,10 @@ static Type typecheck_expression(struct Globals *globals, struct TypeCheckerCont
             } else if (are_both_byte) {
                 return TYPE_BYTE;
             } else if (are_both_float) {
-                printf("Error: cannot use %s on floats\n", op_str);
+                fprintf(globals->ferr, "Error: cannot use %s on floats\n", op_str);
                 return TYPE_UNDEFINED;
             } else {
-                printf("Error: mismatched types for '%s' operands\n", op_str);
+                fprintf(globals->ferr, "Error: mismatched types for '%s' operands\n", op_str);
                 return TYPE_UNDEFINED;
             }
         case OP_UNARY_PLUS:
@@ -316,7 +316,7 @@ static Type typecheck_expression(struct Globals *globals, struct TypeCheckerCont
             } else if (left_is_float && right_is_undef) {
                 return TYPE_FLOAT;
             } else {
-                printf("Error: expecting numeric operand for '%s'\n", op_str);
+                fprintf(globals->ferr, "Error: expecting numeric operand for '%s'\n", op_str);
                 return TYPE_UNDEFINED;
             }
         default:
@@ -331,7 +331,7 @@ static Type typecheck_new_array(struct Globals *globals, struct TypeCheckerConte
     // Validate type parameter
     uint64_t constructor_types_count = constructor->types == NULL ? 0 : constructor->types->length;
     if (constructor_types_count != 1) {
-        printf("Error: Array expects 1 type parameter but got %" PRIu64 "\n",
+        fprintf(globals->ferr, "Error: Array expects 1 type parameter but got %" PRIu64 "\n",
                 constructor_types_count);
         return TYPE_UNDEFINED;
     }
@@ -339,7 +339,7 @@ static Type typecheck_new_array(struct Globals *globals, struct TypeCheckerConte
     struct FunCall *funcall = constructor->funcall;
     uint64_t constructor_arg_count = funcall->args == NULL ? 0 : funcall->args->length;
     if (constructor_arg_count != 1) {
-        printf("Error: Array expects 1 argument but got %" PRIu64 "\n", constructor_arg_count);
+        fprintf(globals->ferr, "Error: Array expects 1 argument but got %" PRIu64 "\n", constructor_arg_count);
         return TYPE_UNDEFINED;
     }
     struct Value *arg = funcall->args->head->value;
@@ -347,7 +347,7 @@ static Type typecheck_new_array(struct Globals *globals, struct TypeCheckerConte
     if (arg_type == TYPE_UNDEFINED) {
         return TYPE_UNDEFINED;
     } else if (arg_type != TYPE_INT) {
-        printf("Error: expected argument to be of type int, but got argument of type %s\n",
+        fprintf(globals->ferr, "Error: expected argument to be of type int, but got argument of type %s\n",
                 lookup_symbol(globals, arg_type));
         return TYPE_UNDEFINED;
     }
@@ -371,31 +371,31 @@ static Type typecheck_cast(struct Globals *globals, struct TypeCheckerContext *c
         return TYPE_UNDEFINED;
     } else if (type == cast->type) {
         char *type_str = lookup_symbol(globals, type);
-        printf("Error: cast from %s to %s is redundant\n", type_str, type_str);
+        fprintf(globals->ferr, "Error: cast from %s to %s is redundant\n", type_str, type_str);
         return TYPE_UNDEFINED;
     }
     switch (type) {
         case TYPE_INT:
             if (!(oneof(cast->type, TYPE_BOOL, TYPE_FLOAT, TYPE_BYTE))) {
-                printf(generic_err, type, cast->type);
+                fprintf(globals->ferr, generic_err, type, cast->type);
                 return TYPE_UNDEFINED;
             }
             return cast->type;
         case TYPE_BOOL:
             if (!(oneof(cast->type, TYPE_INT, TYPE_FLOAT, TYPE_BYTE))) {
-                printf(generic_err, type, cast->type);
+                fprintf(globals->ferr, generic_err, type, cast->type);
                 return TYPE_UNDEFINED;
             }
             return cast->type;
         case TYPE_FLOAT:
             if (!(oneof(cast->type, TYPE_BOOL, TYPE_INT, TYPE_BYTE))) {
-                printf(generic_err, type, cast->type);
+                fprintf(globals->ferr, generic_err, type, cast->type);
                 return TYPE_UNDEFINED;
             }
             return cast->type;
         case TYPE_BYTE:
             if (!(oneof(cast->type, TYPE_BOOL, TYPE_FLOAT, TYPE_INT))) {
-                printf(generic_err, type, cast->type);
+                fprintf(globals->ferr, generic_err, type, cast->type);
                 return TYPE_UNDEFINED;
             }
             return cast->type;
@@ -403,19 +403,19 @@ static Type typecheck_cast(struct Globals *globals, struct TypeCheckerContext *c
             TODO();
             break;
         case TYPE_NULL:
-            printf("Error: cannot cast null\n");
+            fprintf(globals->ferr, "Error: cannot cast null\n");
             return TYPE_UNDEFINED;
     }
-    printf("Error: cannot cast objects\n");
+    fprintf(globals->ferr, "Error: cannot cast objects\n");
     return TYPE_UNDEFINED;
 }
 
-static Type typecheck_read(Values *args)
+static Type typecheck_read(struct Globals *globals, Values *args)
 {
     if (args == NULL || args->length == 0) {
         return TYPE_STRING;
     }
-    printf("Error: read function does not take arguments\n");
+    fprintf(globals->ferr, "Error: read function does not take arguments\n");
     return TYPE_UNDEFINED;
 }
 
@@ -450,7 +450,7 @@ static Type typecheck_value(struct Globals *globals, struct TypeCheckerContext *
             assert(linkedlist_is_empty(val->funcall->access->lvalues));
             struct FunDef *fundef = lookup_fun(context->fun_table, funname);
             if (fundef != NULL && fundef->rettype == TYPE_UNDEFINED) {
-                printf("Error: function %s does not return a value\n",
+                fprintf(globals->ferr, "Error: function %s does not return a value\n",
                         lookup_symbol(globals, fundef->name));
                 return TYPE_UNDEFINED;
             } else if (typecheck_funcall(globals, context, val->funcall, fundef)) {
@@ -474,7 +474,7 @@ static Type typecheck_value(struct Globals *globals, struct TypeCheckerContext *
             assert(linkedlist_is_empty(val->funcall->access->lvalues));
             if (name == BUILTIN_READ) {
                 val->type = TYPE_STRING;
-                return typecheck_read(val->funcall->args);
+                return typecheck_read(globals, val->funcall->args);
             // } else if (name == BUILTIN_CONCAT) {
             //     assert("Error: not implemented\n" && false);
             //     // val->type = TYPE_ARRAY;
@@ -499,7 +499,7 @@ static Type typecheck_get_local(struct Globals *globals, struct TypeCheckerConte
 {
     struct Definition *def = lookup_var(context->scope, get_local->name);
     if (def == NULL) {
-        printf("Error: Symbol '%s' is used before it is declared\n",
+        fprintf(globals->ferr, "Error: Symbol '%s' is used before it is declared\n",
                 lookup_symbol(globals, get_local->name));
         return TYPE_UNDEFINED;
     }
@@ -514,7 +514,7 @@ static bool typecheck_set_local(struct Globals *globals, struct TypeCheckerConte
     if (!set->is_define) {
         struct Definition *def = lookup_var(context->scope, set->def->name);
         if (def == NULL) {
-            printf("Error: Symbol '%s' is used before it is declared\n",
+            fprintf(globals->ferr, "Error: Symbol '%s' is used before it is declared\n",
                     lookup_symbol(globals, set->def->name));
             return false;
         }
@@ -524,7 +524,7 @@ static bool typecheck_set_local(struct Globals *globals, struct TypeCheckerConte
     if (rhs_type == TYPE_UNDEFINED) {
         return false;
     } else if (rhs_type != set->def->type && set->def->type != TYPE_UNDEFINED) {
-        printf("Error: %s is of type %s, cannot set to type %s\n",
+        fprintf(globals->ferr, "Error: %s is of type %s, cannot set to type %s\n",
                 lookup_symbol(globals, set->def->name),
                 lookup_symbol(globals, set->def->type),
                 lookup_symbol(globals, rhs_type));
@@ -547,13 +547,13 @@ static Type typecheck_get_property(struct Globals *globals, struct TypeCheckerCo
     }
     struct Class *cls = lookup_class(context->cls_table, type);
     if (cls == NULL) {
-        printf("Error: '%s' is not an object\n",
+        fprintf(globals->ferr, "Error: '%s' is not an object\n",
                 lookup_symbol(globals, type));
         return TYPE_UNDEFINED;
     }
     struct Definition *def = lookup_property(cls, get->property);
     if (def == NULL) {
-        printf("Error: object of type '%s' has no property called '%s'\n",
+        fprintf(globals->ferr, "Error: object of type '%s' has no property called '%s'\n",
                 lookup_symbol(globals, type),
                 lookup_symbol(globals, get->property));
         return TYPE_UNDEFINED;
@@ -570,12 +570,12 @@ static Type typecheck_get_index(struct Globals *globals, struct TypeCheckerConte
     if (array_type == TYPE_UNDEFINED) {
         return TYPE_UNDEFINED;
     } else if (!is_array(array_type)) {
-        printf("Error: '%s' is not an array\n", lookup_symbol(globals, array_type));
+        fprintf(globals->ferr, "Error: '%s' is not an array\n", lookup_symbol(globals, array_type));
         return TYPE_UNDEFINED;
     } else if (index_type == TYPE_UNDEFINED) {
         return TYPE_UNDEFINED;
     } else if (index_type != TYPE_INT) {
-        printf("Error: array access must use int, but got value of type '%s'\n",
+        fprintf(globals->ferr, "Error: array access must use int, but got value of type '%s'\n",
                 lookup_symbol(globals, index_type));
         return TYPE_UNDEFINED;
     }
@@ -589,7 +589,7 @@ static bool typecheck_setter(struct Globals *globals, struct TypeCheckerContext 
     if (type_get == TYPE_UNDEFINED || type_set == TYPE_UNDEFINED) {
         return false;
     } else if (type_get != type_set) {
-        printf("Error: cannot set field of type %s to value of type %s\n",
+        fprintf(globals->ferr, "Error: cannot set field of type %s to value of type %s\n",
                 lookup_symbol(globals, type_get),
                 lookup_symbol(globals, type_set));
         return false;
@@ -629,7 +629,7 @@ static bool typecheck_if(struct Globals *globals, struct TypeCheckerContext *con
     if (t0 == TYPE_UNDEFINED) {
         return false;
     } else if (t0 != TYPE_BOOL) {
-        printf("Error: expected boolean in if condition\n");
+        fprintf(globals->ferr, "Error: expected boolean in if condition\n");
         return false;
     }
     enter_scope(globals, &(context->scope), false, false);
@@ -655,7 +655,7 @@ static bool typecheck_while(struct Globals *globals, struct TypeCheckerContext *
     if (t0 == TYPE_UNDEFINED) {
         return false;
     } else if (t0 != TYPE_BOOL) {
-        printf("Error: expected boolean in while condition\n");
+        fprintf(globals->ferr, "Error: expected boolean in while condition\n");
         return false;
     }
     return typecheck_statements(globals, context, while_stmt->stmts);
@@ -670,7 +670,7 @@ static bool typecheck_for(struct Globals *globals, struct TypeCheckerContext *co
     if (t0 == TYPE_UNDEFINED) {
         return false;
     } else if (t0 != TYPE_BOOL) {
-        printf("Error: expected boolean as second parameter in for loop condition\n");
+        fprintf(globals->ferr, "Error: expected boolean as second parameter in for loop condition\n");
         return false;
     }
     ret = typecheck_statement(globals, context, for_stmt->increment);
@@ -686,7 +686,7 @@ static bool typecheck_return(struct Globals *globals, struct TypeCheckerContext 
         if (rettype == TYPE_UNDEFINED) {
             return true;
         } else {
-            printf("Error: function '%s' should return value of type '%s' "
+            fprintf(globals->ferr, "Error: function '%s' should return value of type '%s' "
                     "but is returning nothing\n",
                     lookup_symbol(globals, context->enclosing_func->name),
                     lookup_symbol(globals, rettype));
@@ -697,12 +697,12 @@ static bool typecheck_return(struct Globals *globals, struct TypeCheckerContext 
     if (val_type == TYPE_UNDEFINED) {
         return false;
     } else if (rettype == TYPE_UNDEFINED) {
-        printf("Error: function '%s' should return nothing but is returning value of type '%s'\n",
+        fprintf(globals->ferr, "Error: function '%s' should return nothing but is returning value of type '%s'\n",
                 lookup_symbol(globals, context->enclosing_func->name),
                 lookup_symbol(globals, val_type));
         return false;
     } else if (rettype != val_type) {
-        printf("Error: function '%s' return type is '%s' but returning value of type '%s'\n",
+        fprintf(globals->ferr, "Error: function '%s' return type is '%s' but returning value of type '%s'\n",
                 lookup_symbol(globals, context->enclosing_func->name),
                 lookup_symbol(globals, rettype),
                 lookup_symbol(globals, val_type));
@@ -712,19 +712,19 @@ static bool typecheck_return(struct Globals *globals, struct TypeCheckerContext 
     return true;
 }
 
-static bool typecheck_break(struct TypeCheckerContext *context)
+static bool typecheck_break(struct Globals *globals, struct TypeCheckerContext *context)
 {
     if (!is_in_loop(context->scope)) {
-        printf("Error: break statement is not inside of a loop\n");
+        fprintf(globals->ferr, "Error: break statement is not inside of a loop\n");
         return false;
     }
     return true;
 }
 
-static bool typecheck_continue(struct TypeCheckerContext *context)
+static bool typecheck_continue(struct Globals *globals, struct TypeCheckerContext *context)
 {
     if (!is_in_loop(context->scope)) {
-        printf("Error: continue statement is not inside of a loop\n");
+        fprintf(globals->ferr, "Error: continue statement is not inside of a loop\n");
         return false;
     }
     return true;
@@ -735,7 +735,7 @@ static bool typecheck_increment(struct Globals *globals, struct TypeCheckerConte
 {
     Type type = typecheck_value(globals, context, val);
     if (!(type == TYPE_INT || type == TYPE_BYTE || type == TYPE_FLOAT)) {
-        printf("Error: cannot increment value of type '%s'\n", lookup_symbol(globals, type));
+        fprintf(globals->ferr, "Error: cannot increment value of type '%s'\n", lookup_symbol(globals, type));
         return false;
     }
     return true;
@@ -746,7 +746,7 @@ static bool typecheck_funcall(struct Globals *globals, struct TypeCheckerContext
 {
     // struct FunDef *fundef = lookup_fun(context->fun_table, funcall->funname);
     if (fundef == NULL) {
-        printf("Error: no function named %s\n",
+        fprintf(globals->ferr, "Error: no function named %s\n",
                 lookup_symbol(globals, funcall->access->definition->name));
         return false;
     } 
@@ -756,7 +756,7 @@ static bool typecheck_funcall(struct Globals *globals, struct TypeCheckerContext
     if (fundef_arg_count == 0 && funcall_arg_count == 0) {
         return true;
     } else if (fundef_arg_count != funcall_arg_count) {
-        printf("Error: %s expects %" PRIu64 " arguments but got %" PRIu64 "\n",
+        fprintf(globals->ferr, "Error: %s expects %" PRIu64 " arguments but got %" PRIu64 "\n",
                 lookup_symbol(globals, fundef->name),
                 fundef_arg_count, funcall_arg_count);
         return false;
@@ -773,7 +773,7 @@ static bool typecheck_funcall(struct Globals *globals, struct TypeCheckerContext
             return false;
         } else if (!(is_object(fun_arg_def->type) && val_type == TYPE_NULL)
                 && (val_type != fun_arg_def->type)) {
-            printf("Error: expected argument %" PRIu64 " to %s to be of type %s, but got "
+            fprintf(globals->ferr, "Error: expected argument %" PRIu64 " to %s to be of type %s, but got "
                    "argument of type %s\n",
                     i + 1, lookup_symbol(globals, fundef->name),
                     lookup_symbol(globals, fun_arg_def->type),
@@ -791,7 +791,7 @@ static bool typecheck_print(struct Globals *globals, struct TypeCheckerContext *
         Values *args)
 {
     if (args == NULL || args->length == 0) {
-        printf("Error: print function requires at least one argument\n");
+        fprintf(globals->ferr, "Error: print function requires at least one argument\n");
         return false;
     }
     // Validate arguments
@@ -815,7 +815,7 @@ static Type typecheck_constructor(struct Globals *globals, struct TypeCheckerCon
         struct Constructor *constructor)
 {
     if (constructor->types != NULL) {
-        printf("Error: class %s does not take type parameters\n",
+        fprintf(globals->ferr, "Error: class %s does not take type parameters\n",
                 lookup_symbol(globals, constructor->funcall->access->definition->name));
         return TYPE_UNDEFINED;
     }
@@ -823,7 +823,7 @@ static Type typecheck_constructor(struct Globals *globals, struct TypeCheckerCon
     Symbol funname = funcall->access->definition->name;
     struct Class *cls = lookup_class(context->cls_table, funname);
     if (cls == NULL) {
-        printf("Error: no class named %s\n", lookup_symbol(globals, funname));
+        fprintf(globals->ferr, "Error: no class named %s\n", lookup_symbol(globals, funname));
         return TYPE_UNDEFINED;
     }
 
@@ -832,7 +832,7 @@ static Type typecheck_constructor(struct Globals *globals, struct TypeCheckerCon
     if (class_def_count == 0 && constructor_arg_count == 0) {
         return cls->name;
     } else if (class_def_count != constructor_arg_count) {
-        printf("Error: %s expects %" PRIu64 " arguments but got %" PRIu64 "\n",
+        fprintf(globals->ferr, "Error: %s expects %" PRIu64 " arguments but got %" PRIu64 "\n",
                 lookup_symbol(globals, cls->name),
                 class_def_count, constructor_arg_count);
         return TYPE_UNDEFINED;
@@ -850,7 +850,7 @@ static Type typecheck_constructor(struct Globals *globals, struct TypeCheckerCon
         // } else if (val_type != fun_arg_def->type) {
         } else if (!(is_object(fun_arg_def->type) && val_type == TYPE_NULL)
                 && (val_type != fun_arg_def->type)) {
-            printf("Error: expected argument %" PRIu64 " to %s to be of type %s, but got "
+            fprintf(globals->ferr, "Error: expected argument %" PRIu64 " to %s to be of type %s, but got "
                     "argument of type %s\n",
                     i + 1, lookup_symbol(globals, cls->name),
                     lookup_symbol(globals, fun_arg_def->type),
@@ -886,7 +886,7 @@ static bool typecheck_statement(struct Globals *globals, struct TypeCheckerConte
         struct Statement *stmt)
 {
     if (context->scope->rettype != TYPE_UNDEFINED) {
-        printf("Error: statements below 'return' statement will not be executed\n");
+        fprintf(globals->ferr, "Error: statements below 'return' statement will not be executed\n");
         return false;
     }
     bool ret = false;
@@ -941,9 +941,9 @@ static bool typecheck_statement(struct Globals *globals, struct TypeCheckerConte
         case STMT_RETURN:
             return typecheck_return(globals, context, stmt->val);
         case STMT_BREAK:
-            return typecheck_break(context);
+            return typecheck_break(globals, context);
         case STMT_CONTINUE:
-            return typecheck_continue(context);
+            return typecheck_continue(globals, context);
         case STMT_FOREACH:
             assert("Error: not implemented\n" && false);
             enter_scope(globals, &(context->scope), false, true);
@@ -975,10 +975,10 @@ static bool typecheck_entrypoint(struct Globals *globals, struct FunDef *fundef)
 {
     if (fundef->name == globals->entrypoint) {
         if (fundef->rettype != TYPE_UNDEFINED) {
-            printf("Error: main function should not return any values\n");
+            fprintf(globals->ferr, "Error: main function should not return any values\n");
             return false;
         } else if (!linkedlist_is_empty(fundef->args)) {
-            printf("Error: main function should not take any arguments\n");
+            fprintf(globals->ferr, "Error: main function should not take any arguments\n");
             return false;
         }
     }
@@ -994,7 +994,7 @@ static bool typecheck_type(struct Globals *globals, struct TypeCheckerContext *c
     if (is_object(type)) {
         struct Class *cls = lookup_class(context->cls_table, type);
         if (cls == NULL) {
-            printf("Error: unknown type '%s'\n",
+            fprintf(globals->ferr, "Error: unknown type '%s'\n",
                     lookup_symbol(globals, type));
             return false;
         }
@@ -1022,7 +1022,7 @@ static bool typecheck_fundef(struct Globals *globals, struct TypeCheckerContext 
     }
     if (fundef->rettype == TYPE_UNDEFINED) {
         if (fundef->stmts->tail == NULL) {
-            printf("Error: empty function body\n");
+            fprintf(globals->ferr, "Error: empty function body\n");
             return false;
         }
         struct Statement *stmt = fundef->stmts->tail->value;
@@ -1033,7 +1033,7 @@ static bool typecheck_fundef(struct Globals *globals, struct TypeCheckerContext 
         exit_scope(&scope);
         return ret;
     } else if (scope->rettype == TYPE_UNDEFINED) {
-        printf("Error: function '%s' does not return a value on all paths\n",
+        fprintf(globals->ferr, "Error: function '%s' does not return a value on all paths\n",
                 lookup_symbol(globals, fundef->name));
         return false;
     }
@@ -1046,7 +1046,7 @@ static bool typecheck_class(struct Globals *globals, struct TypeCheckerContext *
         struct Class *cls)
 {
     if (linkedlist_is_empty(cls->definitions)) {
-        printf("Error: class '%s' declare with no fields\n",
+        fprintf(globals->ferr, "Error: class '%s' declare with no fields\n",
                 lookup_symbol(globals, cls->name));
         return false;
     }
@@ -1060,7 +1060,7 @@ static bool typecheck_class(struct Globals *globals, struct TypeCheckerContext *
         linkedlist_foreach(inner_lnode, cls->definitions->head) {
             struct Definition *inner_def = inner_lnode->value;
             if (i != j && def->name == inner_def->name) {
-                printf("Error: duplicate field name '%s' in class\n",
+                fprintf(globals->ferr, "Error: duplicate field name '%s' in class\n",
                         lookup_symbol(globals, def->name));
                 return false;
             }
@@ -1070,7 +1070,7 @@ static bool typecheck_class(struct Globals *globals, struct TypeCheckerContext *
         linkedlist_foreach(inner_lnode, cls->methods->head) {
             struct FunDef *method = ((struct TopLevelDecl *)inner_lnode->value)->fundef;
             if (def->name == method->name) {
-                printf("Error: method and field cannot both have the same name '%s'\n",
+                fprintf(globals->ferr, "Error: method and field cannot both have the same name '%s'\n",
                         lookup_symbol(globals, def->name));
                 return false;
             }
@@ -1085,7 +1085,7 @@ static bool typecheck_class(struct Globals *globals, struct TypeCheckerContext *
         linkedlist_foreach(inner_lnode, cls->methods->head) {
             struct FunDef *inner_method = ((struct TopLevelDecl *)inner_lnode->value)->fundef;
             if (i != j && method->name == inner_method->name) {
-                printf("Error: duplicate method name '%s' in class\n",
+                fprintf(globals->ferr, "Error: duplicate method name '%s' in class\n",
                         lookup_symbol(globals, method->name));
                 return false;
             }
@@ -1167,7 +1167,7 @@ bool typecheck(struct Globals *globals)
         return false;
     }
     bool is_success = typecheck_tlds(globals, context, globals->ast);
-    // if (!is_success) printf("failed to typecheck\n");
+    // if (!is_success) fprintf(globals->ferr, "failed to typecheck\n");
     return is_success;
 }
 

@@ -55,12 +55,17 @@ void error_parser(struct Globals *globals, const char *message, ...)
     char text[PRINTF_FUDGE_FACTOR_LENGTH] = {0};
     char underline[PRINTF_FUDGE_FACTOR_LENGTH] = {0};
     get_bad_line(globals, text, underline, token);
+    char *msg = globals->file->filename
+        ?  "Error in file '%s' at line %d, column %d\n"
+        "%5d | %s\n        %s\n"
+        "%s\n"
+        : "Error at line %d, column %d\n"
+        "%5d | %s\n        %s\n"
+        "%s\n";
     snprintf(
         globals->error,
         ERROR_MESSAGE_MAX,
-        "Error in file '%s' at line %d, column %d\n"
-        "%5d | %s\n        %s\n"
-        "%s\n",
+        msg,
         globals->file->filename,
         token->line_number,
         token->column_number,
@@ -73,5 +78,5 @@ void error_parser(struct Globals *globals, const char *message, ...)
 
 void error_print(struct Globals *globals)
 {
-    printf("%s", globals->error);
+    fprintf(globals->ferr, "%s", globals->error);
 }
