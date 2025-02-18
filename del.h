@@ -17,7 +17,7 @@ typedef intptr_t DelAllocator;
 DelAllocator del_allocator_new(void);
 void del_allocator_freeall(DelAllocator da);
 void del_program_free(DelProgram del_program);
-void del_vm_init(DelVM *del_vm, FILE *fin, FILE *ferr, DelProgram del_program);
+void del_vm_init(DelVM *del_vm, FILE *fout, FILE *ferr, DelProgram del_program);
 void del_vm_execute(DelVM del_vm);
 void del_vm_free(DelVM del_vm);
 DelProgram del_compile_text(DelAllocator del_allocator, FILE *ferr, char *program_text);

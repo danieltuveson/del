@@ -172,12 +172,12 @@ void del_program_free(DelProgram del_program)
     free(program);
 }
 
-void del_vm_init(DelVM *del_vm, FILE *fin, FILE *ferr, DelProgram del_program)
+void del_vm_init(DelVM *del_vm, FILE *fout, FILE *ferr, DelProgram del_program)
 {
     struct VirtualMachine *vm = malloc(sizeof(*vm));
     memset(vm, 0, sizeof(*vm));
     struct Program *program = (struct Program *) del_program;
-    vm_init(vm, fin, ferr, program->instructions->values, program->string_pool);
+    vm_init(vm, fout, ferr, program->instructions->values, program->string_pool);
     *del_vm = (DelVM) vm;
 }
 
