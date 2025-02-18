@@ -33,6 +33,7 @@ thread.h: bytecode.h vm.c
 install:
 	@sudo cp del /usr/local/bin && echo "del installed at /usr/local/bin"
 	@sudo cp libdel.a /usr/local/lib && echo "libdel.a installed at /usr/local/lib"
+	@sudo cp del.h /usr/local/include && echo "del.h installed at /usr/local/include"
 
 clean:
 	rm -f generated_labels.h
