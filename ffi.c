@@ -19,25 +19,25 @@ Type convert_ffi_type(enum DelForeignType dtype)
 {
     Type type = TYPE_UNDEFINED;
     switch (dtype) {
-        case DEL_TYPE_UNDEFINED:
+        case DEL_UNDEFINED:
             type = TYPE_UNDEFINED;
             break;
-        case DEL_TYPE_NULL:
+        case DEL_NULL:
             type = TYPE_NULL;
             break;
-        case DEL_TYPE_INT:
+        case DEL_INT:
             type = TYPE_INT;
             break;
-        case DEL_TYPE_FLOAT:
+        case DEL_FLOAT:
             type = TYPE_FLOAT;
             break;
-        case DEL_TYPE_BOOL:
+        case DEL_BOOL:
             type = TYPE_BOOL;
             break;
-        case DEL_TYPE_BYTE:
+        case DEL_BYTE:
             type = TYPE_BYTE;
             break;
-        case DEL_TYPE_OBJECT:
+        case DEL_OBJECT:
         default:
             assert(false);
             break;

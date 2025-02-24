@@ -18,13 +18,13 @@ typedef intptr_t DelForeignFunction;
 
 // Foreign Function Interface
 enum DelForeignType {
-    DEL_TYPE_UNDEFINED,
-    DEL_TYPE_NULL,
-    DEL_TYPE_INT,
-    DEL_TYPE_FLOAT,
-    DEL_TYPE_BOOL,
-    DEL_TYPE_BYTE,
-    DEL_TYPE_OBJECT
+    DEL_UNDEFINED,
+    DEL_NULL,
+    DEL_INT,
+    DEL_FLOAT,
+    DEL_BOOL,
+    DEL_BYTE,
+    DEL_OBJECT
 };
 
 struct DelForeignObject {

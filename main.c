@@ -85,13 +85,12 @@ int main(int argc, char *argv[])
     del_compiler_init(&compiler, stderr);
 
     // Add foreign functions
-    del_register_function(compiler, NULL, hello_world, DEL_TYPE_UNDEFINED);
-    del_register_function(compiler, NULL, add_ints, DEL_TYPE_INT, DEL_TYPE_INT, DEL_TYPE_INT);
+    del_register_function(compiler, NULL, hello_world, DEL_UNDEFINED);
+    del_register_function(compiler, NULL, add_ints, DEL_INT, DEL_INT, DEL_INT);
 
     // Set up any info that we want to read from foreign function
     float del_val_context;
-    del_register_function(compiler, &del_val_context, add_floats,
-            DEL_TYPE_FLOAT, DEL_TYPE_FLOAT, DEL_TYPE_FLOAT);
+    del_register_function(compiler, &del_val_context, add_floats, DEL_FLOAT, DEL_FLOAT, DEL_FLOAT);
 
     // Compile
     DelProgram program = compile_with_args(compiler, argc, argv);
