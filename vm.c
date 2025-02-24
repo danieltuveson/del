@@ -5,6 +5,8 @@
 #include "vector.h"
 #include "heap_ptr.h"
 #include "gc.h"
+#include "ffi.h"
+#include "del.h"
 
 // Walk the list of values that are alive, marking and putting into PointerRemaps
 //
@@ -601,7 +603,7 @@ void vm_free(struct VirtualMachine *vm)
         print_stack(&stack_obj, true);\
         print_heap(&heap);\
         fprintf(vm->ferr, "infinite loop detected, ending execution\n");\
-        status = VM_STATUS_ERROR;\
+        status = DEL_VM_STATUS_ERROR;\
         goto exit_loop;\
     }\
 } while(0)
@@ -611,7 +613,7 @@ void vm_free(struct VirtualMachine *vm)
 
 #define pause_after(n) do {\
     if (unexpected(iterations % n == 0)) {\
-        status = VM_STATUS_PAUSE;\
+        status = DEL_VM_STATUS_PAUSE;\
         goto exit_loop;\
     }\
 } while(0)
@@ -643,7 +645,7 @@ void vm_free(struct VirtualMachine *vm)
 #define check_push(stack_ptr) do {\
     if (unexpected((stack_ptr)->offset >= STACK_MAX - 1)) { \
         fprintf(vm->ferr, "Error: stack overflow (calculation too large)\n");\
-        status = VM_STATUS_ERROR;\
+        status = DEL_VM_STATUS_ERROR;\
         goto exit_loop;\
     }\
 } while(0)
@@ -655,7 +657,7 @@ static inline bool is_stack_overflow(struct StackFrames *sfs) {
 uint64_t vm_execute(struct VirtualMachine *vm)
 {
     // Define local variables for VM fields, for convenience (and maybe efficiency)
-    enum VirtualMachineStatus status = vm->status;
+    enum DelVirtualMachineStatus status = vm->status;
     struct StackFrames sfs = vm->sfs;
     struct StackFrames sfs_obj = vm->sfs_obj;
     struct Stack stack = vm->stack;
@@ -696,13 +698,13 @@ uint64_t vm_execute(struct VirtualMachine *vm)
                 metadata = instructions[ip].offset;
                 if (!push_heap(count, metadata, &heap, &stack, &stack_obj, &sfs_obj, string_pool,
                             vm->ferr)) {
-                    status = VM_STATUS_ERROR;
+                    status = DEL_VM_STATUS_ERROR;
                     goto exit_loop;
                 }
                 vm_break;
             vm_case(PUSH_ARRAY):
                 if (!push_array(&heap, &stack, &stack_obj, vm->ferr)) {
-                    status = VM_STATUS_ERROR;
+                    status = DEL_VM_STATUS_ERROR;
                     goto exit_loop;
                 }
                 vm_break;
@@ -714,7 +716,7 @@ uint64_t vm_execute(struct VirtualMachine *vm)
                 val1 = pop(&stack_obj);
                 if (!get_heap(&heap, instructions[ip].offset, val1.offset, &stack)) {
                     fprintf(vm->ferr, "Error: null pointer exception\n");
-                    status = VM_STATUS_ERROR;
+                    status = DEL_VM_STATUS_ERROR;
                     goto exit_loop;
                 }
                 vm_break;
@@ -723,7 +725,7 @@ uint64_t vm_execute(struct VirtualMachine *vm)
                 val1 = pop(&stack_obj);
                 if (!get_heap(&heap, instructions[ip].offset, val1.offset, &stack_obj)) {
                     fprintf(vm->ferr, "Error: null pointer exception\n");
-                    status = VM_STATUS_ERROR;
+                    status = DEL_VM_STATUS_ERROR;
                     goto exit_loop;
                 }
                 vm_break;
@@ -743,7 +745,7 @@ uint64_t vm_execute(struct VirtualMachine *vm)
                 val1 = pop(&stack);
                 val2 = pop(&stack_obj);
                 if (!get_array(val1.integer, val2.offset, &heap, &stack, vm->ferr)) {
-                    status = VM_STATUS_ERROR;
+                    status = DEL_VM_STATUS_ERROR;
                     goto exit_loop;
                 }
                 vm_break;
@@ -751,7 +753,7 @@ uint64_t vm_execute(struct VirtualMachine *vm)
                 val1 = pop(&stack);
                 val2 = pop(&stack_obj);
                 if (!get_array(val1.integer, val2.offset, &heap, &stack_obj, vm->ferr)) {
-                    status = VM_STATUS_ERROR;
+                    status = DEL_VM_STATUS_ERROR;
                     goto exit_loop;
                 }
                 vm_break;
@@ -760,7 +762,7 @@ uint64_t vm_execute(struct VirtualMachine *vm)
                 val2 = pop(&stack_obj);
                 if (!set_array(val1.integer, val2.offset, &heap, &stack)) {
                     fprintf(vm->ferr, "Error: array index out of bounds exception\n");
-                    status = VM_STATUS_ERROR;
+                    status = DEL_VM_STATUS_ERROR;
                     goto exit_loop;
                 }
                 vm_break;
@@ -769,7 +771,7 @@ uint64_t vm_execute(struct VirtualMachine *vm)
                 val2 = pop(&stack_obj);
                 if (!set_array(val1.integer, val2.offset, &heap, &stack_obj)) {
                     fprintf(vm->ferr, "Error: array index out of bounds exception\n");
-                    status = VM_STATUS_ERROR;
+                    status = DEL_VM_STATUS_ERROR;
                     goto exit_loop;
                 }
                 vm_break;
@@ -787,7 +789,7 @@ uint64_t vm_execute(struct VirtualMachine *vm)
                 val2 = pop(&stack);
                 if (val1.integer == 0) {
                     fprintf(vm->ferr, "Error: division by zero\n");
-                    status = VM_STATUS_ERROR;
+                    status = DEL_VM_STATUS_ERROR;
                     goto exit_loop;
                 }
                 push_integer(&stack, (val2.integer / val1.integer));
@@ -797,7 +799,7 @@ uint64_t vm_execute(struct VirtualMachine *vm)
                 val2 = pop(&stack);
                 if (val1.integer == 0) {
                     fprintf(vm->ferr, "Error: division by zero\n");
-                    status = VM_STATUS_ERROR;
+                    status = DEL_VM_STATUS_ERROR;
                     goto exit_loop;
                 }
                 push_integer(&stack, (val2.integer % val1.integer));
@@ -880,7 +882,7 @@ uint64_t vm_execute(struct VirtualMachine *vm)
                 pop(&stack_obj);
                 vm_break;
             vm_case(EXIT):
-                status = VM_STATUS_COMPLETED;
+                status = DEL_VM_STATUS_COMPLETED;
                 goto exit_loop;
             vm_case(CAST_INT):
                 val1 = pop(&stack);
@@ -891,12 +893,21 @@ uint64_t vm_execute(struct VirtualMachine *vm)
                 push_floating(&stack, (double)val1.integer);
                 vm_break;
             vm_case(CALL):
-                // symbol = (Symbol) pop(&stack);
-                // if (strcmp(lookup_symbol(symbol), "print") == 0) {
-                //     printf("%s\n", (char *) pop(&stack));
-                // } else {
-                assert("unknown function encountered\n" && 0);
-                // }
+                ip++;
+                uint64_t num_args = instructions[ip].offset;
+                union DelForeignValue *dvals = calloc(num_args, sizeof(*dvals));
+                for (uint64_t i = 0; i < num_args; i++) {
+                    val1 = pop(&stack);
+                    memcpy(&(dvals[i]), &val1, sizeof(val1));
+                }
+                ip++;
+                void *context = (void *)instructions[ip].pointer;
+                ip++;
+                DelForeignFunctionCall fun = (void *)instructions[ip].pointer;
+                union DelForeignValue dval = fun(dvals, context);
+                // Maybe shouldn't treating everything like an int, but I think it's fine
+                push_integer(&stack, dval.integer);
+                free(dvals);
                 vm_break;
             vm_case(SWAP):
                 swap(&stack);
@@ -904,7 +915,7 @@ uint64_t vm_execute(struct VirtualMachine *vm)
             vm_case(PUSH_SCOPE):
                 if (unexpected(is_stack_overflow(&sfs) || is_stack_overflow(&sfs_obj))) {
                     fprintf(vm->ferr, "Error: stack overflow\n");
-                    status = VM_STATUS_ERROR;
+                    status = DEL_VM_STATUS_ERROR;
                     goto exit_loop;
                 }
                 stack_frame_enter(&sfs);
@@ -917,7 +928,7 @@ uint64_t vm_execute(struct VirtualMachine *vm)
             vm_case(READ):
                 assert(false);
                 // if (!read(&stack, &heap)) {//, &sfs)) {
-                //     status = VM_STATUS_ERROR;
+                //     status = DEL_VM_STATUS_ERROR;
                 //     goto exit_loop;
                 // }
                 vm_break;
@@ -943,7 +954,7 @@ uint64_t vm_execute(struct VirtualMachine *vm)
             default:
                 fprintf(vm->ferr, "unknown instruction encountered: '%" PRIu64 "'",
                         instructions[ip].offset);
-                status = VM_STATUS_ERROR;
+                status = DEL_VM_STATUS_ERROR;
                 goto exit_loop;
         }
         // Note: any statements to be executed before looping back to the top should be done

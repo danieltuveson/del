@@ -30,6 +30,7 @@ struct Globals {
     Allocator allocator;
     struct FileContext *file;
     struct Lexer *lexer;
+    struct LinkedList *foreign_function_table;
     struct LinkedListNode *parser;
     // Used to store strings for each symbol
     struct LinkedList *symbol_table; 
@@ -112,6 +113,7 @@ void init_symbol_table(struct Globals *globals);
 // struct List *seek_end(struct List *list);
 char *lookup_symbol(struct Globals *globals, uint64_t symbol);
 bool is_builtin(uint64_t symbol);
+Symbol add_symbol(struct Globals *globals, char *str, int str_len);
 
 #endif
 

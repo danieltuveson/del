@@ -1,6 +1,7 @@
 #include "common.h"
 #include "linkedlist.h"
 #include "ast.h"
+#include "ffi.h"
 #include "typecheck.h"
 #include "printers.h"
 #include "compiler.h"
@@ -71,6 +72,12 @@ static inline void compile_offset(struct Globals *globals, size_t offset)
 {
     push(globals);
     DelValue value = { .offset = offset };
+    vector_append(&(globals->cc->instructions), value);
+}
+
+static inline void load_pointer(struct Globals *globals, void *pointer)
+{
+    DelValue value = { .pointer = (intptr_t)pointer };
     vector_append(&(globals->cc->instructions), value);
 }
 
@@ -226,10 +233,14 @@ static void compile_funargs(struct Globals *globals, Definitions *defs)
  */
 static void compile_fundef(struct Globals *globals, struct FunDef *fundef)
 {
-    add_ft_node(globals, globals->cc->funcall_table, fundef->name,
-            globals->cc->instructions->length);
-    compile_funargs(globals, fundef->args);
-    compile_statements(globals, fundef->stmts);
+    if (fundef->is_foreign) {
+        // Do nothing - handled in function call
+    } else {
+        add_ft_node(globals, globals->cc->funcall_table, fundef->name,
+                globals->cc->instructions->length);
+        compile_funargs(globals, fundef->args);
+        compile_statements(globals, fundef->stmts);
+    }
 }
 
 // v | v | t
@@ -372,17 +383,45 @@ static void compile_builtin_constructor(struct Globals *globals, Type type,
     compile_array(globals, type, constructor);
 }
 
-static void compile_funcall(struct Globals *globals, struct FunCall *funcall, bool is_stmt)
+static void compile_funcall_args(struct Globals *globals, struct LinkedList *args)
 {
-    Symbol funname = funcall->access->definition->name;
-    add_comment(globals, "function call: %s", lookup_symbol(globals, funname));
-    push(globals);
-    size_t bookmark = next(globals);
-    if (funcall->args != NULL) {
-        linkedlist_foreach(lnode, funcall->args->head) {
+    if (args != NULL) {
+        linkedlist_foreach(lnode, args->head) {
             compile_value(globals, lnode->value);
         }
     }
+}
+
+static void compile_foreign_funcall(struct Globals *globals, struct FunCall *funcall, bool is_stmt)
+{
+    Symbol funname = funcall->access->definition->name;
+    struct FunDef *fundef = lookup_fun(globals->cc->fundef_table, funname);
+    add_comment(globals, "foreign function call: %s", lookup_symbol(globals, funname));
+    size_t num_args = 0;
+    if (funcall->args != NULL) {
+        struct Value *value = NULL;
+        linkedlist_vforeach_reverse(value, funcall->args) {
+            compile_value(globals, value);
+            num_args++;
+        }
+    }
+    load_opcode(globals, CALL);
+    load_offset(globals, num_args);
+    load_pointer(globals, fundef->ffb->context);
+    load_pointer(globals, fundef->ffb->function);
+    if (is_stmt) {
+        pop(globals);
+    }
+}
+
+static void compile_del_funcall(struct Globals *globals, struct FunCall *funcall, bool is_stmt)
+{
+    Symbol funname = funcall->access->definition->name;
+    struct FunDef *fundef = lookup_fun(globals->cc->fundef_table, funname);
+    add_comment(globals, "function call: %s", lookup_symbol(globals, funname));
+    push(globals);
+    size_t bookmark = next(globals);
+    compile_funcall_args(globals, funcall->args);
     load_opcode(globals, PUSH_SCOPE);
     // push(globals);
     load_opcode(globals, JMP);
@@ -390,13 +429,23 @@ static void compile_funcall(struct Globals *globals, struct FunCall *funcall, bo
     add_callsite(globals, fct, funname, next(globals));
     globals->cc->instructions->values[bookmark].offset = globals->cc->instructions->length;
     load_opcode(globals, POP_SCOPE);
-    struct FunDef *fundef = lookup_fun(globals->cc->fundef_table, funname);
     if (is_stmt && fundef->rettype != TYPE_UNDEFINED) {
         if (is_object(fundef->rettype)) {
             pop_obj(globals);
         } else {
             pop(globals);
         }
+    }
+}
+
+static void compile_funcall(struct Globals *globals, struct FunCall *funcall, bool is_stmt)
+{
+    Symbol funname = funcall->access->definition->name;
+    struct FunDef *fundef = lookup_fun(globals->cc->fundef_table, funname);
+    if (fundef->is_foreign) {
+        compile_foreign_funcall(globals, funcall, is_stmt);
+    } else {
+        compile_del_funcall(globals, funcall, is_stmt);
     }
 }
 
@@ -830,8 +879,10 @@ static void compile_tld(struct Globals *globals, struct TopLevelDecl *tld)
             // compile_class(globals, tld->cls);
             break;
         case TLD_TYPE_FUNDEF:
-            add_comment(globals, "function definition: %s",
-                    lookup_symbol(globals, tld->fundef->name));
+            if (!tld->fundef->is_foreign) {
+                add_comment(globals, "function definition: %s",
+                        lookup_symbol(globals, tld->fundef->name));
+            }
             compile_fundef(globals, tld->fundef);
             break;
     }

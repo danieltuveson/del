@@ -778,17 +778,16 @@ static struct TopLevelDecl *parse_tld(struct Globals *globals)
     return tld;
 }
 
-TopLevelDecls *parse_tlds(struct Globals *globals)
+bool parse_tlds(struct Globals *globals)
 {
-    TopLevelDecls *tlds = linkedlist_new(globals->allocator);
     do {
         struct TopLevelDecl *tld = parse_tld(globals);
         if (!tld) {
-            return NULL;
+            return false;
         }
-        linkedlist_append(tlds, tld);
-    } while (globals->parser != NULL);
-    return tlds;
+        linkedlist_append(globals->ast, tld);
+    } while (globals->parser != false);
+    return true;
 }
 
 #undef match_multiple

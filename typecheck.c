@@ -156,8 +156,7 @@ static bool add_class(struct ClassTable *ct, struct Class *cls)
     uint64_t loc;
     find_open_loc(loc, ct->table, ct->size, cls->name);
     struct Class *clst = &ct->table[loc];
-    clst->name = cls->name;
-    clst->definitions = cls->definitions;
+    memcpy(clst, cls, sizeof(*cls));
     return true;
     // Eventually we'll need to figure out what to do with methods... maybe a table for each?
 }
@@ -167,11 +166,7 @@ static bool add_function(struct FunctionTable *ft, struct FunDef *fundef)
     uint64_t loc = fundef->name % ft->size;
     find_open_loc(loc, ft->table, ft->size, fundef->name);
     struct FunDef *new_fundef = &ft->table[loc];
-    new_fundef->name = fundef->name;
-    // new_fundef->rettype = TYPE_UNDEFINED;
-    new_fundef->rettype = fundef->rettype;
-    new_fundef->args = fundef->args;
-    new_fundef->stmts = fundef->stmts;
+    memcpy(new_fundef, fundef, sizeof(*fundef));
     return true;
 }
 
@@ -744,7 +739,6 @@ static bool typecheck_increment(struct Globals *globals, struct TypeCheckerConte
 static bool typecheck_funcall(struct Globals *globals, struct TypeCheckerContext *context,
         struct FunCall *funcall, struct FunDef *fundef)
 {
-    // struct FunDef *fundef = lookup_fun(context->fun_table, funcall->funname);
     if (fundef == NULL) {
         fprintf(globals->ferr, "Error: no function named %s\n",
                 lookup_symbol(globals, funcall->access->definition->name));
@@ -764,24 +758,33 @@ static bool typecheck_funcall(struct Globals *globals, struct TypeCheckerContext
 
     // Validate arguments
     struct LinkedListNode *vals = funcall->args->head;
-    struct LinkedListNode *defs = fundef->args->head;
+    struct LinkedListNode *defs_or_types = fundef->is_foreign
+        ? fundef->types->head
+        : fundef->args->head;
     for (uint64_t i = 0; i < funcall->args->length; i++) {
         struct Value *val = vals->value;
-        struct Definition *fun_arg_def = defs->value;
+        Type fun_arg_def_type = TYPE_UNDEFINED;
+        if (fundef->is_foreign) {
+            Type *fun_arg_def_type_ptr = defs_or_types->value;
+            fun_arg_def_type = *fun_arg_def_type_ptr;
+        } else {
+            struct Definition *fun_arg_def = defs_or_types->value;
+            fun_arg_def_type = fun_arg_def->type;
+        }
         Type val_type = typecheck_value(globals, context, val);
         if (val_type == TYPE_UNDEFINED) {
             return false;
-        } else if (!(is_object(fun_arg_def->type) && val_type == TYPE_NULL)
-                && (val_type != fun_arg_def->type)) {
-            fprintf(globals->ferr, "Error: expected argument %" PRIu64 " to %s to be of type %s, but got "
-                   "argument of type %s\n",
+        } else if (!(is_object(fun_arg_def_type) && val_type == TYPE_NULL)
+                && (val_type != fun_arg_def_type)) {
+            fprintf(globals->ferr, "Error: expected argument %" PRIu64 " to %s to be of type %s,"
+                    " but got argument of type %s\n",
                     i + 1, lookup_symbol(globals, fundef->name),
-                    lookup_symbol(globals, fun_arg_def->type),
+                    lookup_symbol(globals, fun_arg_def_type),
                     lookup_symbol(globals, val_type));
             return false;
         }
         vals = vals->next;
-        defs = defs->next;
+        defs_or_types = defs_or_types->next;
     }
     return true;
 }
@@ -1005,7 +1008,10 @@ static bool typecheck_type(struct Globals *globals, struct TypeCheckerContext *c
 static bool typecheck_fundef(struct Globals *globals, struct TypeCheckerContext *context,
         struct FunDef *fundef)
 {
-    if (!typecheck_entrypoint(globals, fundef)) {
+    if (fundef->is_foreign) {
+        // Can't really inspect body of foreign functions - assume they are correct
+        return true;
+    } else if (!typecheck_entrypoint(globals, fundef)) {
         return false;
     }
     struct Scope *scope = NULL;

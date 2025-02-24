@@ -160,7 +160,13 @@ void print_instructions(struct CompilerContext *cc)
                 printf("CAST_FLOAT");
                 break;
             case CALL:
-                printf("CALL\n");
+                i++;
+                uint64_t num_args = instructions->values[i].offset;
+                i++;
+                void *context = (void *)instructions->values[i].pointer;
+                i++;
+                void *function = (void *)instructions->values[i].pointer;
+                printf("CALL args %lu, context %p, function %p\n", num_args, context, function);
                 break;
             case EQ_OBJ:
                 printf("EQ_OBJ\n");

@@ -32,7 +32,7 @@ typedef struct {
 struct VirtualMachine {
     FILE *fout;
     FILE *ferr;
-    enum VirtualMachineStatus status;
+    enum DelVirtualMachineStatus status;
     struct StackFrames sfs;
     struct StackFrames sfs_obj;
     struct Stack stack;

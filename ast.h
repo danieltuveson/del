@@ -1,6 +1,7 @@
 #ifndef AST_H
 #define AST_H
 #include "common.h"
+#include "del.h"
 
 /* Misc forward declarations */
 struct Expr;
@@ -67,10 +68,17 @@ struct Class {
 
 struct FunDef {
     Symbol name;
+    bool is_foreign;
     Type rettype;
     uint64_t num_locals; // I don't know if I have a purpose for this
-    Definitions *args;
-    Statements *stmts;
+    union {
+        Definitions *args;
+        Types *types;
+    };
+    union {
+        Statements *stmts;
+        struct ForeignFunctionBody *ffb;
+    };
 };
 
 struct TopLevelDecl {
@@ -236,8 +244,10 @@ struct TopLevelDecl *new_class(struct Globals *globals, Symbol symbol, Definitio
         TopLevelDecls *methods);
 struct TopLevelDecl *new_tld_fundef(struct Globals *globals, Symbol symbol, Type rettype,
         Definitions *args, Statements *stmts);
-struct FunDef *new_fundef(struct Globals *globals, Symbol symbol, Type rettype,
-        Definitions *args, Statements *stmts);
+struct TopLevelDecl *new_tld_foreign_fundef(struct Globals *globals, Symbol symbol, Type rettype,
+        Types *types, struct ForeignFunctionBody *ffb);
+// struct FunDef *new_fundef(struct Globals *globals, Symbol symbol, Type rettype,
+//         Definitions *args, Statements *stmts);
 
 /* Statement constructors */
 struct Statement *new_stmt(struct Globals *globals, enum StatementType st);

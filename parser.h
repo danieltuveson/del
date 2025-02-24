@@ -5,7 +5,7 @@
 #include "linkedlist.h"
 
 struct Value *parse_expr(struct Globals *globals);
-TopLevelDecls *parse_tlds(struct Globals *globals);
+bool parse_tlds(struct Globals *globals);
 
 #endif
 

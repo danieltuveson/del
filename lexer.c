@@ -351,35 +351,6 @@ static bool is_symbol_token(char c)
     return (isalnum(c) || c == '_');
 }
 
-static Symbol add_symbol(struct Globals *globals, char *yytext, int yyleng)
-{
-    if (globals->symbol_table == NULL) init_symbol_table(globals);
-    /* Adds symbols to symbol table */
-    struct LinkedListNode *symbol_table = globals->symbol_table->head;
-    uint64_t cnt = 0;
-    char *symbol;
-    while (1) {
-        if (strcmp(symbol_table->value, yytext) == 0) {
-            goto addsymbol;
-        }
-        cnt++;
-        if (symbol_table->next == NULL) {
-            break;
-        } else {
-            symbol_table = symbol_table->next;
-        }
-    }
-    symbol = allocator_malloc(globals->allocator, (yyleng + 1) * sizeof(char));
-    strcpy(symbol, yytext);
-    // symbol_table->next = new_list(symbol);
-    linkedlist_append(globals->symbol_table, symbol);
-addsymbol:
-    if (strcmp(yytext, "main") == 0) {
-        globals->entrypoint = cnt;
-    }
-    return cnt;
-}
-
 static void tokenize_symbol(struct Globals *globals)
 {
     int init_offset = globals->lexer->offset;

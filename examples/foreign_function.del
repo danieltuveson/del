@@ -1,0 +1,8 @@
+function main() {
+    hello_world();
+    let x = add_ints(44, 55);
+    println(x);
+    let y = add_floats(-99.99, 12.34);
+    println(y);
+}
+

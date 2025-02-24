@@ -7,6 +7,8 @@
 
 #include "bytecode.h"
 
+typedef struct LinkedList BreakLocations;
+
 typedef union {
     int64_t integer;
     size_t offset;
@@ -16,9 +18,8 @@ typedef union {
     uint16_t types[4];
     enum Code opcode;
     Type type;
+    intptr_t pointer;
 } DelValue;
-
-typedef struct LinkedList BreakLocations;
 
 struct Comment {
     size_t location;
