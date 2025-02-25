@@ -572,6 +572,7 @@ void vm_init(struct VirtualMachine *vm, FILE *fout, FILE *ferr, DelValue *instru
 {
     vm->fout = fout;
     vm->ferr = ferr;
+    vm->status = DEL_VM_STATUS_INITIALIZED;
     vm->stack.values = calloc(STACK_MAX, sizeof(*(vm->stack.values)));
     vm->stack_obj.values = calloc(STACK_MAX, sizeof(*(vm->stack_obj.values)));
     vm->sfs.values = calloc(STACK_MAX, sizeof(*(vm->sfs.values)));
@@ -613,7 +614,7 @@ void vm_free(struct VirtualMachine *vm)
 
 #define pause_after(n) do {\
     if (unexpected(iterations % n == 0)) {\
-        status = DEL_VM_STATUS_PAUSE;\
+        status = DEL_VM_STATUS_YIELD;\
         goto exit_loop;\
     }\
 } while(0)
@@ -884,6 +885,10 @@ uint64_t vm_execute(struct VirtualMachine *vm)
             vm_case(EXIT):
                 status = DEL_VM_STATUS_COMPLETED;
                 goto exit_loop;
+            vm_case(YIELD):
+                ip++;
+                status = DEL_VM_STATUS_YIELD;
+                goto exit_loop;
             vm_case(CAST_INT):
                 val1 = pop(&stack);
                 push_integer(&stack, (int64_t)val1.floating);
@@ -983,6 +988,8 @@ exit_loop:
     vm->iterations = iterations;
     vm->instructions = instructions;
     vm->string_pool = string_pool;
+    fflush(vm->fout);
+    fflush(vm->ferr);
     return ret;
 }
 

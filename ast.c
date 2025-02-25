@@ -3,6 +3,7 @@
 // #include "printers.h"
 #include "linkedlist.h"
 #include "del.h"
+#include "ffi.h"
 #include "ast.h"
 
 /* Functions to create top level definitions */
@@ -88,34 +89,6 @@ struct Accessor *new_accessor(struct Globals *globals, Symbol symbol, LValues *l
     return accessor;
 }
 
-// static struct FunDef *new_fundef(struct Globals *globals, Symbol symbol, Type rettype,
-//         Definitions *args, Statements *stmts)
-// {
-//     struct FunDef *fundef = allocator_malloc(globals->allocator, sizeof(*fundef));
-//     fundef->name = symbol;
-//     fundef->is_foreign = false;
-//     fundef->rettype = rettype;
-//     fundef->num_locals = 0;
-//     fundef->args = args;
-//     fundef->stmts = stmts;
-//     fundef->ffb = NULL;
-//     return fundef;
-// }
-
-// static struct FunDef *new_foreign_fundef(struct Globals *globals, Symbol symbol, Type rettype,
-//         struct ForeignFunctionBody *ffb)
-// {
-//     struct FunDef *fundef = allocator_malloc(globals->allocator, sizeof(*fundef));
-//     fundef->name = symbol;
-//     fundef->is_foreign = true;
-//     fundef->rettype = rettype;
-//     fundef->num_locals = 0;
-//     fundef->args = NULL;
-//     fundef->stmts = NULL;
-//     fundef->ffb = ffb;
-//     return fundef;
-// }
-
 struct TopLevelDecl *new_tld_fundef(struct Globals *globals, Symbol symbol, Type rettype,
         Definitions *args, Statements *stmts)
 {
@@ -147,15 +120,6 @@ struct TopLevelDecl *new_tld_foreign_fundef(struct Globals *globals, Symbol symb
     tld->fundef = fundef;
     return tld;
 }
-
-// struct TopLevelDecl *new_tld_foreign_fundef(struct Globals *globals, Symbol symbol, Type rettype,
-//         Definitions *args, Statements *stmts)
-// {
-//     globals->function_count++;
-//     struct TopLevelDecl *tld = new_tld(globals, TLD_TYPE_FUNDEF);
-//     tld->fundef = new_fundef(globals, symbol, true, rettype, args, stmts);
-//     return tld;
-// }
 
 /* Functions to create Statements */
 struct Statement *new_stmt(struct Globals *globals, enum StatementType st)

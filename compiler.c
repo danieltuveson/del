@@ -412,6 +412,9 @@ static void compile_foreign_funcall(struct Globals *globals, struct FunCall *fun
     if (is_stmt) {
         pop(globals);
     }
+    if (fundef->ffb->is_yielding) {
+        load_opcode(globals, YIELD);
+    }
 }
 
 static void compile_del_funcall(struct Globals *globals, struct FunCall *funcall, bool is_stmt)

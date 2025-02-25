@@ -41,6 +41,7 @@ enum Code {
     POP,
     POP_OBJ,
     EXIT,
+    YIELD,
     GET_LOCAL,
     SET_LOCAL,
     GET_LOCAL_OBJ,

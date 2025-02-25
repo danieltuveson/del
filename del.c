@@ -152,9 +152,8 @@ void del_compiler_free(DelCompiler compiler)
     free(globals);
 }
 
-void del_register_function_helper(DelCompiler compiler, void *context,
-        DelForeignFunctionCall function, char *ff_name,
-        int arg_count, ...)
+void del_register_function_helper(DelCompiler compiler, void *context, bool is_yielding,
+        DelForeignFunctionCall function, char *ff_name, int arg_count, ...)
 {
     struct Globals *globals = (struct Globals *) compiler;
     struct LinkedList *types = linkedlist_new(globals->allocator);
@@ -168,7 +167,7 @@ void del_register_function_helper(DelCompiler compiler, void *context,
         linkedlist_append(types, type_ptr);
     }
     va_end(arg_list);
-    ffi_register_function(globals, context, function, ff_name, rettype, types);
+    ffi_register_function(globals, context, is_yielding, function, ff_name, rettype, types);
 }
 
 DelProgram del_compile_text(DelCompiler compiler, char *program_text)

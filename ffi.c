@@ -56,14 +56,15 @@ static void validate_ffs(struct Globals *globals, char *ff_name)
     }
 }
 
-void ffi_register_function(struct Globals *globals, void *context, DelForeignFunctionCall function,
-        char *ff_name, enum DelForeignType rettype, Types *types) 
+void ffi_register_function(struct Globals *globals, void *context, bool is_yielding,
+        DelForeignFunctionCall function, char *ff_name, enum DelForeignType rettype, Types *types)
 {
     validate_ffs(globals, ff_name);
     Symbol symbol = add_symbol(globals, ff_name, strlen(ff_name));
     struct ForeignFunction *ff = allocator_malloc(globals->allocator, sizeof(*ff));
     ff->symbol = symbol;
     ff->function_name = ff_name;
+    ff->is_yielding   = is_yielding;
     ff->return_type   = convert_ffi_type(rettype);
     ff->arg_types     = types;
     ff->context       = context;
@@ -76,6 +77,7 @@ bool ffi_register_functions(struct Globals *globals)
     struct ForeignFunction *ff = NULL;
     linkedlist_vforeach(ff, globals->foreign_function_table) {
         struct ForeignFunctionBody *ffb = allocator_malloc(globals->allocator, sizeof(*ffb));
+        ffb->is_yielding = ff->is_yielding;
         ffb->context = ff->context;
         ffb->function = ff->function;
         Type rettype = ff->return_type;

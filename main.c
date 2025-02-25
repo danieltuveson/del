@@ -47,9 +47,7 @@ union DelForeignValue hello_world(union DelForeignValue *arguments, void *contex
     IGNORE(arguments);
     IGNORE(context);
     printf("Hello, from the world of C!\n");
-    union DelForeignValue del_val;
-    del_val.integer = 0;
-    return del_val;
+    DEL_NORETURN();
 }
 
 // Example foreign function that adds two integers and returns the result
@@ -85,7 +83,7 @@ int main(int argc, char *argv[])
     del_compiler_init(&compiler, stderr);
 
     // Add foreign functions
-    del_register_function(compiler, NULL, hello_world, DEL_UNDEFINED);
+    del_register_yielding_function(compiler, NULL, hello_world, DEL_UNDEFINED);
     del_register_function(compiler, NULL, add_ints, DEL_INT, DEL_INT, DEL_INT);
 
     // Set up any info that we want to read from foreign function
@@ -104,13 +102,18 @@ int main(int argc, char *argv[])
     DelVM vm;
     del_vm_init(&vm, stdout, stderr, program);
     del_vm_execute(vm);
+    while (del_vm_status(vm) == DEL_VM_STATUS_YIELD) {
+        printf("Resuming after yield...\n");
+        del_vm_execute(vm);
+    }
+    printf("Finished!\n");
+    printf("Number we added earlier: %f\n", del_val_context);
+
     if (del_vm_status(vm) == DEL_VM_STATUS_ERROR) {
         del_vm_free(vm);
         del_program_free(program);
         return EXIT_FAILURE;
     }
-
-    printf("Number we added earlier: %f\n", del_val_context);
 
     del_vm_free(vm);
     del_program_free(program);
