@@ -1,6 +1,6 @@
 
 function main() {
-    let x, y, z;
+    let x: string, y: int, z: int;
     let a = 4;
     if true {
         y = 2;

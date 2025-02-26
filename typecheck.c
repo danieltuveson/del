@@ -170,9 +170,6 @@ static bool add_function(struct FunctionTable *ft, struct FunDef *fundef)
     return true;
 }
 
-// Add declared types to ast without typechecking
-// TODO: Validate class / function definitions
-// Basically just make sure that there aren't 2 properties / arguments with the same name
 static bool add_types(TopLevelDecls *tlds, struct ClassTable *clst, struct FunctionTable *ft)
 {
     linkedlist_foreach(lnode, tlds->head) {
@@ -222,10 +219,8 @@ static Type typecheck_expression(struct Globals *globals, struct TypeCheckerCont
             if (op_str == NULL) op_str = "&&";
             if (are_both_bool) {
                 return TYPE_BOOL;
-            } else {
-                fprintf(globals->ferr, "Error: '%s' has non-boolean operands\n", op_str);
-                return TYPE_UNDEFINED;
             }
+            break;
         case OP_EQEQ:
             op_str = "==";
             // fall through
@@ -234,10 +229,8 @@ static Type typecheck_expression(struct Globals *globals, struct TypeCheckerCont
             if (are_both_int || are_both_float || are_both_bool || are_both_string
                     || are_both_byte || are_both_obj) {
                 return TYPE_BOOL;
-            } else {
-                fprintf(globals->ferr, "Error: mismatched types on '%s' operands\n", op_str);
-                return TYPE_UNDEFINED;
             }
+            break;
         case OP_GREATER_EQ:
             op_str = ">=";
             // fall through
@@ -251,25 +244,13 @@ static Type typecheck_expression(struct Globals *globals, struct TypeCheckerCont
             if (op_str == NULL) op_str = "<";
             if (are_both_int || are_both_float || are_both_byte) {
                 return TYPE_BOOL;
-            } else {
-                fprintf(globals->ferr, "Error: mismatched types on '%s' operands\n", op_str);
-                return TYPE_UNDEFINED;
             }
+            break;
         case OP_PLUS:
-            if (are_both_int) {
-                return TYPE_INT;
-            } else if (are_both_byte) {
-                return TYPE_BYTE;
-            } else if (are_both_float) {
-                return TYPE_FLOAT;
-            } else if (are_both_string) {
-                return TYPE_STRING;
-            } else {
-                fprintf(globals->ferr, "Error: mismatched types for '+' operands\n");
-                return TYPE_UNDEFINED;
-            }
+            op_str = "+";
+            // fall through
         case OP_MINUS:
-            op_str = "-";
+            if (op_str == NULL) op_str = "-";
             // fall through
         case OP_STAR:
             if (op_str == NULL) op_str = "*";
@@ -282,25 +263,16 @@ static Type typecheck_expression(struct Globals *globals, struct TypeCheckerCont
                 return TYPE_BYTE;
             } else if (are_both_float) {
                 return TYPE_FLOAT;
-            } else if (are_both_byte) {
-                return TYPE_BYTE;
-            } else {
-                fprintf(globals->ferr, "Error: mismatched types for '%s' operands\n", op_str);
-                return TYPE_UNDEFINED;
             }
+            break;
         case OP_PERCENT:
             if (op_str == NULL) op_str = "%";
             if (are_both_int) {
                 return TYPE_INT;
             } else if (are_both_byte) {
                 return TYPE_BYTE;
-            } else if (are_both_float) {
-                fprintf(globals->ferr, "Error: cannot use %s on floats\n", op_str);
-                return TYPE_UNDEFINED;
-            } else {
-                fprintf(globals->ferr, "Error: mismatched types for '%s' operands\n", op_str);
-                return TYPE_UNDEFINED;
             }
+            break;
         case OP_UNARY_PLUS:
             op_str = "+";
             // fall through
@@ -310,14 +282,18 @@ static Type typecheck_expression(struct Globals *globals, struct TypeCheckerCont
                 return TYPE_INT;
             } else if (left_is_float && right_is_undef) {
                 return TYPE_FLOAT;
-            } else {
-                fprintf(globals->ferr, "Error: expecting numeric operand for '%s'\n", op_str);
-                return TYPE_UNDEFINED;
             }
-        default:
-            assert("Error, not implemented" && false);
             break;
     };
+    if (type_left != type_right) {
+        fprintf(globals->ferr, "Error: mismatched types for '%s' operands\n", op_str);
+    } else {
+        // This message works for both unary and binary, since we only have left associative
+        // operators
+        fprintf(globals->ferr, "Error: cannot use '%s' operator on objects of type '%s'\n",
+                op_str, lookup_symbol(globals, type_left));
+    }
+    return TYPE_UNDEFINED;
 }
 
 static Type typecheck_new_array(struct Globals *globals, struct TypeCheckerContext *context,
@@ -408,14 +384,14 @@ general_error:
     return TYPE_UNDEFINED;
 }
 
-static Type typecheck_read(struct Globals *globals, Values *args)
-{
-    if (args == NULL || args->length == 0) {
-        return TYPE_STRING;
-    }
-    fprintf(globals->ferr, "Error: read function does not take arguments\n");
-    return TYPE_UNDEFINED;
-}
+// static Type typecheck_read(struct Globals *globals, Values *args)
+// {
+//     // if (args == NULL || args->length == 0) {
+//     //     return TYPE_STRING;
+//     // }
+//     // fprintf(globals->ferr, "Error: read function does not take arguments\n");
+//     // return TYPE_UNDEFINED;
+// }
 
 static Type typecheck_value(struct Globals *globals, struct TypeCheckerContext *context,
         struct Value *val)
@@ -443,6 +419,7 @@ static Type typecheck_value(struct Globals *globals, struct TypeCheckerContext *
         case VTYPE_CONSTRUCTOR:
             val->type = typecheck_constructor(globals, context, val->constructor);
             return val->type;
+        case VTYPE_BUILTIN_FUNCALL:
         case VTYPE_FUNCALL: {
             Symbol funname = val->funcall->access->definition->name;
             assert(linkedlist_is_empty(val->funcall->access->lvalues));
@@ -467,19 +444,19 @@ static Type typecheck_value(struct Globals *globals, struct TypeCheckerContext *
         case VTYPE_INDEX:
             val->type = typecheck_get_index(globals, context, val->get_property);
             return val->type;
-        case VTYPE_BUILTIN_FUNCALL:
-            name = val->funcall->access->definition->name;
-            assert(linkedlist_is_empty(val->funcall->access->lvalues));
-            if (name == BUILTIN_READ) {
-                val->type = TYPE_STRING;
-                return typecheck_read(globals, val->funcall->args);
-            // } else if (name == BUILTIN_CONCAT) {
-            //     assert("Error: not implemented\n" && false);
-            //     // val->type = TYPE_ARRAY;
-            //     return typecheck_concat(globals, val->funcall->args);
-            } else {
-                assert("Error: not implemented\n" && false);
-            }
+        // case VTYPE_BUILTIN_FUNCALL:
+        //     name = val->funcall->access->definition->name;
+        //     assert(linkedlist_is_empty(val->funcall->access->lvalues));
+        //     if (name == BUILTIN_READ) {
+        //         val->type = TYPE_STRING;
+        //         return typecheck_read(globals, val->funcall->args);
+        //     // } else if (name == BUILTIN_CONCAT) {
+        //     //     assert("Error: not implemented\n" && false);
+        //     //     // val->type = TYPE_ARRAY;
+        //     //     return typecheck_concat(globals, val->funcall->args);
+        //     } else {
+        //         assert("Error: not implemented\n" && false);
+        //     }
         case VTYPE_BUILTIN_CONSTRUCTOR:
             name = val->constructor->funcall->access->definition->name;
             assert(linkedlist_is_empty(val->constructor->funcall->access->lvalues));

@@ -199,7 +199,7 @@ static size_t add_to_pool(struct Globals *globals, char *string)
 
 static void compile_string(struct Globals *globals, char *string)
 {
-    index = add_to_pool(globals, string);
+    size_t index = add_to_pool(globals, string);
     compile_offset(globals, index);
 }
 
@@ -296,7 +296,7 @@ static uint64_t compile_xet_property(struct Globals *globals, struct GetProperty
     return index;
 }
 
-static uint64_t compile_get_property(struct Globals *globals, Type type, struct GetProperty *get,
+static void compile_get_property(struct Globals *globals, Type type, struct GetProperty *get,
         bool is_increment)
 {
     if (is_array(get->accessor->type) && get->property == BUILTIN_LENGTH) {
@@ -304,9 +304,9 @@ static uint64_t compile_get_property(struct Globals *globals, Type type, struct 
         load_opcode(globals, LEN_ARRAY);
     } else {
         enum Code code = is_object(type) ? GET_HEAP_OBJ : GET_HEAP;
-        uint64_t index = compile_xet_property(globals, get, code, is_increment);
+        compile_xet_property(globals, get, code, is_increment);
         // load_opcode(globals, GET_HEAP);
-        return index;
+        // return index;
     }
 }
 
@@ -533,28 +533,19 @@ static void compile_expr(struct Globals *globals, struct Expr *expr)
         case OP_EQEQ:
            if (val1->type == TYPE_FLOAT) {
                compile_binary_op(globals, val1, val2, FLOAT_EQ);
-           } else if (is_int_type(val1) || val1->type == TYPE_BOOL) {
-               compile_binary_op(globals, val1, val2, EQ);
            } else if (is_object_or_null(val1->type)) {
                compile_binary_op(globals, val1, val2, EQ_OBJ);
-           } else if (val1->type == TYPE_STRING) {
-               // compile_str_eq(globals, val1, val2)
-               assert(false);
            } else {
-               assert(false);
+               compile_binary_op(globals, val1, val2, EQ);
            }
            break;
         case OP_NOT_EQ:
            if (val1->type == TYPE_FLOAT) {
                compile_binary_op(globals, val1, val2, FLOAT_NEQ);
-           } else if (is_int_type(val1) || val1->type == TYPE_BOOL) {
-               compile_binary_op(globals, val1, val2, NEQ);
            } else if (is_object_or_null(val1->type)) {
                compile_binary_op(globals, val1, val2, NEQ_OBJ);
-           } else if (val1->type == TYPE_STRING) {
-               assert(false);
            } else {
-               assert(false);
+               compile_binary_op(globals, val1, val2, NEQ);
            }
            break;
         case OP_GREATER_EQ:
@@ -562,8 +553,6 @@ static void compile_expr(struct Globals *globals, struct Expr *expr)
                compile_binary_op(globals, val1, val2, FLOAT_GTE);
            } else if (is_int_type(val1)) {
                compile_binary_op(globals, val1, val2, GTE);
-           } else {
-               assert(false);
            }
            break;
         case OP_GREATER:
@@ -571,8 +560,6 @@ static void compile_expr(struct Globals *globals, struct Expr *expr)
                compile_binary_op(globals, val1, val2, FLOAT_GT);
            } else if (is_int_type(val1)) {
                compile_binary_op(globals, val1, val2, GT);
-           } else {
-               assert(false);
            }
            break;
         case OP_LESS_EQ:
@@ -580,8 +567,6 @@ static void compile_expr(struct Globals *globals, struct Expr *expr)
                compile_binary_op(globals, val1, val2, FLOAT_LTE);
            } else if (is_int_type(val1)) {
                compile_binary_op(globals, val1, val2, LTE);
-           } else {
-               assert(false);
            }
            break;
         case OP_LESS:
@@ -589,8 +574,6 @@ static void compile_expr(struct Globals *globals, struct Expr *expr)
                compile_binary_op(globals, val1, val2, FLOAT_LT);
            } else if (is_int_type(val1)) {
                compile_binary_op(globals, val1, val2, LT);
-           } else {
-               assert(false);
            }
            break;
         case OP_PLUS:
@@ -598,10 +581,6 @@ static void compile_expr(struct Globals *globals, struct Expr *expr)
                compile_binary_op(globals, val1, val2, FLOAT_ADD);
            } else if (is_int_type(val1)) {
                compile_binary_op(globals, val1, val2, ADD);
-           } else if (val1->type == TYPE_STRING) {
-               assert(false);
-           } else {
-               assert(false);
            }
            break;
         case OP_MINUS:
@@ -609,8 +588,6 @@ static void compile_expr(struct Globals *globals, struct Expr *expr)
                compile_binary_op(globals, val1, val2, FLOAT_SUB);
            } else if (is_int_type(val1)) {
                compile_binary_op(globals, val1, val2, SUB);
-           } else {
-               assert(false);
            }
            break;
         case OP_STAR:
@@ -618,8 +595,6 @@ static void compile_expr(struct Globals *globals, struct Expr *expr)
                compile_binary_op(globals, val1, val2, FLOAT_MUL);
            } else if (is_int_type(val1)) {
                compile_binary_op(globals, val1, val2, MUL);
-           } else {
-               assert(false);
            }
            break;
         case OP_SLASH:
@@ -627,8 +602,6 @@ static void compile_expr(struct Globals *globals, struct Expr *expr)
                compile_binary_op(globals, val1, val2, FLOAT_DIV);
            } else if (is_int_type(val1)) {
                compile_binary_op(globals, val1, val2, DIV);
-           } else {
-               assert(false);
            }
            break;
         case OP_PERCENT:
@@ -642,8 +615,6 @@ static void compile_expr(struct Globals *globals, struct Expr *expr)
                compile_unary_op(globals, val1, FLOAT_UNARY_MINUS);
            } else if (val1->type == TYPE_INT) {
                compile_unary_op(globals, val1, UNARY_MINUS);
-           } else {
-               assert(false);
            }
            break;
         default:

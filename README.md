@@ -57,6 +57,11 @@ function main() {
   - Module / namespace solutions
   - Error handling
 - Windows support
+- Low hanging fruit that I forgot about
+  - ! (logical not)
+  - Float stuff: ability to check for NaN, infinities, etc
+  - Bitwise operators (maybe)
+  - Read function (maybe)
 
 
 ## Things to continuously improve

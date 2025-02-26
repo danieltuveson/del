@@ -49,7 +49,6 @@ enum OperatorType {
     OP_STAR,
     OP_SLASH,
     OP_PERCENT,
-    OP_CAST,
     // Unary ops
     OP_UNARY_PLUS,
     OP_UNARY_MINUS
