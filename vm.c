@@ -481,7 +481,7 @@ static void print(struct Heap *heap, struct Stack *stack, struct Stack *stack_ob
     count = get_count(ptr);
     if (is_array(type) && type_of_array(type) == TYPE_BYTE) {
         for (size_t i = location; i < count + location; i++) {
-            fputc(vector_get(heap->vector, i).byte, stdout);
+            fputc(vector_get(heap->vector, i).byte, fout);
         }
     } else if (is_array(type)) {
         Type arr_type = type_of_array(type);
@@ -697,6 +697,7 @@ uint64_t vm_execute(struct VirtualMachine *vm)
                 count = instructions[ip].offset;
                 ip++;
                 metadata = instructions[ip].offset;
+                check_push(&stack_obj);
                 if (!push_heap(count, metadata, &heap, &stack, &stack_obj, &sfs_obj, string_pool,
                             vm->ferr)) {
                     status = DEL_VM_STATUS_ERROR;
@@ -704,13 +705,17 @@ uint64_t vm_execute(struct VirtualMachine *vm)
                 }
                 vm_break;
             vm_case(PUSH_ARRAY):
+                check_push(&stack_obj);
                 if (!push_array(&heap, &stack, &stack_obj, vm->ferr)) {
                     status = DEL_VM_STATUS_ERROR;
                     goto exit_loop;
                 }
                 vm_break;
             vm_case(LEN_ARRAY):
-                TODO();
+                val1 = pop(&stack_obj);
+                int64_t length = (int64_t) get_count(val1.offset);
+                check_push(&stack);
+                push_integer(&stack, length);
                 vm_break;
             vm_case(GET_HEAP):
                 ip++;
@@ -896,6 +901,28 @@ uint64_t vm_execute(struct VirtualMachine *vm)
             vm_case(CAST_FLOAT):
                 val1 = pop(&stack);
                 push_floating(&stack, (double)val1.integer);
+                vm_break;
+            vm_case(CAST_BYTE_ARRAY):
+                val1 = pop(&stack);
+                char *str = string_pool[val1.offset];
+                int str_len = strlen(str);
+                // Create byte array
+                push_integer(&stack, str_len);
+                check_push(&stack);
+                push_offset(&stack, TYPE_BYTE);
+                check_push(&stack_obj);
+                if (!push_array(&heap, &stack, &stack_obj, vm->ferr)) {
+                    status = DEL_VM_STATUS_ERROR;
+                    goto exit_loop;
+                }
+                val2 = pop(&stack_obj);
+                // Populate byte array
+                size_t location = get_location(val2.offset);
+                for (int i = 0; i < str_len; i++) {
+                    heap.vector->values[location + i].byte = str[i];
+                }
+                // Note: No null termination for byte arrays
+                push(&stack_obj, val2);
                 vm_break;
             vm_case(CALL):
                 ip++;

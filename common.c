@@ -39,6 +39,9 @@ void init_symbol_table(struct Globals *globals)
     // Builtin methods 
     add_sym("constructor");
 
+    // Builtin properties
+    add_sym("length");
+
     // Reserved variable names
     add_sym("self");
 }

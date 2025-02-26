@@ -58,6 +58,7 @@ enum Code {
     SET_ARRAY_OBJ,
     CAST_INT,
     CAST_FLOAT,
+    CAST_BYTE_ARRAY,
     CALL,
     SWAP,
     PUSH_SCOPE,

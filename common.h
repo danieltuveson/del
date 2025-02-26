@@ -75,8 +75,11 @@ typedef uint16_t Type;
 /* Builtin methods */
 #define BUILTIN_CONSTRUCTOR UINT64_C(12)
 
+/* Builtin properties */
+#define BUILTIN_LENGTH UINT64_C(13)
+
 /* Builtin variables */
-#define BUILTIN_SELF UINT64_C(13)
+#define BUILTIN_SELF UINT64_C(14)
 
 #define BUILTIN_FIRST BUILTIN_PRINT
 #define BUILTIN_LAST BUILTIN_SELF

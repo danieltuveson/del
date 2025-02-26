@@ -295,7 +295,7 @@ static struct Value *parse_property_access(struct Globals *globals, struct Value
             if (TYPE_UNDEFINED) {
                 return NULL;
             }
-            return new_cast(globals, val, type);
+            val = new_cast(globals, val, type);
         } else {
             break;
         }
@@ -312,28 +312,30 @@ static struct Value *parse_subexpr(struct Globals *globals)
     struct Value *val = NULL;
     struct LinkedListNode *old_head = globals->parser;
     if (match(globals, T_INT)) {
-        return new_integer(globals, nth_token(old_head, 1)->integer);
+        val = new_integer(globals, nth_token(old_head, 1)->integer);
     } else if (match(globals, T_FLOAT)) {
-        return new_floating(globals, nth_token(old_head, 1)->floating);
+        val = new_floating(globals, nth_token(old_head, 1)->floating);
     } else if (match(globals, T_STRING)) {
-        return new_string(globals, nth_token(old_head, 1)->string);
+        val = new_string(globals, nth_token(old_head, 1)->string);
     } else if (match(globals, T_BYTE)) {
-        return new_byte(globals, nth_token(old_head, 1)->byte);
+        val = new_byte(globals, nth_token(old_head, 1)->byte);
     } else if (match(globals, ST_TRUE)) {
-        return new_boolean(globals, 1);
+        val = new_boolean(globals, 1);
     } else if (match(globals, ST_FALSE)) {
-        return new_boolean(globals, 0);
+        val = new_boolean(globals, 0);
     } else if (match(globals, ST_NULL)) {
-        return new_null(globals);
+        val = new_null(globals);
     } else if (match(globals, ST_OPEN_PAREN) && (val = parse_expr(globals))
             && match(globals, ST_CLOSE_PAREN)) {
-        return parse_property_access(globals, val);
+        val = parse_property_access(globals, val);
     } else if (match(globals, T_SYMBOL)) {
         Symbol variable = nth_token(old_head, 1)->symbol;
         val = new_get_local(globals, variable);
-        return parse_property_access(globals, val);
     } else if (match(globals, ST_NEW) && match(globals, T_SYMBOL)) {
-        return parse_constructor(globals, nth_token(old_head, 2)->symbol);
+        val = parse_constructor(globals, nth_token(old_head, 2)->symbol);
+    }
+    if (val != NULL) {
+        return parse_property_access(globals, val);
     }
     error_parser(globals, "Unexpected token in expression");
     return NULL;

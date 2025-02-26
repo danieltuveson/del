@@ -358,7 +358,6 @@ static bool oneof(Type t, Type t0, Type t1, Type t2)
 static Type typecheck_cast(struct Globals *globals, struct TypeCheckerContext *context,
         struct Cast *cast)
 {
-    const char *generic_err = "Error: cannot cast %s to %s\n";
     Type type = typecheck_value(globals, context, cast->value);
     if (type == TYPE_UNDEFINED) {
         return TYPE_UNDEFINED;
@@ -372,36 +371,40 @@ static Type typecheck_cast(struct Globals *globals, struct TypeCheckerContext *c
     switch (type) {
         case TYPE_INT:
             if (!(oneof(cast->type, TYPE_BOOL, TYPE_FLOAT, TYPE_BYTE))) {
-                fprintf(globals->ferr, generic_err, type, cast->type);
-                return TYPE_UNDEFINED;
+                goto general_error;
             }
             return cast->type;
         case TYPE_BOOL:
             if (!(oneof(cast->type, TYPE_INT, TYPE_FLOAT, TYPE_BYTE))) {
-                fprintf(globals->ferr, generic_err, type, cast->type);
-                return TYPE_UNDEFINED;
+                goto general_error;
             }
             return cast->type;
         case TYPE_FLOAT:
             if (!(oneof(cast->type, TYPE_BOOL, TYPE_INT, TYPE_BYTE))) {
-                fprintf(globals->ferr, generic_err, type, cast->type);
-                return TYPE_UNDEFINED;
+                goto general_error;
             }
             return cast->type;
         case TYPE_BYTE:
             if (!(oneof(cast->type, TYPE_BOOL, TYPE_FLOAT, TYPE_INT))) {
-                fprintf(globals->ferr, generic_err, type, cast->type);
-                return TYPE_UNDEFINED;
+                goto general_error;
             }
             return cast->type;
         case TYPE_STRING:
-            TODO();
-            break;
+            if (!(is_array(cast->type) && type_of_array(cast->type) == TYPE_BYTE)) {
+                goto general_error;
+            }
+            return cast->type;
         case TYPE_NULL:
             fprintf(globals->ferr, "Error: cannot cast null\n");
             return TYPE_UNDEFINED;
     }
     fprintf(globals->ferr, "Error: cannot cast objects\n");
+    return TYPE_UNDEFINED;
+general_error:
+    fprintf(globals->ferr,
+            "Error: cannot cast %s to %s\n",
+            lookup_symbol(globals, type),
+            lookup_symbol(globals, cast->type));
     return TYPE_UNDEFINED;
 }
 
@@ -540,6 +543,18 @@ static Type typecheck_get_property(struct Globals *globals, struct TypeCheckerCo
     if (type == TYPE_UNDEFINED) {
         return TYPE_UNDEFINED;
     }
+    const char *generic_err = "Error: object of type '%s' has no property called '%s'\n";
+    // TODO: Add array length as get-able property of array object
+    // Also make typecheck_set_property give a better error if someone tries to set length
+    if (is_array(type)) {
+        if (get->property == BUILTIN_LENGTH) {
+            return TYPE_INT;
+        }
+        fprintf(globals->ferr, generic_err,
+                lookup_symbol(globals, type),
+                lookup_symbol(globals, get->property));
+        return TYPE_UNDEFINED;
+    }
     struct Class *cls = lookup_class(context->cls_table, type);
     if (cls == NULL) {
         fprintf(globals->ferr, "Error: '%s' is not an object\n",
@@ -548,7 +563,7 @@ static Type typecheck_get_property(struct Globals *globals, struct TypeCheckerCo
     }
     struct Definition *def = lookup_property(cls, get->property);
     if (def == NULL) {
-        fprintf(globals->ferr, "Error: object of type '%s' has no property called '%s'\n",
+        fprintf(globals->ferr, generic_err,
                 lookup_symbol(globals, type),
                 lookup_symbol(globals, get->property));
         return TYPE_UNDEFINED;

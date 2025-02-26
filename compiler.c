@@ -199,7 +199,7 @@ static size_t add_to_pool(struct Globals *globals, char *string)
 
 static void compile_string(struct Globals *globals, char *string)
 {
-    size_t index = add_to_pool(globals, string);
+    index = add_to_pool(globals, string);
     compile_offset(globals, index);
 }
 
@@ -299,10 +299,15 @@ static uint64_t compile_xet_property(struct Globals *globals, struct GetProperty
 static uint64_t compile_get_property(struct Globals *globals, Type type, struct GetProperty *get,
         bool is_increment)
 {
-    enum Code code = is_object(type) ? GET_HEAP_OBJ : GET_HEAP;
-    uint64_t index = compile_xet_property(globals, get, code, is_increment);
-    // load_opcode(globals, GET_HEAP);
-    return index;
+    if (is_array(get->accessor->type) && get->property == BUILTIN_LENGTH) {
+        compile_value(globals, get->accessor);
+        load_opcode(globals, LEN_ARRAY);
+    } else {
+        enum Code code = is_object(type) ? GET_HEAP_OBJ : GET_HEAP;
+        uint64_t index = compile_xet_property(globals, get, code, is_increment);
+        // load_opcode(globals, GET_HEAP);
+        return index;
+    }
 }
 
 static void compile_xet_index(struct Globals *globals, struct GetProperty *get, bool is_increment)
@@ -329,7 +334,7 @@ static void compile_get_index(struct Globals *globals, Type type, struct GetProp
 
 static bool is_int(Type type)
 {
-    return type & (TYPE_INT | TYPE_BYTE | TYPE_BOOL);
+    return type == TYPE_INT || type == TYPE_BYTE || type == TYPE_BOOL;
 }
 
 static void compile_cast(struct Globals *globals, struct Cast *cast)
@@ -340,6 +345,10 @@ static void compile_cast(struct Globals *globals, struct Cast *cast)
     } else if (cast->type == TYPE_FLOAT && is_int(cast->value->type)) {
         load_opcode(globals, CAST_FLOAT);
     } else if (is_int(cast->value->type) && is_int(cast->type)) {
+        // Don't need to do anything for int-int conversions
+    } else if (cast->value->type == TYPE_STRING && is_array(cast->type)
+            && type_of_array(cast->type)) {
+        load_opcode(globals, CAST_BYTE_ARRAY);
     } else {
         assert(false);
     }
