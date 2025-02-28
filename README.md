@@ -60,6 +60,7 @@ function main() {
 - Low hanging fruit that I forgot about
   - ! (logical not)
   - Float stuff: ability to check for NaN, infinities, etc
+  - Make increment and decrement work for properties again
   - Bitwise operators (maybe)
   - Read function (maybe)
 

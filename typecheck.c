@@ -9,6 +9,7 @@
     for (i = symbol % length; table[i].name != 0; i = i == length - 1 ? 0 : i + 1)
 
 struct TypeCheckerContext {
+    bool has_entrypoint;
     struct FunDef *enclosing_func;
     struct FunctionTable *fun_table;
     struct ClassTable *cls_table;
@@ -966,9 +967,11 @@ static bool typecheck_statements(struct Globals *globals, struct TypeCheckerCont
     return true;
 }
 
-static bool typecheck_entrypoint(struct Globals *globals, struct FunDef *fundef)
+static bool typecheck_entrypoint(struct Globals *globals, struct TypeCheckerContext *context,
+        struct FunDef *fundef)
 {
     if (fundef->name == globals->entrypoint) {
+        context->has_entrypoint = true;
         if (fundef->rettype != TYPE_UNDEFINED) {
             fprintf(globals->ferr, "Error: main function should not return any values\n");
             return false;
@@ -1003,7 +1006,7 @@ static bool typecheck_fundef(struct Globals *globals, struct TypeCheckerContext 
     if (fundef->is_foreign) {
         // Can't really inspect body of foreign functions - assume they are correct
         return true;
-    } else if (!typecheck_entrypoint(globals, fundef)) {
+    } else if (!typecheck_entrypoint(globals, context, fundef)) {
         return false;
     }
     struct Scope *scope = NULL;
@@ -1020,7 +1023,8 @@ static bool typecheck_fundef(struct Globals *globals, struct TypeCheckerContext 
     }
     if (fundef->rettype == TYPE_UNDEFINED) {
         if (fundef->stmts->tail == NULL) {
-            fprintf(globals->ferr, "Error: empty function body\n");
+            fprintf(globals->ferr, "Error: body of function '%s' is empty\n",
+                    lookup_symbol(globals, fundef->name));
             return false;
         }
         struct Statement *stmt = fundef->stmts->tail->value;
@@ -1143,6 +1147,7 @@ static struct TypeCheckerContext *init_typechecker(struct Globals *globals)
     struct FunctionTable *function_table = init_function_table(globals);
     // Init typechecker context
     struct TypeCheckerContext *context = DEL_MALLOC(sizeof(*context));
+    context->has_entrypoint = false;
     context->enclosing_func = NULL;
     context->fun_table = function_table;
     context->cls_table = class_table;
@@ -1162,6 +1167,9 @@ bool typecheck(struct Globals *globals)
 {
     struct TypeCheckerContext *context = init_typechecker(globals);
     if (!add_types(globals->ast, context->cls_table, context->fun_table)) {
+        return false;
+    } else if (!context->has_entrypoint) {
+        fprintf(globals->ferr, "Error: program has no main function\n");
         return false;
     }
     bool is_success = typecheck_tlds(globals, context, globals->ast);
