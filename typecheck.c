@@ -1168,11 +1168,12 @@ bool typecheck(struct Globals *globals)
     struct TypeCheckerContext *context = init_typechecker(globals);
     if (!add_types(globals->ast, context->cls_table, context->fun_table)) {
         return false;
-    } else if (!context->has_entrypoint) {
+    } 
+    bool is_success = typecheck_tlds(globals, context, globals->ast);
+    if (!context->has_entrypoint) {
         fprintf(globals->ferr, "Error: program has no main function\n");
         return false;
     }
-    bool is_success = typecheck_tlds(globals, context, globals->ast);
     // if (!is_success) fprintf(globals->ferr, "failed to typecheck\n");
     return is_success;
 }
