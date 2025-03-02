@@ -200,6 +200,12 @@ static size_t add_to_pool(struct Globals *globals, char *string)
 
 static void compile_string(struct Globals *globals, char *string)
 {
+    for (size_t i = 0; i < globals->cc->string_count; i++) {
+        if (strcmp(string, globals->cc->string_pool[i]) == 0) {
+            compile_offset(globals, i);
+            return;
+        }
+    }
     size_t index = add_to_pool(globals, string);
     compile_offset(globals, index);
 }
