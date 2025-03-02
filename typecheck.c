@@ -322,6 +322,9 @@ static Type typecheck_array_literal(struct Globals *globals, struct TypeCheckerC
     Type type = TYPE_UNDEFINED;
     linkedlist_vforeach(val, vals) {
         type = typecheck_value(globals, context, val);
+        if (type == TYPE_UNDEFINED) {
+            return TYPE_UNDEFINED;
+        }
         if (is_array(type)) {
             // TODO: get rid of this
             fprintf(globals->ferr, "Error: array may not contain other arrays\n");
@@ -1220,7 +1223,7 @@ bool typecheck(struct Globals *globals)
         return false;
     } 
     bool is_success = typecheck_tlds(globals, context, globals->ast);
-    if (!context->has_entrypoint) {
+    if (is_success && !context->has_entrypoint) {
         fprintf(globals->ferr, "Error: program has no main function\n");
         return false;
     }
