@@ -312,6 +312,7 @@ static Type typecheck_expression(struct Globals *globals, struct TypeCheckerCont
     return TYPE_UNDEFINED;
 }
 
+// TODO: properly handle null literals
 static Type typecheck_array_literal(struct Globals *globals, struct TypeCheckerContext *context,
         Values *vals)
 {
