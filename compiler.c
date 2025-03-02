@@ -9,6 +9,7 @@
 
 static void compile_value(struct Globals *globals, struct Value *val);
 static void compile_expr(struct Globals *globals, struct Expr *expr);
+static void compile_array_literal(struct Globals *globals, Type type, Values *vals);
 static void compile_statement(struct Globals *globals, struct Statement *stmt);
 static void compile_statements(struct Globals *globals, Statements *stmts);
 
@@ -485,6 +486,9 @@ static void compile_value(struct Globals *globals, struct Value *val)
         case VTYPE_EXPR:
             compile_expr(globals, val->expr);
             break;
+        case VTYPE_ARRAY_LITERAL:
+            compile_array_literal(globals, type_of_array(val->type), val->array);
+            break;
         case VTYPE_FUNCALL:
             compile_funcall(globals, val->funcall, false); 
             break;
@@ -509,7 +513,6 @@ static void compile_value(struct Globals *globals, struct Value *val)
         case VTYPE_BUILTIN_CONSTRUCTOR:
             compile_builtin_constructor(globals, val->type, val->constructor);
             break;
-        default: printf("compile not implemented yet\n"); assert(false);
     }
 }
 
@@ -625,6 +628,27 @@ static void compile_expr(struct Globals *globals, struct Expr *expr)
            assert(false);
            break;
     }
+}
+
+static void compile_array_literal(struct Globals *globals, Type type, Values *vals)
+{
+    compile_int(globals, vals->length);
+    compile_type(globals, type);
+    load_opcode(globals, PUSH_ARRAY);
+
+    enum Code code = is_object_or_null(type) ? SET_ARRAY_OBJ : SET_ARRAY;
+    struct Value *val = NULL;
+    int64_t i = 0;
+    linkedlist_vforeach(val, vals) {
+        load_opcode(globals, DUP_OBJ);
+        compile_value(globals, val);
+        if (is_object_or_null(type)) {
+            load_opcode(globals, SWAP_OBJ);
+        }
+        compile_int(globals, i);
+        load_opcode(globals, code);
+        i++;
+    } 
 }
 
 static void compile_set_property(struct Globals *globals, struct SetProperty *set)

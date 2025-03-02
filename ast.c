@@ -383,25 +383,12 @@ struct Value *new_expr(struct Globals *globals, struct Expr *expr)
     return val;
 }
 
-struct LValue *new_property(struct Globals *globals, Symbol property)
+struct Value *new_array(struct Globals *globals, Values *vals)
 {
-    struct LValue *lvalue = allocator_malloc(globals->allocator, sizeof(struct LValue));
-    lvalue->type = LV_PROPERTY;
-    lvalue->type = TYPE_UNDEFINED;
-    lvalue->property = property;
-    return lvalue;
+    struct Value *val = new_value(globals, VTYPE_ARRAY_LITERAL, TYPE_UNDEFINED);
+    val->array = vals;
+    return val;
 }
-
-/*
-struct LValue *new_index(struct Globals *globals, struct Value *index)
-{
-    struct LValue *lvalue = allocator_malloc(globals->allocator, sizeof(struct LValue));
-    lvalue->type = LV_INDEX;
-    lvalue->type = TYPE_UNDEFINED;
-    lvalue->index = index;
-    return lvalue;
-}
-*/
 
 /* Macros used to generate functions for creating Expressions.
  * Unary and binary operators have the same structure, so this 

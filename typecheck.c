@@ -312,6 +312,37 @@ static Type typecheck_expression(struct Globals *globals, struct TypeCheckerCont
     return TYPE_UNDEFINED;
 }
 
+static Type typecheck_array_literal(struct Globals *globals, struct TypeCheckerContext *context,
+        Values *vals)
+{
+    struct Value *val = NULL;
+    int count = 0;
+    Type inferred = TYPE_UNDEFINED;
+    Type type = TYPE_UNDEFINED;
+    linkedlist_vforeach(val, vals) {
+        type = typecheck_value(globals, context, val);
+        if (is_array(type)) {
+            // TODO: get rid of this
+            fprintf(globals->ferr, "Error: array may not contain other arrays\n");
+            return TYPE_UNDEFINED;
+        }
+        if (count == 0) {
+            inferred = type;
+        } else if (inferred != type) {
+            fprintf(globals->ferr, "Error: element 0 of array is of type '%s', "
+                    "but element %d is of type '%s'\n",
+                    lookup_symbol(globals, inferred),
+                    count,
+                    lookup_symbol(globals, type));
+            return TYPE_UNDEFINED;
+        }
+        count++;
+    }
+    // Always expect parser to parse at least one element
+    assert(type != TYPE_UNDEFINED);
+    return array_of(type);
+}
+
 static Type typecheck_new_array(struct Globals *globals, struct TypeCheckerContext *context,
         struct Constructor *constructor)
 {
@@ -428,6 +459,9 @@ static Type typecheck_value(struct Globals *globals, struct TypeCheckerContext *
             return TYPE_NULL;
         case VTYPE_EXPR:
             val->type = typecheck_expression(globals, context, val->expr);
+            return val->type;
+        case VTYPE_ARRAY_LITERAL:
+            val->type = typecheck_array_literal(globals, context, val->array);
             return val->type;
         case VTYPE_CAST:
             val->type = typecheck_cast(globals, context, val->cast);

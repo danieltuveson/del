@@ -24,6 +24,7 @@ enum ValueType {
     VTYPE_BOOL,
     VTYPE_NULL,
     VTYPE_EXPR,
+    VTYPE_ARRAY_LITERAL,
     VTYPE_FUNCALL,
     VTYPE_BUILTIN_FUNCALL,
     VTYPE_CONSTRUCTOR,
@@ -145,9 +146,10 @@ struct Value {
         double floating;
         int64_t boolean;
         struct Expr *expr;
+        Values *array;
         struct FunCall *funcall;
         struct Constructor *constructor;
-        struct Accessor *get;
+        struct Accessor *get; // TODO: get rid of this
         struct MethodCall *method_call;
         // New values to replace get
         struct Definition *get_local;
@@ -285,16 +287,13 @@ struct Value *new_vfuncall(struct Globals *globals, struct Accessor *access, Val
         bool is_builtin);
 struct Value *new_constructor(struct Globals *globals, struct Accessor *access,
         Types *types, Values *args, bool is_builtin);
-// struct Value *new_get(struct Globals *globals, Symbol symbol, LValues *lvalues);
 struct Value *new_expr(struct Globals *globals, struct Expr *expr);
+struct Value *new_array(struct Globals *globals, Values *vals);
 struct Value *new_get_local(struct Globals *globals, Symbol variable);
 struct Value *new_get_property(struct Globals *globals, struct Value *accessor, Symbol property);
 struct Value *new_get_indexed(struct Globals *globals, struct Value *accessor,
         struct Value *index);
 struct Value *new_cast(struct Globals *globals, struct Value *value, Type type);
-
-struct LValue *new_property(struct Globals *globals, Symbol property);
-struct LValue *new_index(struct Globals *globals, struct Value *index);
 
 /* Expression constructors */
 

@@ -32,6 +32,12 @@ function main() {
     println("array value at ", i, ": Thing(", x[i].ting, ", ", x[i].wing, ")");
     println("array value at ", 7, ": Thing(", x[7].ting, ", ", x[7].wing, ")");
 
+    let lit = [1, 4, 10];
+    println("Array literal: ", lit);
+
+    let lit_obj = [new Thing(11, 11.11)];
+    println("Array literal of objects: ", lit_obj);
+
     // let things = new ThingSlice(0, 10, x);
 }
 

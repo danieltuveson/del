@@ -784,6 +784,9 @@ uint64_t vm_execute(struct VirtualMachine *vm)
             vm_case(DUP):
                 dup(&stack);
                 vm_break;
+            vm_case(DUP_OBJ):
+                dup(&stack_obj);
+                vm_break;
             /* Grotesque lump of binary operators. Boring! */
             vm_case(AND): eval_binary_op(&stack, val1, val2, &&); vm_break;
             vm_case(OR):  eval_binary_op(&stack, val1, val2, ||); vm_break;
@@ -947,6 +950,9 @@ uint64_t vm_execute(struct VirtualMachine *vm)
                 vm_break;
             vm_case(SWAP):
                 swap(&stack);
+                vm_break;
+            vm_case(SWAP_OBJ):
+                swap(&stack_obj);
                 vm_break;
             vm_case(PUSH_SCOPE):
                 if (unexpected(is_stack_overflow(&sfs) || is_stack_overflow(&sfs_obj))) {

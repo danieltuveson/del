@@ -48,15 +48,14 @@ function main() {
   - Probably more cases to watch out for, but those are the ones I can think of
 - Remove "default" options from switch statements and search for missing cases.
 - The `push_heap` function in the VM is basically just a consturctor. `push_heap` should just allocate and return a pointer to the memory, any constructor logic should be determined before runtime.
-- Variables that could potentially be unset currently default to 0, but should give a compile error.
+- Variables that could potentially be unset currently default to 0, but should give a compile error. Or should just have better runtime error messages / exception handling. TBD
+- Fix parser / typechecker to allow for nested arrays;
 - Implement:
-  - Array literals
   - Sum types
-  - Basic FFI, or at least add some simple IO
   - Java-style interfaces
   - Function pointers
   - Module / namespace solutions
-  - Error handling
+  - Runtime error handling
 - Windows support
 - Low hanging fruit that I forgot about
   - ! (logical not)

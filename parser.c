@@ -186,11 +186,11 @@ static Values *parse_args(struct Globals *globals)
     struct Value *val = NULL;
     Values *vals = linkedlist_new(globals->allocator);
     do {
-        if ((val = parse_expr(globals))) {
-            linkedlist_append(vals, val);
-        } else {
+        val = parse_expr(globals);
+        if (val == NULL) {
             return NULL;
         }
+        linkedlist_append(vals, val);
     } while (match(globals, ST_COMMA));
     if (!match(globals, ST_CLOSE_PAREN)) {
         error_parser(globals, "Unexpected end of argument list");
@@ -292,7 +292,7 @@ static struct Value *parse_property_access(struct Globals *globals, struct Value
             val = new_get_indexed(globals, val, index);
         } else if (match(globals, ST_CAST)) {
             Type type = parse_type(globals);
-            if (TYPE_UNDEFINED) {
+            if (type == TYPE_UNDEFINED) {
                 return NULL;
             }
             val = new_cast(globals, val, type);
@@ -301,6 +301,28 @@ static struct Value *parse_property_access(struct Globals *globals, struct Value
         }
     }
     return val;
+}
+
+static struct Value *parse_array(struct Globals *globals)
+{
+    if (match(globals, ST_CLOSE_BRACKET)) {
+        error_parser(globals, "Array must contain at least one element");
+        return NULL;
+    }
+    struct Value *val = NULL;
+    Values *vals = linkedlist_new(globals->allocator);
+    do {
+        val = parse_expr(globals);
+        if (val == NULL) {
+            return NULL;
+        }
+        linkedlist_append(vals, val);
+    } while (match(globals, ST_COMMA));
+    if (match(globals, ST_CLOSE_BRACKET)) {
+        return new_array(globals, vals);
+    }
+    error_parser(globals, "Unexpected end of array");
+    return NULL;
 }
 
 static struct Value *parse_subexpr(struct Globals *globals)
@@ -325,15 +347,24 @@ static struct Value *parse_subexpr(struct Globals *globals)
         val = new_boolean(globals, 0);
     } else if (match(globals, ST_NULL)) {
         val = new_null(globals);
-    } else if (match(globals, ST_OPEN_PAREN) && (val = parse_expr(globals))
-            && match(globals, ST_CLOSE_PAREN)) {
-        val = parse_property_access(globals, val);
+    } else if (match(globals, ST_OPEN_BRACKET)) {
+        val = parse_array(globals);
+        if (val == NULL) return NULL;
+    } else if (match(globals, ST_OPEN_PAREN)) {
+        val = parse_expr(globals);
+        if (val == NULL) {
+            return NULL;
+        } else if (!match(globals, ST_CLOSE_PAREN)) {
+            error_parser(globals, "Expression is missing closing parenthesis");
+            return NULL;
+        }
     } else if (match(globals, T_SYMBOL)) {
         Symbol variable = nth_token(old_head, 1)->symbol;
         val = new_get_local(globals, variable);
     } else if (match(globals, ST_NEW) && match(globals, T_SYMBOL)) {
         // TODO: This does not correctly handle nested generic types (e.g. Array<Array<byte>>)
         val = parse_constructor(globals, nth_token(old_head, 2)->symbol);
+        if (val == NULL) return NULL;
     }
     if (val != NULL) {
         return parse_property_access(globals, val);
