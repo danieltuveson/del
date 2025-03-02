@@ -190,14 +190,23 @@ static Type typecheck_value(struct Globals *globals, struct TypeCheckerContext *
 static Type typecheck_expression(struct Globals *globals, struct TypeCheckerContext *context,
         struct Expr *expr)
 {
-    const Type type_left = typecheck_value(globals, context, expr->val1);
+    // Typecheck left
+    Type type_left = typecheck_value(globals, context, expr->val1);
+    if (type_left == TYPE_UNDEFINED) {
+        return TYPE_UNDEFINED;
+    }
     expr->val1->type = type_left;
-    const Type type_right = (expr->val2 == NULL)
-        ? TYPE_UNDEFINED
-        : typecheck_value(globals, context, expr->val2);
+
+    // Typecheck right (if applicable)
+    Type type_right = TYPE_UNDEFINED;
     if (expr->val2 != NULL) {
+        type_right = typecheck_value(globals, context, expr->val2);
+        if (type_right == TYPE_UNDEFINED) {
+            return TYPE_UNDEFINED;
+        }
         expr->val2->type = type_right;
     }
+
     const bool left_is_int     = type_left  == TYPE_INT;
     const bool right_is_int    = type_right == TYPE_INT;
     const bool left_is_float   = type_left  == TYPE_FLOAT;
@@ -285,8 +294,14 @@ static Type typecheck_expression(struct Globals *globals, struct TypeCheckerCont
                 return TYPE_FLOAT;
             }
             break;
+        case OP_UNARY_NOT:
+            op_str = "!";
+            if (type_left == TYPE_BOOL && right_is_undef) {
+                return TYPE_BOOL;
+            }
+            break;
     };
-    if (type_left != type_right) {
+    if (type_left != type_right && type_right != TYPE_UNDEFINED) {
         fprintf(globals->ferr, "Error: mismatched types for '%s' operands\n", op_str);
     } else {
         // This message works for both unary and binary, since we only have left associative

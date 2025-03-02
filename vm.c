@@ -816,6 +816,10 @@ uint64_t vm_execute(struct VirtualMachine *vm)
             vm_case(GTE): eval_binary_op(&stack, val1, val2, >=); vm_break;
             vm_case(LT):  eval_binary_op(&stack, val1, val2, <);  vm_break;
             vm_case(GT):  eval_binary_op(&stack, val1, val2, >);  vm_break;
+            vm_case(NOT):
+                val1 = pop(&stack);
+                push_integer(&stack, !val1.integer);
+                vm_break;
             vm_case(UNARY_MINUS):
                 val1 = pop(&stack);
                 push_integer(&stack, (-1 * val1.integer));

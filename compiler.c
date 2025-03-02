@@ -617,6 +617,9 @@ static void compile_expr(struct Globals *globals, struct Expr *expr)
                compile_unary_op(globals, val1, UNARY_MINUS);
            }
            break;
+        case OP_UNARY_NOT:
+           compile_unary_op(globals, val1, NOT);
+           break;
         default:
            printf("Error cannot compile expression\n");
            assert(false);

@@ -51,7 +51,8 @@ enum OperatorType {
     OP_PERCENT,
     // Unary ops
     OP_UNARY_PLUS,
-    OP_UNARY_MINUS
+    OP_UNARY_MINUS,
+    OP_UNARY_NOT
 };
 
 enum TLDType {
@@ -300,6 +301,7 @@ struct LValue *new_index(struct Globals *globals, struct Value *index);
 /* Unary */
 struct Expr *unary_plus(struct Globals *globals, struct Value *val1);
 struct Expr *unary_minus(struct Globals *globals, struct Value *val1);
+struct Expr *unary_not(struct Globals *globals, struct Value *val1);
 
 /* Binary */
 #define bin_decl(name)\

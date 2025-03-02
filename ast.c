@@ -418,6 +418,7 @@ struct Expr *name(struct Globals *globals, struct Value *val1) {\
 
 define_unary_op(unary_plus, OP_UNARY_PLUS)
 define_unary_op(unary_minus, OP_UNARY_MINUS)
+define_unary_op(unary_not, OP_UNARY_NOT)
 
 #undef define_unary_op
 

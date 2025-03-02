@@ -23,6 +23,7 @@ enum Code {
     GT,
     GTE,
     UNARY_MINUS,
+    NOT,
     FLOAT_ADD,
     FLOAT_SUB,
     FLOAT_MUL,

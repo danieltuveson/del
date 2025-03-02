@@ -332,6 +332,7 @@ static struct Value *parse_subexpr(struct Globals *globals)
         Symbol variable = nth_token(old_head, 1)->symbol;
         val = new_get_local(globals, variable);
     } else if (match(globals, ST_NEW) && match(globals, T_SYMBOL)) {
+        // TODO: This does not correctly handle nested generic types (e.g. Array<Array<byte>>)
         val = parse_constructor(globals, nth_token(old_head, 2)->symbol);
     }
     if (val != NULL) {
@@ -344,12 +345,14 @@ static struct Value *parse_subexpr(struct Globals *globals)
 static struct Value *parse_unaryexpr(struct Globals *globals)
 {
     struct Value *val = NULL;
+    // Technically this doesn't support something like `!!!blah`, but I don't care
     if (match(globals, ST_PLUS) && (val = parse_subexpr(globals))) {
         return new_expr(globals, unary_plus(globals, val));
     } else if (match(globals, ST_MINUS) && (val = parse_subexpr(globals))) {
         return new_expr(globals, unary_minus(globals, val));
+    } else if (match(globals, ST_NOT) && (val = parse_subexpr(globals))) {
+        return new_expr(globals, unary_not(globals, val));
     }
-    // else if (match(globals, ST_NOT) && (val = parse_subexpr) etc...
     return parse_subexpr(globals);
 }
 
@@ -583,6 +586,31 @@ static struct Statement *parse_statement(struct Globals *globals)
     return NULL;
 }
 
+static Type parse_object_type(struct Globals *globals, Symbol symbol)
+{
+    if (symbol != BUILTIN_ARRAY) {
+        return symbol;
+    } else if (!match(globals, ST_LESS)) {
+        error_parser(globals, "Array declaration is missing type");
+        return TYPE_UNDEFINED;
+    }
+    Types *types = parse_type_args(globals);
+    if (types == NULL) {
+        return TYPE_UNDEFINED;
+    } else if (types->length != 1) {
+        // TODO: Do proper generics, eventually
+        error_parser(globals, "Array declaration has too many types");
+        return TYPE_UNDEFINED;
+    }
+    Type *type_ptr = types->head->value;
+    if (is_array(*type_ptr)) {
+        // TODO: Obviously this should be allowed, eventually
+        error_parser(globals, "Array may not contain other arrays");
+        return TYPE_UNDEFINED;
+    }
+    return array_of(*type_ptr);
+}
+
 static Type parse_type(struct Globals *globals)
 {
     struct LinkedListNode *old_head = globals->parser;
@@ -598,28 +626,9 @@ static Type parse_type(struct Globals *globals)
         return TYPE_BYTE;
     } else if (match(globals, T_SYMBOL)) {
         Symbol symbol = nth_token(old_head, 1)->symbol;
-        if (symbol != BUILTIN_ARRAY) {
-            return symbol;
-        } else if (!match(globals, ST_LESS)) {
-            error_parser(globals, "Array declaration is missing type");
-            return TYPE_UNDEFINED;
-        }
-        Types *types = parse_type_args(globals);
-        if (types == NULL) {
-            return TYPE_UNDEFINED;
-        } else if (types->length != 1) {
-            // TODO: Do proper generics, eventually
-            error_parser(globals, "Array declaration has too many types");
-            return TYPE_UNDEFINED;
-        }
-        Type *type_ptr = types->head->value;
-        if (is_array(*type_ptr)) {
-            error_parser(globals, "Array may not contain other arrays");
-            return TYPE_UNDEFINED;
-        }
-        return array_of(*type_ptr);
+        return parse_object_type(globals, symbol);
     }
-    error_parser(globals, "Invalid type");
+    error_parser(globals, "Unexpected symbol in type declaration");
     return TYPE_UNDEFINED;
 }
 
