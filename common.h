@@ -12,7 +12,7 @@
 #include <string.h>
 #include <assert.h>
 #include <errno.h>
-#include "allocator.h"
+#include "dsalloc.h"
 #include "settings.h"
 
 
@@ -27,7 +27,7 @@ struct Globals {
     // FILE to print error messages to
     FILE *ferr;
     // Stores main structs used throughout the program
-    Allocator allocator;
+    DSAllocator allocator;
     struct FileContext *file;
     struct Lexer *lexer;
     struct LinkedList *foreign_function_table;

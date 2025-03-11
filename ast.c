@@ -1,5 +1,5 @@
 #include "common.h"
-#include "allocator.h"
+#include "dsalloc.h"
 // #include "printers.h"
 #include "linkedlist.h"
 #include "del.h"
@@ -9,7 +9,7 @@
 /* Functions to create top level definitions */
 static struct TopLevelDecl *new_tld(struct Globals *globals, enum TLDType tld_type)
 {
-    struct TopLevelDecl *tld = allocator_malloc(globals->allocator, sizeof(struct TopLevelDecl));
+    struct TopLevelDecl *tld = dsalloc(globals->allocator, sizeof(struct TopLevelDecl));
     tld->type = tld_type;
     return tld;
 }
@@ -19,7 +19,7 @@ struct TopLevelDecl *new_class(struct Globals *globals, Symbol symbol,
 {
     globals->class_count++;
     struct TopLevelDecl *tld = new_tld(globals, TLD_TYPE_CLASS);
-    tld->cls = allocator_malloc(globals->allocator, sizeof(struct Class));
+    tld->cls = dsalloc(globals->allocator, sizeof(struct Class));
     tld->cls->name = symbol;
     tld->cls->definitions = definitions;
     tld->cls->methods = methods;
@@ -66,7 +66,7 @@ uint64_t lookup_property_index(struct Class *cls, Symbol name)
 static struct GetProperty *new_get_property_access(struct Globals *globals, struct Value *accessor,
         Symbol property)
 {
-    struct GetProperty *get = allocator_malloc(globals->allocator, sizeof(struct GetProperty));
+    struct GetProperty *get = dsalloc(globals->allocator, sizeof(struct GetProperty));
     get->accessor = accessor;
     get->property = property;
     return get;
@@ -75,7 +75,7 @@ static struct GetProperty *new_get_property_access(struct Globals *globals, stru
 static struct GetProperty *new_get_indexed_access(struct Globals *globals, struct Value *accessor,
         struct Value *index)
 {
-    struct GetProperty *get = allocator_malloc(globals->allocator, sizeof(struct GetProperty));
+    struct GetProperty *get = dsalloc(globals->allocator, sizeof(struct GetProperty));
     get->accessor = accessor;
     get->index = index;
     return get;
@@ -83,7 +83,7 @@ static struct GetProperty *new_get_indexed_access(struct Globals *globals, struc
 
 struct Accessor *new_accessor(struct Globals *globals, Symbol symbol, LValues *lvalues)
 {
-    struct Accessor *accessor = allocator_malloc(globals->allocator, sizeof(struct Accessor));
+    struct Accessor *accessor = dsalloc(globals->allocator, sizeof(struct Accessor));
     accessor->definition = new_define(globals, symbol, TYPE_UNDEFINED);
     accessor->lvalues = lvalues;
     return accessor;
@@ -94,7 +94,7 @@ struct TopLevelDecl *new_tld_fundef(struct Globals *globals, Symbol symbol, Type
 {
     globals->function_count++;
     struct TopLevelDecl *tld = new_tld(globals, TLD_TYPE_FUNDEF);
-    struct FunDef *fundef = allocator_malloc(globals->allocator, sizeof(*fundef));
+    struct FunDef *fundef = dsalloc(globals->allocator, sizeof(*fundef));
     fundef->name = symbol;
     fundef->is_foreign = false;
     fundef->rettype = rettype;
@@ -110,7 +110,7 @@ struct TopLevelDecl *new_tld_foreign_fundef(struct Globals *globals, Symbol symb
 {
     globals->function_count++;
     struct TopLevelDecl *tld = new_tld(globals, TLD_TYPE_FUNDEF);
-    struct FunDef *fundef = allocator_malloc(globals->allocator, sizeof(*fundef));
+    struct FunDef *fundef = dsalloc(globals->allocator, sizeof(*fundef));
     fundef->name = symbol;
     fundef->is_foreign = true;
     fundef->rettype = rettype;
@@ -124,7 +124,7 @@ struct TopLevelDecl *new_tld_foreign_fundef(struct Globals *globals, Symbol symb
 /* Functions to create Statements */
 struct Statement *new_stmt(struct Globals *globals, enum StatementType st)
 {
-    struct Statement *stmt = allocator_malloc(globals->allocator, sizeof(*stmt));
+    struct Statement *stmt = dsalloc(globals->allocator, sizeof(*stmt));
     stmt->type = st;
     return stmt;
 }
@@ -133,7 +133,7 @@ struct Statement *new_set_local(struct Globals *globals, Symbol variable, struct
         bool is_define)
 {
     struct Statement *stmt = new_stmt(globals, STMT_SET_LOCAL);
-    stmt->set_local = allocator_malloc(globals->allocator, sizeof(*(stmt->set_local)));
+    stmt->set_local = dsalloc(globals->allocator, sizeof(*(stmt->set_local)));
     stmt->set_local->is_define = is_define;
     stmt->set_local->def = new_define(globals, variable, TYPE_UNDEFINED);
     stmt->set_local->expr = val;
@@ -144,7 +144,7 @@ struct Statement *new_set_property(struct Globals *globals, struct Value *access
         struct Value *val)
 {
     struct Statement *stmt = new_stmt(globals, STMT_SET_PROPERTY);
-    stmt->set_property = allocator_malloc(globals->allocator, sizeof(*(stmt->set_property)));
+    stmt->set_property = dsalloc(globals->allocator, sizeof(*(stmt->set_property)));
     stmt->set_property->access = new_get_property_access(globals, accessor, property);
     stmt->set_property->expr = val;
     return stmt;
@@ -154,7 +154,7 @@ struct Statement *new_set_indexed(struct Globals *globals, struct Value *accesso
         struct Value *index, struct Value *val)
 {
     struct Statement *stmt = new_stmt(globals, STMT_SET_INDEX);
-    stmt->set_property = allocator_malloc(globals->allocator, sizeof(*(stmt->set_property)));
+    stmt->set_property = dsalloc(globals->allocator, sizeof(*(stmt->set_property)));
     stmt->set_property->access = new_get_indexed_access(globals, accessor, index);
     stmt->set_property->expr = val;
     return stmt;
@@ -163,7 +163,7 @@ struct Statement *new_set_indexed(struct Globals *globals, struct Value *accesso
 struct Statement *new_if(struct Globals *globals, struct Value *condition, Statements *if_stmts)
 {
     struct Statement *stmt = new_stmt(globals, STMT_IF);
-    stmt->if_stmt = allocator_malloc(globals->allocator, sizeof(struct IfStatement));
+    stmt->if_stmt = dsalloc(globals->allocator, sizeof(struct IfStatement));
     stmt->if_stmt->condition = condition;
     stmt->if_stmt->if_stmts = if_stmts;
     stmt->if_stmt->else_stmts = NULL;
@@ -186,7 +186,7 @@ void add_else(struct IfStatement *if_stmt, Statements *else_stmts)
 struct Statement *new_while(struct Globals *globals, struct Value *condition, Statements *stmts)
 {
     struct Statement *stmt = new_stmt(globals, STMT_WHILE);
-    stmt->while_stmt = allocator_malloc(globals->allocator, sizeof(struct While));
+    stmt->while_stmt = dsalloc(globals->allocator, sizeof(struct While));
     stmt->while_stmt->condition = condition;
     stmt->while_stmt->stmts = stmts;
     return stmt;
@@ -196,7 +196,7 @@ struct Statement *new_for(struct Globals *globals, struct Statement *init, struc
         struct Statement *increment, Statements *stmts)
 {
     struct Statement *stmt = new_stmt(globals, STMT_FOR);
-    stmt->for_stmt = allocator_malloc(globals->allocator, sizeof(struct For));
+    stmt->for_stmt = dsalloc(globals->allocator, sizeof(struct For));
     stmt->for_stmt->init = init;
     stmt->for_stmt->condition = condition;
     stmt->for_stmt->increment = increment;
@@ -213,7 +213,7 @@ struct Statement *new_let(struct Globals *globals, Definitions *let)
  
 struct Definition *new_define(struct Globals *globals, Symbol name, Type type)
 {
-    struct Definition *def = allocator_malloc(globals->allocator, sizeof(struct Definition));
+    struct Definition *def = dsalloc(globals->allocator, sizeof(struct Definition));
     def->name = name;
     def->type = type;
     def->scope_offset = 0;
@@ -223,7 +223,7 @@ struct Definition *new_define(struct Globals *globals, Symbol name, Type type)
 static struct FunCall *new_funcall(struct Globals *globals, struct Accessor *access,
         Values *args)
 {
-    struct FunCall *funcall = allocator_malloc(globals->allocator, sizeof(struct FunCall));
+    struct FunCall *funcall = dsalloc(globals->allocator, sizeof(struct FunCall));
     funcall->access = access;
     funcall->args = args;
     return funcall;
@@ -275,7 +275,7 @@ struct Statement *new_decrement(struct Globals *globals, struct Value *val)
 /* Functions for creating Values */
 static struct Value *new_value(struct Globals *globals, enum ValueType vtype, Type type)
 {
-    struct Value *val = allocator_malloc(globals->allocator, sizeof(struct Value));
+    struct Value *val = dsalloc(globals->allocator, sizeof(struct Value));
     val->vtype = vtype;
     val->type = type;
     return val;
@@ -339,7 +339,7 @@ struct Value *new_constructor(struct Globals *globals, struct Accessor *access,
     // Constructor name should be same as classname
     enum ValueType t = is_builtin ? VTYPE_BUILTIN_CONSTRUCTOR : VTYPE_CONSTRUCTOR;
     struct Value *val = new_value(globals, t, access->definition->name);
-    val->constructor = allocator_malloc(globals->allocator, sizeof(struct Constructor));
+    val->constructor = dsalloc(globals->allocator, sizeof(struct Constructor));
     val->constructor->types = types;
     val->constructor->funcall = new_funcall(globals, access, args);
     return val;
@@ -370,7 +370,7 @@ struct Value *new_get_indexed(struct Globals *globals, struct Value *accessor,
 struct Value *new_cast(struct Globals *globals, struct Value *value, Type type)
 {
     struct Value *val = new_value(globals, VTYPE_CAST, TYPE_UNDEFINED);
-    val->cast = allocator_malloc(globals->allocator, sizeof(struct Cast));
+    val->cast = dsalloc(globals->allocator, sizeof(struct Cast));
     val->cast->value = value;
     val->cast->type = type;
     return val;
@@ -396,7 +396,7 @@ struct Value *new_array(struct Globals *globals, Values *vals)
 
 #define define_unary_op(name, operator) \
 struct Expr *name(struct Globals *globals, struct Value *val1) {\
-    struct Expr *expr = allocator_malloc(globals->allocator, sizeof(struct Expr));\
+    struct Expr *expr = dsalloc(globals->allocator, sizeof(struct Expr));\
     expr->op = operator;\
     expr->val1 = val1;\
     expr->val2 = NULL;\
@@ -411,7 +411,7 @@ define_unary_op(unary_not, OP_UNARY_NOT)
 
 #define define_binary_op(name, operator) \
 struct Expr *name(struct Globals *globals, struct Value *val1, struct Value *val2) {\
-    struct Expr *expr = allocator_malloc(globals->allocator, sizeof(struct Expr));\
+    struct Expr *expr = dsalloc(globals->allocator, sizeof(struct Expr));\
     expr->op = operator;\
     expr->val1 = val1;\
     expr->val2 = val2;\

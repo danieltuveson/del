@@ -227,7 +227,7 @@ static Types *parse_type_args(struct Globals *globals)
             error_parser(globals, "Array may not contain other arrays");
             return NULL;
         }
-        Type *type_ptr = allocator_malloc(globals->allocator, sizeof(*type_ptr));
+        Type *type_ptr = dsalloc(globals->allocator, sizeof(*type_ptr));
         *type_ptr = type;
         linkedlist_append(types, type_ptr);
     } while (match(globals, ST_COMMA));

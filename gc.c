@@ -1,4 +1,4 @@
-#include "allocator.h"
+#include "dsalloc.h"
 #include "linkedlist.h"
 #include "heap_ptr.h"
 #include "gc.h"
@@ -12,7 +12,7 @@ struct PointerRemap {
 typedef struct LinkedList PointerRemaps;
 
 struct GarbageCollector {
-    Allocator allocator;
+    DSAllocator allocator;
     size_t current_loc;
     struct LinkedListNode *next_remap;
     PointerRemaps *map;
@@ -21,7 +21,7 @@ struct GarbageCollector {
 
 void gc_init(struct GarbageCollector *gc)
 {
-    gc->allocator = allocator_new();
+    gc->allocator = dsalloc_new();
     gc->current_loc = 0;
     gc->next_remap = NULL;
     gc->map = linkedlist_new(gc->allocator);
@@ -29,7 +29,7 @@ void gc_init(struct GarbageCollector *gc)
 
 void gc_free(struct GarbageCollector *gc)
 {
-    allocator_freeall(gc->allocator);
+    dsalloc_delete(gc->allocator);
 }
 
 void gc_remap(struct GarbageCollector *gc, size_t old_ptr)
@@ -38,7 +38,7 @@ void gc_remap(struct GarbageCollector *gc, size_t old_ptr)
     HeapPointer new_ptr = gc->current_loc;
     set_count_no_check(&new_ptr, old_count);
 
-    struct PointerRemap *remap = allocator_malloc(gc->allocator, sizeof(*remap));
+    struct PointerRemap *remap = dsalloc(gc->allocator, sizeof(*remap));
     remap->old_ptr = old_ptr;
     remap->new_ptr = new_ptr;
     linkedlist_append(gc->map, remap);

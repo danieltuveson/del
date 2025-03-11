@@ -12,7 +12,7 @@ struct LinkedListNode {
 };
 
 struct LinkedList {
-    Allocator allocator;
+    DSAllocator allocator;
     unsigned long length;
     struct LinkedListNode *head;
     struct LinkedListNode *tail;
@@ -40,7 +40,7 @@ struct LinkedList {
 #define linkedlist_vforeach_reverse(val, list) \
     linkedlist_vforeach_reverse_help( ( lnode_ ## __COUNTER__ ), val, list)
 
-struct LinkedList *linkedlist_new(Allocator a);
+struct LinkedList *linkedlist_new(DSAllocator a);
 void linkedlist_append(struct LinkedList *ll, void *value);
 void linkedlist_prepend(struct LinkedList *ll, void *value);
 void *linkedlist_pop(struct LinkedList *ll);

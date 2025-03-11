@@ -1,11 +1,11 @@
 #include "common.h"
-#include "allocator.h"
+#include "dsalloc.h"
 #include "linkedlist.h"
 
 
 static void add_sym_helper(struct Globals *globals, char *sym, size_t size)
 {
-    char *symbol = allocator_malloc(globals->allocator, size);
+    char *symbol = dsalloc(globals->allocator, size);
     strcpy(symbol, sym);
     if (globals->symbol_table == NULL) {
         globals->symbol_table = linkedlist_new(globals->allocator);
@@ -64,7 +64,7 @@ Symbol add_symbol(struct Globals *globals, char *str, int str_len)
             symbol_table = symbol_table->next;
         }
     }
-    symbol = allocator_malloc(globals->allocator, (str_len + 1) * sizeof(char));
+    symbol = dsalloc(globals->allocator, (str_len + 1) * sizeof(char));
     strcpy(symbol, str);
     // symbol_table->next = new_list(symbol);
     linkedlist_append(globals->symbol_table, symbol);

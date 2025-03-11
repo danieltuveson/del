@@ -13,7 +13,7 @@
 CFLAGS = -O2 -g -Wall -Wextra -DGCOFF=0 -DTHREADED_CODE_ENABLED=1
 # CFLAGS = -O2 -g -Wall -Wextra -DGCOFF=0 -DTHREADED_CODE_ENABLED=1 \
 # 		 -DDEBUG_TEXT=1 -DDEBUG_COMPILER=1 -DDEBUG_RUNTIME=0
-objects = common.o allocator.o linkedlist.o vector.o readfile.o ffi.o lexer.o error.o \
+objects = common.o dsalloc.o linkedlist.o vector.o readfile.o ffi.o lexer.o error.o \
 	      parser.o ast.o functiontable.o typecheck.o compiler.o vm.o gc.o \
 		  printers.o del.o
 
@@ -23,6 +23,12 @@ tests = tests.o
 del: thread.h $(objects) $(main) 
 	ar rc libdel.a $(objects)
 	cc $(CFLAGS) -o del $(main) $(objects)
+
+deps:
+	@rm -rf dsalloc
+	@git clone git@github.com:danieltuveson/dsalloc.git
+	@cp dsalloc/dsalloc.* .
+	@rm -rf dsalloc
 
 thread.h: bytecode.h vm.c
 	bash threading.sh

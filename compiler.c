@@ -16,13 +16,13 @@ static void compile_statements(struct Globals *globals, Statements *stmts);
 // Function for annotating output bytecode
 static void add_comment(struct Globals *globals, char *fmt, ...) {
     size_t max_len = 100;
-    char *comment = allocator_malloc(globals->allocator, max_len);
+    char *comment = dsalloc(globals->allocator, max_len);
     memset(comment, 0, max_len);
     va_list args;
     va_start(args, fmt);
     vsnprintf(comment, max_len, fmt, args);
     va_end(args);
-    struct Comment *c = allocator_malloc(globals->allocator, sizeof(*c));
+    struct Comment *c = dsalloc(globals->allocator, sizeof(*c));
     c->location = globals->cc->instructions->length;
     c->comment = comment;
     linkedlist_append(globals->cc->comments, c);
@@ -673,7 +673,7 @@ static void compile_set_index(struct Globals *globals, struct SetProperty *set)
 
 static size_t *compile_exit(struct Globals *globals)
 {
-    size_t *bookmark = allocator_malloc(globals->allocator, sizeof(size_t));
+    size_t *bookmark = dsalloc(globals->allocator, sizeof(size_t));
     // push(globals);
     // *bookmark = next(globals);
     load_opcode(globals, JMP);

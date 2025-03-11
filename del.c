@@ -1,5 +1,5 @@
 #include "common.h"
-#include "allocator.h"
+#include "dsalloc.h"
 #include "linkedlist.h"
 #include "readfile.h"
 #include "lexer.h"
@@ -137,7 +137,7 @@ void del_compiler_init(DelCompiler *compiler, FILE *ferr)
 {
     struct Globals *globals = malloc(sizeof(*globals));
     memset(globals, 0, sizeof(*globals));
-    globals->allocator = allocator_new();
+    globals->allocator = dsalloc_new();
     globals->ferr = ferr;
     globals->ast = linkedlist_new(globals->allocator);
     init_symbol_table(globals);
@@ -148,7 +148,7 @@ void del_compiler_init(DelCompiler *compiler, FILE *ferr)
 void del_compiler_free(DelCompiler compiler)
 {
     struct Globals *globals = (struct Globals *) compiler;
-    allocator_freeall(globals->allocator);
+    dsalloc_delete(globals->allocator);
     free(globals);
 }
 
@@ -162,7 +162,7 @@ void del_register_function_helper(DelCompiler compiler, void *context, bool is_y
     enum DelForeignType rettype = va_arg(arg_list, enum DelForeignType);
     for (int i = 0; i < arg_count; i++) {
         enum DelForeignType dtype = va_arg(arg_list, enum DelForeignType);
-        Type *type_ptr = allocator_malloc(globals->allocator, sizeof(*type_ptr));
+        Type *type_ptr = dsalloc(globals->allocator, sizeof(*type_ptr));
         *type_ptr = convert_ffi_type(dtype);
         linkedlist_append(types, type_ptr);
     }

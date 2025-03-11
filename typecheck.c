@@ -1,5 +1,5 @@
 #include "common.h"
-#include "allocator.h"
+#include "dsalloc.h"
 #include "linkedlist.h"
 #include "ast.h"
 #include "printers.h"
@@ -64,7 +64,7 @@ struct FunDef *lookup_fun(struct FunctionTable *ft, Symbol symbol)
 static void enter_scope(struct Globals *globals, struct Scope **current, bool isfunction,
         bool isloop)
 {
-    struct Scope *scope = allocator_malloc(globals->allocator, sizeof(*scope));
+    struct Scope *scope = dsalloc(globals->allocator, sizeof(*scope));
     scope->isfunction = isfunction;
     scope->isloop = isloop;
     scope->rettype = TYPE_UNDEFINED;
@@ -1178,8 +1178,8 @@ static bool typecheck_tlds(struct Globals *globals, struct TypeCheckerContext *c
 
 static struct ClassTable *init_class_table(struct Globals *globals)
 {
-    struct Class *clst = DEL_MALLOC(globals->class_count * sizeof(*clst));
-    struct ClassTable *class_table = DEL_MALLOC(sizeof(*class_table));
+    struct Class *clst = dsalloc(globals->allocator, globals->class_count * sizeof(*clst));
+    struct ClassTable *class_table = dsalloc(globals->allocator, sizeof(*class_table));
     class_table->size = globals->class_count;
     class_table->table = clst;
     return class_table;
@@ -1187,8 +1187,8 @@ static struct ClassTable *init_class_table(struct Globals *globals)
 
 static struct FunctionTable *init_function_table(struct Globals *globals)
 {
-    struct FunDef *ft = DEL_MALLOC(globals->function_count * sizeof(*ft));
-    struct FunctionTable *function_table = DEL_MALLOC(sizeof(*function_table));
+    struct FunDef *ft = dsalloc(globals->allocator, globals->function_count * sizeof(*ft));
+    struct FunctionTable *function_table = dsalloc(globals->allocator, sizeof(*function_table));
     function_table->size = globals->function_count;
     function_table->table = ft;
     return function_table;
@@ -1199,14 +1199,14 @@ static struct TypeCheckerContext *init_typechecker(struct Globals *globals)
     struct ClassTable *class_table = init_class_table(globals);
     struct FunctionTable *function_table = init_function_table(globals);
     // Init typechecker context
-    struct TypeCheckerContext *context = DEL_MALLOC(sizeof(*context));
+    struct TypeCheckerContext *context = dsalloc(globals->allocator, sizeof(*context));
     context->has_entrypoint = false;
     context->enclosing_func = NULL;
     context->fun_table = function_table;
     context->cls_table = class_table;
     context->scope = NULL;
     // Init compiler context
-    struct CompilerContext *cc = DEL_MALLOC(sizeof(*cc));
+    struct CompilerContext *cc = dsalloc(globals->allocator, sizeof(*cc));
     cc->instructions = NULL;
     cc->funcall_table = NULL;
     cc->class_table = class_table;

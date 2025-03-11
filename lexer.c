@@ -1,6 +1,6 @@
 #include "common.h"
 #include "readfile.h"
-#include "allocator.h"
+#include "dsalloc.h"
 #include "linkedlist.h"
 #include "lexer.h"
 
@@ -72,7 +72,7 @@ struct TokenMapping symbols1[] = {
 
 static struct Token *new_token(struct Globals *globals, int start, int end, enum TokenType type)
 {
-    struct Token *token = allocator_malloc(globals->allocator, sizeof(*token));
+    struct Token *token = dsalloc(globals->allocator, sizeof(*token));
     token->start = start;
     token->end = end;
     token->line_number = globals->lexer->error.line_number;
@@ -200,7 +200,7 @@ static void tokenize_comment(struct Globals *globals)
 
 static char *make_string(struct Globals *globals, char *input, int start, int end)
 {
-    char *str = allocator_malloc(globals->allocator, sizeof(char) * (end - start + 1));
+    char *str = dsalloc(globals->allocator, sizeof(char) * (end - start + 1));
     for (int i = start; i < end; i++) {
         str[i - start] = input[i];
     }
@@ -362,7 +362,7 @@ static void tokenize_symbol(struct Globals *globals)
         return;
     }
     int count = globals->lexer->offset - init_offset;
-    char *text = allocator_malloc(globals->allocator, count + 1);
+    char *text = dsalloc(globals->allocator, count + 1);
     memcpy(text, globals->file->input + init_offset, count);
     text[count] = '\0';
     Symbol symbol = add_symbol(globals, text, count);

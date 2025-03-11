@@ -61,7 +61,7 @@ void ffi_register_function(struct Globals *globals, void *context, bool is_yield
 {
     validate_ffs(globals, ff_name);
     Symbol symbol = add_symbol(globals, ff_name, strlen(ff_name));
-    struct ForeignFunction *ff = allocator_malloc(globals->allocator, sizeof(*ff));
+    struct ForeignFunction *ff = dsalloc(globals->allocator, sizeof(*ff));
     ff->symbol = symbol;
     ff->function_name = ff_name;
     ff->is_yielding   = is_yielding;
@@ -76,7 +76,7 @@ bool ffi_register_functions(struct Globals *globals)
 { 
     struct ForeignFunction *ff = NULL;
     linkedlist_vforeach(ff, globals->foreign_function_table) {
-        struct ForeignFunctionBody *ffb = allocator_malloc(globals->allocator, sizeof(*ffb));
+        struct ForeignFunctionBody *ffb = dsalloc(globals->allocator, sizeof(*ffb));
         ffb->is_yielding = ff->is_yielding;
         ffb->context = ff->context;
         ffb->function = ff->function;

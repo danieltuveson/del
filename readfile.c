@@ -1,5 +1,5 @@
 #include "common.h"
-#include "allocator.h"
+#include "dsalloc.h"
 #include "readfile.h"
 
 // Populates FileContext on success
@@ -22,7 +22,7 @@ bool readfile(struct Globals *globals, struct FileContext *file)
     }
     rewind(fp);
 
-    file->input = allocator_malloc(globals->allocator, file->length + 1);
+    file->input = dsalloc(globals->allocator, file->length + 1);
     if ((long) fread(file->input, 1, file->length, fp) != file->length) {
         printf("%s", generic_error);
         return false;

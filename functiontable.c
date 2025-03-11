@@ -1,12 +1,12 @@
-#include "allocator.h"
+#include "dsalloc.h"
 #include "linkedlist.h"
 #include "functiontable.h"
 #include "printers.h"
 
 struct FunctionCallTable *new_ft(struct Globals *globals, uint64_t function)
 {
-    struct FunctionCallTable *ft = allocator_malloc(globals->allocator, sizeof(struct FunctionCallTable));
-    ft->node = allocator_malloc(globals->allocator, sizeof(struct FunctionCallTableNode));
+    struct FunctionCallTable *ft = dsalloc(globals->allocator, sizeof(struct FunctionCallTable));
+    ft->node = dsalloc(globals->allocator, sizeof(struct FunctionCallTableNode));
     ft->node->function = function;
     ft->node->location = 0;
     ft->node->callsites = linkedlist_new(globals->allocator);
@@ -60,7 +60,7 @@ struct FunctionCallTableNode *add_ft_node(struct Globals *globals, struct Functi
 void add_callsite(struct Globals *globals, struct FunctionCallTable *ft, Symbol function, uint64_t callsite)
 {
     struct FunctionCallTableNode *node = add_function_noloc(globals, ft, function);
-    uint64_t *hcallsite = allocator_malloc(globals->allocator, sizeof(uint64_t));
+    uint64_t *hcallsite = dsalloc(globals->allocator, sizeof(uint64_t));
     *hcallsite = callsite;
     linkedlist_append(node->callsites, hcallsite);
 }
