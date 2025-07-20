@@ -13,7 +13,7 @@ DSAllocator dsalloc_new(void);
 void *dsalloc(DSAllocator a, size_t size);
 
 // Frees all memory allocated in `a`
-// `a` may *not* be used after freeall is called
+// `a` may *not* be used after delete is called
 void dsalloc_delete(DSAllocator a);
 
 // Returns the total memory the user has requested so far (in bytes)

@@ -1,3 +1,4 @@
+#include "common.h"
 #include "dsalloc.h"
 #include "linkedlist.h"
 #include "heap_ptr.h"

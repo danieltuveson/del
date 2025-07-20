@@ -1,5 +1,4 @@
-#include "common.h"
-#include "dsalloc.h"
+#include <stdio.h>
 #include "linkedlist.h"
 
 struct LinkedList *linkedlist_new(DSAllocator a)

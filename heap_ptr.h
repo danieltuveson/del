@@ -1,6 +1,8 @@
 #ifndef HEAP_PTR_H
 #define HEAP_PTR_H
 
+#include <assert.h>
+
 /*
  * A pointer to the heap consists of 3 parts:
  * - Metadata: The first byte represents metadata about the heap value.

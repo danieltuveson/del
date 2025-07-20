@@ -120,7 +120,13 @@ static bool parse_and_compile_file(struct Globals *globals, struct Program **pro
     globals->file = &file;
 #if DEBUG_TEXT
     printf("%s\n", globals->file->input);
-    print_memory_usage(globals->allocator);
+    unsigned long memory_allocd = dsalloc_memory_usage(globals->allocator);
+    unsigned long memory_overhead = dsalloc_overhead(globals->allocator);
+    printf("usage + overhead = total: %lu + %lu = %lu\n",
+            memory_allocd,
+            memory_overhead,
+            memory_allocd + memory_overhead
+          );
 #endif
     return parse_and_compile(globals, program);
 }

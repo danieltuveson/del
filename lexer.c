@@ -451,3 +451,4 @@ bool tokenize(struct Globals *globals)
     }
     return true;
 }
+

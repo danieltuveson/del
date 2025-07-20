@@ -1,0 +1,173 @@
+........ READING FILE : benchmark/benchmark.del ........
+function fib(n : int) : int {
+    let fibn_minus_2 = 0;
+    let fibn_minus_1 = 1;
+    let fibn = fibn_minus_1 + fibn_minus_2;
+    if n == 0 {
+        return fibn_minus_2;
+    } else if n == 1 {
+        return fibn_minus_1;
+    }
+    for let i = 2; i <= n; i++ {
+        fibn = fibn_minus_1 + fibn_minus_2;
+        fibn_minus_2 = fibn_minus_1;
+        fibn_minus_1 = fibn;
+    }
+    return fibn;
+}
+
+function main() {
+    // Can only go up to 90, until we create a BigInt class
+    let num_iters = 1000000;
+    let x = 2;
+    for let i = 0; i < num_iters; i++ {
+        x = fib(90) - x / 2;
+    }
+    println("done:", x, "!");
+}
+
+usage + overhead = total: 1186 + 568 = 1754
+`````````````` COMPILE ```````````````
+
+````````````` INSTRUCTIONS `````````````
+function table:
+**UNDEFINED**: 
+main: 4
+fib: 120
+
+// function call: main
+0    PUSH 5
+2    PUSH_SCOPE
+3    JMP 92
+5    POP_SCOPE
+6    EXIT
+// function definition: fib
+// local n : int
+7    SET_LOCAL 0
+9    DEFINE
+10   PUSH 0
+// local fibn_minus_2 : int
+12   SET_LOCAL 1
+14   DEFINE
+15   PUSH 1
+// local fibn_minus_1 : int
+17   SET_LOCAL 2
+19   DEFINE
+// local fibn_minus_1 : int
+20   GET_LOCAL 2
+// local fibn_minus_2 : int
+22   GET_LOCAL 1
+24   ADD
+// local fibn : int
+25   SET_LOCAL 3
+27   DEFINE
+// local n : int
+28   GET_LOCAL 0
+30   PUSH 0
+32   EQ
+33   JNE 41
+// local fibn_minus_2 : int
+35   GET_LOCAL 1
+37   SWAP
+38   RET
+39   JMP 52
+// local n : int
+41   GET_LOCAL 0
+43   PUSH 1
+45   EQ
+46   JNE 52
+// local fibn_minus_1 : int
+48   GET_LOCAL 2
+50   SWAP
+51   RET
+52   PUSH 2
+// local i : int
+54   SET_LOCAL 4
+56   DEFINE
+// local i : int
+57   GET_LOCAL 4
+// local n : int
+59   GET_LOCAL 0
+61   LTE
+62   JNE 88
+// local fibn_minus_1 : int
+64   GET_LOCAL 2
+// local fibn_minus_2 : int
+66   GET_LOCAL 1
+68   ADD
+// local fibn : int
+69   SET_LOCAL 3
+// local fibn_minus_1 : int
+71   GET_LOCAL 2
+// local fibn_minus_2 : int
+73   SET_LOCAL 1
+// local fibn : int
+75   GET_LOCAL 3
+// local fibn_minus_1 : int
+77   SET_LOCAL 2
+// local i : int
+79   GET_LOCAL 4
+81   PUSH 1
+83   ADD
+// local i : int
+84   SET_LOCAL 4
+86   JMP 57
+// local fibn : int
+88   GET_LOCAL 3
+90   SWAP
+91   RET
+// function definition: main
+92   PUSH 1000000
+// local num_iters : int
+94   SET_LOCAL 0
+96   DEFINE
+97   PUSH 2
+// local x : int
+99   SET_LOCAL 1
+101  DEFINE
+102  PUSH 0
+// local i : int
+104  SET_LOCAL 2
+106  DEFINE
+// local i : int
+107  GET_LOCAL 2
+// local num_iters : int
+109  GET_LOCAL 0
+111  LT
+112  JNE 139
+// function call: fib
+114  PUSH 121
+116  PUSH 90
+118  PUSH_SCOPE
+119  JMP 7
+121  POP_SCOPE
+// local x : int
+122  GET_LOCAL 1
+124  PUSH 2
+126  DIV
+127  SUB
+// local x : int
+128  SET_LOCAL 1
+// local i : int
+130  GET_LOCAL 2
+132  PUSH 1
+134  ADD
+// local i : int
+135  SET_LOCAL 2
+137  JMP 107
+139  PUSH 0
+141  PUSH 6
+143  PRINT
+// local x : int
+144  GET_LOCAL 1
+146  PUSH 3
+148  PRINT
+149  PUSH 1
+151  PUSH 6
+153  PRINT
+154  PUSH 2
+156  PUSH 6
+158  PRINT
+159  RET
+
+done:1920044796247210747!

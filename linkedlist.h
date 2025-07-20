@@ -1,7 +1,8 @@
 #ifndef LINKEDLIST_H
 #define LINKEDLIST_H
 
-#include "common.h"
+#include <stdbool.h>
+#include "dsalloc.h"
 
 struct LinkedListNode;
 

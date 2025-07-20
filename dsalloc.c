@@ -59,7 +59,6 @@ unsigned long dsalloc_memory_usage(DSAllocator a)
     return allocator->memory_usage;
 }
 
-// This function just returns the bytes allocated, without the allocator overhead
 unsigned long dsalloc_overhead(DSAllocator a)
 {
     struct Alloc *allocator = (struct Alloc *)a;
